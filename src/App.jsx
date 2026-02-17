@@ -130,6 +130,11 @@ export default function App() {
       }
       if (sRes.data?.user_id) {
         const s = sRes.data;
+        let featuredArtists = s.featured_artists ?? [];
+        if (featuredArtists.length === 0 && (s.top_artists ?? []).length > 0) {
+          featuredArtists = [s.top_artists[0]];
+          await supabase.from("user_streaming_stats").update({ featured_artists: featuredArtists }).eq("user_id", uid);
+        }
         setStreamingData({
           totalHours: s.total_hours ?? 0,
           totalRecords: s.total_records ?? 0,
@@ -137,7 +142,7 @@ export default function App() {
           uniqueTracks: s.unique_tracks ?? 0,
           topArtists: s.top_artists ?? [],
           topTracks: s.top_tracks ?? [],
-          featuredArtists: s.featured_artists ?? [],
+          featuredArtists,
           featuredTracks: s.featured_tracks ?? [],
           startDate: s.start_date ?? null,
           endDate: s.end_date ?? null,
@@ -276,6 +281,8 @@ export default function App() {
   };
 
   const handleStreamingComplete = async (d) => {
+    const defaultFeatured = (d.topArtists?.length && !d.featuredArtists?.length) ? [d.topArtists[0]] : (d.featuredArtists ?? []);
+    const payload = { ...d, featuredArtists: defaultFeatured };
     if (supabase && user?.id) {
       await supabase.from("user_streaming_stats").upsert(
         {
@@ -286,6 +293,7 @@ export default function App() {
           unique_tracks: d.uniqueTracks,
           top_artists: d.topArtists,
           top_tracks: d.topTracks,
+          featured_artists: defaultFeatured,
           start_date: d.startDate || null,
           end_date: d.endDate || null,
           updated_at: new Date().toISOString(),
@@ -293,7 +301,7 @@ export default function App() {
         { onConflict: "user_id" },
       );
     }
-    setStreamingData(d);
+    setStreamingData(payload);
     setShowUpload(false);
   };
 

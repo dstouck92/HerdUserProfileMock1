@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, Sec, Btn, Btn2, Empty } from "../ui";
 
 const F = "'DM Sans', sans-serif";
@@ -13,8 +14,18 @@ export default function CurateTab({
   onToggleArtistFeatured,
   onPreviewProfile,
 }) {
+  const [artistSearch, setArtistSearch] = useState("");
   const hasData = concerts.length > 0 || merch.length > 0 || vinyl.length > 0 || data;
   if (!hasData) return <Empty icon="✨" title="Nothing to Curate Yet" desc="Add concerts, merch, vinyl, or upload Spotify history first." />;
+
+  const featuredArtists = data?.featuredArtists ?? [];
+  const topArtists = data?.topArtists ?? [];
+  const searchTrim = artistSearch.trim().toLowerCase();
+  const searchResults = searchTrim
+    ? topArtists.filter((a) => a.name.toLowerCase().includes(searchTrim))
+    : [];
+  const searchResultsNotFeatured = searchResults.filter((a) => !featuredArtists.some((fa) => fa.name === a.name));
+
   return (
     <div>
       <div style={{ margin: "0 20px 16px", padding: "14px 16px", background: "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.06))", borderRadius: 14, border: "1px solid rgba(99,102,241,0.15)" }}>
@@ -24,18 +35,58 @@ export default function CurateTab({
       {data && data.topArtists.length > 0 && (
         <>
           <Sec icon="🎵">From Your Streaming</Sec>
-          <Card>{data.topArtists.slice(0, 3).map((a, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", padding: "12px 20px", gap: 12, borderBottom: i < 2 ? "1px solid rgba(99,102,241,0.06)" : "none" }}>
-              <input
-                type="checkbox"
-                style={{ accentColor: "#6366f1" }}
-                checked={!!(data.featuredArtists || []).find((fa) => fa.name === a.name)}
-                onChange={(e) => onToggleArtistFeatured?.(a.name, e.target.checked)}
-              />
-              <div style={{ flex: 1 }}><div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{a.name}</div><div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{a.hours} hours</div></div>
-              <span style={{ fontFamily: F, fontSize: 10, fontWeight: 600, color: "#059669", background: "rgba(16,185,129,0.08)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase" }}>streaming</span>
+          <Card>
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid rgba(99,102,241,0.08)" }}>
+              <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 8 }}>Featured artists (checked = shown on public profile)</div>
+              {featuredArtists.length === 0 ? (
+                <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.5)" }}>None yet. Your top artist is added by default when you have streaming data.</div>
+              ) : (
+                featuredArtists.map((fa, i) => (
+                  <div key={fa.name ?? i} style={{ display: "flex", alignItems: "center", padding: "8px 0", gap: 12, borderBottom: i < featuredArtists.length - 1 ? "1px solid rgba(99,102,241,0.06)" : "none" }}>
+                    <input
+                      type="checkbox"
+                      style={{ accentColor: "#6366f1" }}
+                      checked
+                      onChange={(e) => onToggleArtistFeatured?.(fa.name, e.target.checked)}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{fa.name}</div>
+                      {fa.hours != null && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{fa.hours} hours</div>}
+                    </div>
+                    <span style={{ fontFamily: F, fontSize: 10, fontWeight: 600, color: "#059669", background: "rgba(16,185,129,0.08)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase" }}>streaming</span>
+                  </div>
+                ))
+              )}
             </div>
-          ))}</Card>
+            <div style={{ padding: "12px 20px" }}>
+              <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 6 }}>Search your listening history to add an artist</label>
+              <input
+                type="text"
+                value={artistSearch}
+                onChange={(e) => setArtistSearch(e.target.value)}
+                placeholder="Type artist name..."
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(99,102,241,0.2)", background: "rgba(255,255,255,0.8)", fontFamily: F, fontSize: 14, color: "#1e1b4b", outline: "none", boxSizing: "border-box" }}
+              />
+              {searchResultsNotFeatured.length > 0 && (
+                <div style={{ marginTop: 10, maxHeight: 200, overflow: "auto" }}>
+                  {searchResultsNotFeatured.slice(0, 20).map((a, i) => (
+                    <button
+                      type="button"
+                      key={a.name}
+                      onClick={() => { onToggleArtistFeatured?.(a.name, true); setArtistSearch(""); }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", border: "none", borderBottom: i < Math.min(19, searchResultsNotFeatured.length - 1) ? "1px solid rgba(0,0,0,0.06)" : "none", background: "none", cursor: "pointer", textAlign: "left", fontFamily: F, fontSize: 14, color: "#1e1b4b" }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{a.name}</span>
+                      <span style={{ fontSize: 12, color: "#6366f1", fontWeight: 600 }}>+ Add</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {searchTrim && searchResultsNotFeatured.length === 0 && searchResults.length > 0 && (
+                <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.5)", marginTop: 8 }}>All matching artists are already featured.</div>
+              )}
+            </div>
+          </Card>
         </>
       )}
       {concerts.length > 0 && (
