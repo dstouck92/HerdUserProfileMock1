@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import html2canvas from 'html2canvas';
 import { supabase } from './lib/supabase';
 import { GradientBg, Card, Sec, Stats, F } from './components/ui';
 
 export default function PublicProfile() {
   const { username } = useParams();
+  const profileRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [profile, setProfile] = useState(null);
@@ -12,6 +14,8 @@ export default function PublicProfile() {
   const [vinyl, setVinyl] = useState([]);
   const [merch, setMerch] = useState([]);
   const [streaming, setStreaming] = useState(null);
+  const [shareFeedback, setShareFeedback] = useState('');
+  const [downloadFeedback, setDownloadFeedback] = useState('');
 
   useEffect(() => {
     if (!supabase || !username) {
@@ -101,13 +105,81 @@ export default function PublicProfile() {
 
   const hasAnyFeatured = streaming?.featuredArtists?.length || concerts.length || vinyl.length || merch.length;
 
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const handleShareLink = async () => {
+    setShareFeedback('');
+    try {
+      if (navigator.share && navigator.canShare?.({ url: shareUrl })) {
+        await navigator.share({
+          title: `${profile?.display_name || 'Profile'} on Herd`,
+          text: `Check out ${profile?.display_name || 'my'} profile`,
+          url: shareUrl,
+        });
+        setShareFeedback('Shared!');
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareFeedback('Link copied!');
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          setShareFeedback('Link copied!');
+        } catch {
+          setShareFeedback('Could not share');
+        }
+      }
+    }
+    setTimeout(() => setShareFeedback(''), 2000);
+  };
+
+  const handleDownload = async () => {
+    if (!profileRef.current) return;
+    setDownloadFeedback('');
+    try {
+      const canvas = await html2canvas(profileRef.current, {
+        useCORS: true,
+        scale: 2,
+        backgroundColor: '#ede9fe',
+        logging: false,
+      });
+      const link = document.createElement('a');
+      link.download = `herd-profile-${profile?.username || 'profile'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      setDownloadFeedback('Saved!');
+    } catch (e) {
+      setDownloadFeedback('Download failed');
+    }
+    setTimeout(() => setDownloadFeedback(''), 2000);
+  };
+
   return (
     <GradientBg>
-      <div style={{ padding: '24px 20px 12px' }}>
-        <div style={{ fontSize: 24, marginBottom: 8 }}>🐾</div>
-        <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: '#1e1b4b' }}>{profile.display_name}</div>
-        <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)', marginTop: 2 }}>@{profile.username}</div>
-      </div>
+      <div ref={profileRef} style={{ paddingBottom: 8 }}>
+        <div style={{ padding: '24px 20px 12px' }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>🐾</div>
+          <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: '#1e1b4b' }}>{profile.display_name}</div>
+          <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)', marginTop: 2 }}>@{profile.username}</div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={handleShareLink}
+              style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(255,255,255,0.8)', fontFamily: F, fontSize: 14, fontWeight: 600, color: '#4f46e5', cursor: 'pointer' }}
+            >
+              Share
+            </button>
+            <button
+              type="button"
+              onClick={handleDownload}
+              style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(255,255,255,0.8)', fontFamily: F, fontSize: 14, fontWeight: 600, color: '#4f46e5', cursor: 'pointer' }}
+            >
+              Download
+            </button>
+            <span style={{ fontFamily: F, fontSize: 12, color: '#059669' }}>{shareFeedback}</span>
+            <span style={{ fontFamily: F, fontSize: 12, color: '#059669' }}>{downloadFeedback}</span>
+          </div>
+        </div>
 
       {!hasAnyFeatured && (
         <Card style={{ marginTop: 8, padding: '32px 24px', textAlign: 'center' }}>
@@ -229,6 +301,7 @@ export default function PublicProfile() {
           </Card>
         </>
       )}
+      </div>
     </GradientBg>
   );
 }
