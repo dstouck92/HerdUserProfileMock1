@@ -51,19 +51,37 @@ export default function AuthScreen({ onAuth }) {
     if (supabase) {
       setLoading(true);
       setError("");
+      const timeoutMs = 25000;
+      const timeout = () => new Promise((_, reject) => setTimeout(() => reject(new Error("Connection timed out. See steps below.")), timeoutMs));
+      const runWithRetry = async (fn) => {
+        let lastErr;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const authPromise = fn();
+            authPromise.catch(() => {}); // avoid uncaught AbortError when timeout wins and in-flight request is aborted
+            const result = await Promise.race([authPromise, timeout()]).catch((err) => ({ data: null, error: err }));
+            const { data, error: authError } = result?.data !== undefined ? result : { data: result?.data, error: result?.error ?? result };
+            if (authError) throw typeof authError === "object" && authError?.message ? authError : new Error(authError?.message || "Auth failed.");
+            return data;
+          } catch (e) {
+            lastErr = e;
+            if (attempt === 0 && e?.message?.includes("Connection timed out")) {
+              setError("First attempt timed out. Retrying once…");
+              await new Promise((r) => setTimeout(r, 800));
+            }
+          }
+        }
+        throw lastErr;
+      };
       try {
-        const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error("Connection timed out. See steps below.")), ms));
         if (mode === "signup") {
-          const result = await Promise.race([
+          const data = await runWithRetry(() =>
             supabase.auth.signUp({
               email,
               password,
               options: { data: { display_name: displayName, username, phone: phone.trim() || null } },
-            }),
-            timeout(15000),
-          ]).catch((err) => ({ data: null, error: err }));
-          const { data, error: authError } = result?.data !== undefined ? result : { data: result?.data, error: result?.error ?? result };
-          if (authError) throw typeof authError === "object" && authError?.message ? authError : new Error(authError?.message || "Sign up failed.");
+            })
+          );
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user, displayName, username, phone.trim());
             onAuth(profile);
@@ -71,12 +89,7 @@ export default function AuthScreen({ onAuth }) {
             setError("Sign up succeeded but no user returned. Check your email to confirm, or try logging in.");
           }
         } else {
-          const result = await Promise.race([
-            supabase.auth.signInWithPassword({ email, password }),
-            timeout(15000),
-          ]).catch((err) => ({ data: null, error: err }));
-          const { data, error: authError } = result?.data !== undefined ? result : { data: result?.data, error: result?.error ?? result };
-          if (authError) throw (typeof authError === "object" && authError?.message ? authError : new Error(authError?.message || "Login failed."));
+          const data = await runWithRetry(() => supabase.auth.signInWithPassword({ email, password }));
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user);
             onAuth(profile);
