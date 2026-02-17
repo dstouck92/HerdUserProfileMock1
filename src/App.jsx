@@ -4,6 +4,7 @@ import { GradientBg } from "./components/ui";
 import AuthScreen from "./components/AuthScreen";
 import SpotifyUploadModal from "./components/SpotifyUploadModal";
 import AddConcertModal from "./components/AddConcertModal";
+import EditConcertModal from "./components/EditConcertModal";
 import AddItemModal from "./components/AddItemModal";
 import LiveTab from "./components/tabs/LiveTab";
 import DigitalTab from "./components/tabs/DigitalTab";
@@ -21,6 +22,7 @@ export default function App() {
   const [merch, setMerch] = useState([]);
   const [showUpload, setShowUpload] = useState(false);
   const [showConcert, setShowConcert] = useState(false);
+  const [editingConcert, setEditingConcert] = useState(null);
   const [showVinyl, setShowVinyl] = useState(false);
   const [showMerch, setShowMerch] = useState(false);
 
@@ -106,6 +108,32 @@ export default function App() {
     setConcerts((prev) => [{ ...c, id: c.id || crypto.randomUUID() }, ...prev]);
   };
 
+  const handleUpdateConcert = async (updated) => {
+    if (supabase && user?.id) {
+      const { error } = await supabase
+        .from("concerts")
+        .update({
+          artist: updated.artist,
+          tour: updated.tour ?? null,
+          date: updated.date,
+          venue: updated.venue ?? null,
+          city: updated.city ?? null,
+          ticket_type: updated.ticket_type ?? null,
+          ticket_price: updated.ticket_price ?? null,
+          source: updated.source ?? "manual",
+        })
+        .eq("id", updated.id)
+        .eq("user_id", user.id);
+      if (!error) {
+        setConcerts((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
+        setEditingConcert(null);
+      }
+    } else {
+      setConcerts((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
+      setEditingConcert(null);
+    }
+  };
+
   const handleAddVinyl = async (v) => {
     if (supabase && user?.id) {
       const { data, error } = await supabase.from("vinyl").insert({
@@ -180,13 +208,14 @@ export default function App() {
         <TabBar active={activeTab} onSelect={setActiveTab} />
       </div>
       <div style={{ paddingBottom: 40 }}>
-        {activeTab === "Live" && <LiveTab concerts={concerts} onAdd={() => setShowConcert(true)} />}
+        {activeTab === "Live" && <LiveTab concerts={concerts} onAdd={() => setShowConcert(true)} onEdit={(c) => setEditingConcert(c)} />}
         {activeTab === "Digital" && <DigitalTab data={streamingData} onUpload={() => setShowUpload(true)} />}
         {activeTab === "Physical" && <PhysicalTab vinyl={vinyl} merch={merch} onAddVinyl={() => setShowVinyl(true)} onAddMerch={() => setShowMerch(true)} />}
         {activeTab === "Curate" && <CurateTab concerts={concerts} merch={merch} vinyl={vinyl} data={streamingData} />}
       </div>
       {showUpload && <SpotifyUploadModal onClose={() => setShowUpload(false)} onComplete={handleStreamingComplete} />}
       {showConcert && <AddConcertModal onClose={() => setShowConcert(false)} onAdd={handleAddConcert} />}
+      {editingConcert && <EditConcertModal concert={editingConcert} onClose={() => setEditingConcert(null)} onSave={handleUpdateConcert} />}
       {showVinyl && <AddItemModal type="vinyl" onClose={() => setShowVinyl(false)} onAdd={handleAddVinyl} />}
       {showMerch && <AddItemModal type="merch" onClose={() => setShowMerch(false)} onAdd={handleAddMerch} />}
     </GradientBg>
