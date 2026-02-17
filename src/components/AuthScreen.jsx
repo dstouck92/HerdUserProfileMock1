@@ -93,8 +93,8 @@ export default function AuthScreen({ onAuth }) {
                 <Inp label="Phone (optional)" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" />
               </>
             )}
-            <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" />
-            <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" />
+            <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" autoComplete="email" />
+            <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" autoComplete={mode === "login" ? "current-password" : "new-password"} />
             {error && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", marginBottom: 12, textAlign: "left" }}>{error}</div>}
             <Btn type="submit" disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
           </form>

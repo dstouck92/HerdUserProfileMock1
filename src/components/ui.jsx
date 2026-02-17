@@ -13,18 +13,18 @@ export const Card = ({ children, style }) => (
   <div style={{ margin: "0 16px 16px", background: "rgba(255,255,255,0.6)", backdropFilter: "blur(16px)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.55)", boxShadow: "0 2px 16px rgba(99,102,241,0.06)", overflow: "hidden", ...style }}>{children}</div>
 );
 
-export const Btn = ({ children, onClick, disabled, style }) => (
-  <button onClick={onClick} disabled={disabled} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: disabled ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg, #6366f1, #818cf8)", color: "#fff", fontFamily: F, fontSize: 15, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", boxShadow: disabled ? "none" : "0 4px 16px rgba(99,102,241,0.3)", ...style }}>{children}</button>
+export const Btn = ({ children, onClick, disabled, style, type = "button" }) => (
+  <button type={type} onClick={onClick} disabled={disabled} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: disabled ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg, #6366f1, #818cf8)", color: "#fff", fontFamily: F, fontSize: 15, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", boxShadow: disabled ? "none" : "0 4px 16px rgba(99,102,241,0.3)", ...style }}>{children}</button>
 );
 
 export const Btn2 = ({ children, onClick, style }) => (
   <button onClick={onClick} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "1px solid rgba(99,102,241,0.2)", background: "rgba(255,255,255,0.6)", color: "#6366f1", fontFamily: F, fontSize: 15, fontWeight: 600, cursor: "pointer", ...style }}>{children}</button>
 );
 
-export const Inp = ({ label, type, value, onChange, placeholder }) => (
+export const Inp = ({ label, type, value, onChange, placeholder, autoComplete }) => (
   <div style={{ marginBottom: 16 }}>
     <label style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#4f46e5", display: "block", marginBottom: 6 }}>{label}</label>
-    <input type={type || "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(99,102,241,0.2)", background: "rgba(255,255,255,0.7)", fontFamily: F, fontSize: 14, color: "#1e1b4b", outline: "none", boxSizing: "border-box" }} />
+    <input type={type || "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoComplete={autoComplete} style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(99,102,241,0.2)", background: "rgba(255,255,255,0.7)", fontFamily: F, fontSize: 14, color: "#1e1b4b", outline: "none", boxSizing: "border-box" }} />
   </div>
 );
 
