@@ -25,6 +25,11 @@ export default function AuthScreen({ onAuth }) {
     return { id: payload.id, display_name: payload.display_name, username: payload.username };
   }
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submit();
+  };
+
   const submit = async () => {
     setError("");
     if (mode === "signup") {
@@ -77,23 +82,25 @@ export default function AuthScreen({ onAuth }) {
         <Card style={{ margin: "0 0 20px", padding: "24px 20px" }}>
           <div style={{ display: "flex", marginBottom: 24, background: "rgba(99,102,241,0.06)", borderRadius: 10, padding: 3 }}>
             {["login", "signup"].map((m) => (
-              <button key={m} onClick={() => { setMode(m); setError(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: mode === m ? "#fff" : "transparent", boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: mode === m ? "#4f46e5" : "rgba(55,48,107,0.4)", cursor: "pointer" }}>{m === "login" ? "Log In" : "Sign Up"}</button>
+              <button key={m} type="button" onClick={() => { setMode(m); setError(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: mode === m ? "#fff" : "transparent", boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: mode === m ? "#4f46e5" : "rgba(55,48,107,0.4)", cursor: "pointer" }}>{m === "login" ? "Log In" : "Sign Up"}</button>
             ))}
           </div>
-          {mode === "signup" && (
-            <>
-              <Inp label="Display Name" value={displayName} onChange={setDisplayName} placeholder="David Stouck" />
-              <Inp label="Username" value={username} onChange={setUsername} placeholder="davidstouck" />
-              <Inp label="Phone (optional)" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" />
-            </>
-          )}
-          <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" />
-          <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" />
-          {error && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", marginBottom: 12, textAlign: "left" }}>{error}</div>}
-          <Btn onClick={submit} disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
+          <form onSubmit={handleSubmit} noValidate>
+            {mode === "signup" && (
+              <>
+                <Inp label="Display Name" value={displayName} onChange={setDisplayName} placeholder="David Stouck" />
+                <Inp label="Username" value={username} onChange={setUsername} placeholder="davidstouck" />
+                <Inp label="Phone (optional)" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" />
+              </>
+            )}
+            <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" />
+            <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" />
+            {error && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", marginBottom: 12, textAlign: "left" }}>{error}</div>}
+            <Btn type="submit" disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
+          </form>
           <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-            <Btn2 style={{ flex: 1, padding: "10px 0", fontSize: 13 }}>Google</Btn2>
-            <Btn2 style={{ flex: 1, padding: "10px 0", fontSize: 13 }}>Spotify</Btn2>
+            <Btn2 type="button" style={{ flex: 1, padding: "10px 0", fontSize: 13 }}>Google</Btn2>
+            <Btn2 type="button" style={{ flex: 1, padding: "10px 0", fontSize: 13 }}>Spotify</Btn2>
           </div>
         </Card>
       </div>
