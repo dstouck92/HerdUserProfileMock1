@@ -17,7 +17,8 @@ export function parseSpotifyFiles(filesContent) {
       const track = r.master_metadata_track_name;
       const album = r.master_metadata_album_album_name;
       const ms = r.ms_played || 0;
-      if (!artist || !track || ms < 5000) continue;
+      // Only skip rows that don't have a track + artist; count all listening time
+      if (!artist || !track) continue;
 
       totalMs += ms;
       totalRecords++;
@@ -34,7 +35,7 @@ export function parseSpotifyFiles(filesContent) {
   }
 
   return {
-    totalHours: Math.round(totalMs / 3600000),
+    totalHours: Math.round((totalMs / 3600000) * 10) / 10,
     totalRecords,
     uniqueArtists: Object.keys(artistStats).length,
     uniqueTracks: Object.keys(trackStats).length,

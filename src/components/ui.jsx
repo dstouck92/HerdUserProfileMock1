@@ -58,13 +58,30 @@ export const ProfileHeader = ({ user, onViewPublicProfile }) => (
   </div>
 );
 
-export const Sec = ({ children, icon, right }) => (
+export const Sec = ({ children, icon, right, onRightClick }) => (
   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", marginBottom: 10, marginTop: 4 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {icon && <span style={{ fontSize: 20 }}>{icon}</span>}
       <span style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: "#1e1b4b" }}>{children}</span>
     </div>
-    {right && <span style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#6366f1", cursor: "pointer" }}>{right}</span>}
+    {right && (
+      <button
+        type="button"
+        onClick={onRightClick}
+        style={{
+          border: "none",
+          background: "none",
+          padding: 0,
+          fontFamily: F,
+          fontSize: 13,
+          fontWeight: 600,
+          color: "#6366f1",
+          cursor: onRightClick ? "pointer" : "default",
+        }}
+      >
+        {right}
+      </button>
+    )}
   </div>
 );
 
