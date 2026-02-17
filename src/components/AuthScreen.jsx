@@ -42,7 +42,7 @@ export default function AuthScreen({ onAuth }) {
   const submit = async () => {
     setError("");
     if (mode === "signup") {
-      if (!email || !username || !displayName || !password) return setError("All fields required.");
+      if (!email?.trim() || !username?.trim() || !displayName?.trim() || !phone?.trim() || !password) return setError("All fields required.");
       if (password.length < 6) return setError("Password must be 6+ characters.");
     } else {
       if (!email || !password) return setError("Email and password required.");
@@ -52,20 +52,20 @@ export default function AuthScreen({ onAuth }) {
       setLoading(true);
       setError("");
       try {
-        const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error("Connection timed out. Check your internet and Vercel/Supabase settings.")), ms));
+        const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error("Connection timed out. See steps below.")), ms));
         if (mode === "signup") {
           const result = await Promise.race([
             supabase.auth.signUp({
               email,
               password,
-              options: { data: { display_name: displayName, username, phone: phone || null } },
+              options: { data: { display_name: displayName, username, phone: phone.trim() || null } },
             }),
             timeout(15000),
           ]).catch((err) => ({ data: null, error: err }));
           const { data, error: authError } = result?.data !== undefined ? result : { data: result?.data, error: result?.error ?? result };
           if (authError) throw typeof authError === "object" && authError?.message ? authError : new Error(authError?.message || "Sign up failed.");
           if (data?.user) {
-            const profile = await getOrCreateProfile(data.user, displayName, username, phone);
+            const profile = await getOrCreateProfile(data.user, displayName, username, phone.trim());
             onAuth(profile);
           } else {
             setError("Sign up succeeded but no user returned. Check your email to confirm, or try logging in.");
@@ -113,14 +113,25 @@ export default function AuthScreen({ onAuth }) {
               <>
                 <Inp label="Display Name" value={displayName} onChange={setDisplayName} placeholder="David Stouck" />
                 <Inp label="Username" value={username} onChange={setUsername} placeholder="davidstouck" />
-                <Inp label="Phone (optional)" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" />
+                <Inp label="Phone *" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" />
               </>
             )}
             <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" autoComplete="email" />
             {mode === "login" && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(55,48,107,0.5)", marginTop: -8, marginBottom: 12 }}>Use the email you signed up with, not your display name.</div>}
             <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" autoComplete={mode === "login" ? "current-password" : "new-password"} />
             <div role="alert" style={{ minHeight: error ? "auto" : 0, marginBottom: 12, textAlign: "left" }}>
-              {error && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", padding: "8px 10px", background: "#fef2f2", borderRadius: 8 }}>{error}</div>}
+              {error && (
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", padding: "10px 12px", background: "#fef2f2", borderRadius: 8 }}>
+                  {error}
+                  {error.includes("Connection timed out") && (
+                    <div style={{ marginTop: 10, fontSize: 12, color: "#b91c1c", lineHeight: 1.5 }}>
+                      <strong>Fix:</strong><br />
+                      1. Supabase: open your project → if it says &quot;Paused&quot;, click <strong>Restore project</strong>.<br />
+                      2. Vercel: Project → Settings → Environment Variables. Set <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_URL</code> and <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_ANON_KEY</code> from Supabase → Settings → API. Then Deployments → Redeploy.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <Btn type="submit" disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
           </form>

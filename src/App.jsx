@@ -32,10 +32,13 @@ export default function App() {
       return;
     }
     let cancelled = false;
+    // Show login screen after short max wait so page feels fast; session check continues in background
+    const showLoginTimer = setTimeout(() => {
+      if (!cancelled) setAuthLoading(false);
+    }, 500);
     const loadSession = async () => {
       try {
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
-        const { data: { session } } = await Promise.race([supabase.auth.getSession(), timeout]);
+        const { data: { session } } = await supabase.auth.getSession();
         if (cancelled) return;
         if (session?.user) {
           try {
@@ -46,10 +49,9 @@ export default function App() {
           }
         }
       } catch (_) {
-        // timeout or network error: show login so user isn't stuck
-      } finally {
-        if (!cancelled) setAuthLoading(false);
+        // network error: user stays on login
       }
+      if (!cancelled) setAuthLoading(false);
     };
     loadSession();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -67,6 +69,7 @@ export default function App() {
     });
     return () => {
       cancelled = true;
+      clearTimeout(showLoginTimer);
       subscription?.unsubscribe();
     };
   }, []);
