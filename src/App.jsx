@@ -11,6 +11,7 @@ import DigitalTab from "./components/tabs/DigitalTab";
 import PhysicalTab from "./components/tabs/PhysicalTab";
 import CurateTab from "./components/tabs/CurateTab";
 import { TabBar, ProfileHeader, F } from "./components/ui";
+import { useNavigate } from "react-router-dom";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -25,6 +26,7 @@ export default function App() {
   const [editingConcert, setEditingConcert] = useState(null);
   const [showVinyl, setShowVinyl] = useState(false);
   const [showMerch, setShowMerch] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!supabase) {
@@ -84,9 +86,48 @@ export default function App() {
         supabase.from("merch").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("user_streaming_stats").select("*").eq("user_id", uid).single(),
       ]);
-      if (cRes.data) setConcerts(cRes.data.map((r) => ({ id: r.id, artist: r.artist, tour: r.tour, date: r.date, venue: r.venue, city: r.city, ticket_type: r.ticket_type, ticket_price: r.ticket_price, source: r.source })));
-      if (vRes.data) setVinyl(vRes.data.map((r) => ({ id: r.id, artist_name: r.artist_name, album_name: r.album_name, is_limited_edition: r.is_limited_edition })));
-      if (mRes.data) setMerch(mRes.data.map((r) => ({ id: r.id, artist_name: r.artist_name, item_name: r.item_name, merch_type: r.merch_type, is_tour_merch: r.is_tour_merch, tour_name: r.tour_name, purchase_price: r.purchase_price, purchase_location: r.purchase_location })));
+      if (cRes.data) {
+        setConcerts(
+          cRes.data.map((r) => ({
+            id: r.id,
+            artist: r.artist,
+            tour: r.tour,
+            date: r.date,
+            venue: r.venue,
+            city: r.city,
+            ticket_type: r.ticket_type,
+            ticket_price: r.ticket_price,
+            source: r.source,
+            is_featured: r.is_featured ?? false,
+          })),
+        );
+      }
+      if (vRes.data) {
+        setVinyl(
+          vRes.data.map((r) => ({
+            id: r.id,
+            artist_name: r.artist_name,
+            album_name: r.album_name,
+            is_limited_edition: r.is_limited_edition,
+            is_featured: r.is_featured ?? false,
+          })),
+        );
+      }
+      if (mRes.data) {
+        setMerch(
+          mRes.data.map((r) => ({
+            id: r.id,
+            artist_name: r.artist_name,
+            item_name: r.item_name,
+            merch_type: r.merch_type,
+            is_tour_merch: r.is_tour_merch,
+            tour_name: r.tour_name,
+            purchase_price: r.purchase_price,
+            purchase_location: r.purchase_location,
+            is_featured: r.is_featured ?? false,
+          })),
+        );
+      }
       if (sRes.data?.user_id) {
         const s = sRes.data;
         setStreamingData({
@@ -96,6 +137,8 @@ export default function App() {
           uniqueTracks: s.unique_tracks ?? 0,
           topArtists: s.top_artists ?? [],
           topTracks: s.top_tracks ?? [],
+          featuredArtists: s.featured_artists ?? [],
+          featuredTracks: s.featured_tracks ?? [],
         });
       }
     })();
@@ -104,6 +147,11 @@ export default function App() {
   const handleLogout = () => {
     if (supabase) supabase.auth.signOut();
     setUser(null);
+  };
+
+  const handleViewPublicProfile = () => {
+    if (!user?.username) return;
+    navigate(`/u/${user.username}`);
   };
 
   const handleAddConcert = async (c) => {
@@ -120,11 +168,25 @@ export default function App() {
         source: c.source || "manual",
       }).select().single();
       if (!error && data) {
-        setConcerts((prev) => [{ id: data.id, artist: data.artist, tour: data.tour, date: data.date, venue: data.venue, city: data.city, ticket_type: data.ticket_type, ticket_price: data.ticket_price, source: data.source }, ...prev]);
+        setConcerts((prev) => [
+          {
+            id: data.id,
+            artist: data.artist,
+            tour: data.tour,
+            date: data.date,
+            venue: data.venue,
+            city: data.city,
+            ticket_type: data.ticket_type,
+            ticket_price: data.ticket_price,
+            source: data.source,
+            is_featured: data.is_featured ?? false,
+          },
+          ...prev,
+        ]);
         return;
       }
     }
-    setConcerts((prev) => [{ ...c, id: c.id || crypto.randomUUID() }, ...prev]);
+    setConcerts((prev) => [{ ...c, id: c.id || crypto.randomUUID(), is_featured: false }, ...prev]);
   };
 
   const handleUpdateConcert = async (updated) => {
@@ -162,11 +224,20 @@ export default function App() {
         is_limited_edition: v.is_limited_edition ?? false,
       }).select().single();
       if (!error && data) {
-        setVinyl((prev) => [{ id: data.id, artist_name: data.artist_name, album_name: data.album_name, is_limited_edition: data.is_limited_edition }, ...prev]);
+        setVinyl((prev) => [
+          {
+            id: data.id,
+            artist_name: data.artist_name,
+            album_name: data.album_name,
+            is_limited_edition: data.is_limited_edition,
+            is_featured: data.is_featured ?? false,
+          },
+          ...prev,
+        ]);
         return;
       }
     }
-    setVinyl((prev) => [{ ...v, id: v.id || crypto.randomUUID() }, ...prev]);
+    setVinyl((prev) => [{ ...v, id: v.id || crypto.randomUUID(), is_featured: false }, ...prev]);
   };
 
   const handleAddMerch = async (m) => {
@@ -182,28 +253,96 @@ export default function App() {
         purchase_location: m.purchase_location || null,
       }).select().single();
       if (!error && data) {
-        setMerch((prev) => [{ id: data.id, artist_name: data.artist_name, item_name: data.item_name, merch_type: data.merch_type, is_tour_merch: data.is_tour_merch, tour_name: data.tour_name, purchase_price: data.purchase_price, purchase_location: data.purchase_location }, ...prev]);
+        setMerch((prev) => [
+          {
+            id: data.id,
+            artist_name: data.artist_name,
+            item_name: data.item_name,
+            merch_type: data.merch_type,
+            is_tour_merch: data.is_tour_merch,
+            tour_name: data.tour_name,
+            purchase_price: data.purchase_price,
+            purchase_location: data.purchase_location,
+            is_featured: data.is_featured ?? false,
+          },
+          ...prev,
+        ]);
         return;
       }
     }
-    setMerch((prev) => [{ ...m, id: m.id || crypto.randomUUID() }, ...prev]);
+    setMerch((prev) => [{ ...m, id: m.id || crypto.randomUUID(), is_featured: false }, ...prev]);
   };
 
   const handleStreamingComplete = async (d) => {
     if (supabase && user?.id) {
-      await supabase.from("user_streaming_stats").upsert({
-        user_id: user.id,
-        total_hours: d.totalHours,
-        total_records: d.totalRecords,
-        unique_artists: d.uniqueArtists,
-        unique_tracks: d.uniqueTracks,
-        top_artists: d.topArtists,
-        top_tracks: d.topTracks,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" });
+      await supabase.from("user_streaming_stats").upsert(
+        {
+          user_id: user.id,
+          total_hours: d.totalHours,
+          total_records: d.totalRecords,
+          unique_artists: d.uniqueArtists,
+          unique_tracks: d.uniqueTracks,
+          top_artists: d.topArtists,
+          top_tracks: d.topTracks,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
     }
     setStreamingData(d);
     setShowUpload(false);
+  };
+
+  const handleToggleConcertFeatured = async (concertId, isFeatured) => {
+    setConcerts((prev) => prev.map((c) => (c.id === concertId ? { ...c, is_featured: isFeatured } : c)));
+    if (supabase && user?.id) {
+      await supabase
+        .from("concerts")
+        .update({ is_featured: isFeatured })
+        .eq("id", concertId)
+        .eq("user_id", user.id);
+    }
+  };
+
+  const handleToggleVinylFeatured = async (vinylId, isFeatured) => {
+    setVinyl((prev) => prev.map((v) => (v.id === vinylId ? { ...v, is_featured: isFeatured } : v)));
+    if (supabase && user?.id) {
+      await supabase
+        .from("vinyl")
+        .update({ is_featured: isFeatured })
+        .eq("id", vinylId)
+        .eq("user_id", user.id);
+    }
+  };
+
+  const handleToggleMerchFeatured = async (merchId, isFeatured) => {
+    setMerch((prev) => prev.map((m) => (m.id === merchId ? { ...m, is_featured: isFeatured } : m)));
+    if (supabase && user?.id) {
+      await supabase
+        .from("merch")
+        .update({ is_featured: isFeatured })
+        .eq("id", merchId)
+        .eq("user_id", user.id);
+    }
+  };
+
+  const handleToggleArtistFeatured = async (artistName, isFeatured) => {
+    if (!streamingData) return;
+    let nextFeatured = streamingData.featuredArtists || [];
+    if (isFeatured) {
+      const artistObj = streamingData.topArtists?.find((a) => a.name === artistName);
+      if (!artistObj) return;
+      nextFeatured = [...nextFeatured.filter((a) => a.name !== artistName), artistObj];
+    } else {
+      nextFeatured = nextFeatured.filter((a) => a.name !== artistName);
+    }
+    setStreamingData((prev) => (prev ? { ...prev, featuredArtists: nextFeatured } : prev));
+    if (supabase && user?.id) {
+      await supabase
+        .from("user_streaming_stats")
+        .update({ featured_artists: nextFeatured })
+        .eq("user_id", user.id);
+    }
   };
 
   if (authLoading) {
@@ -222,7 +361,7 @@ export default function App() {
         <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{activeTab}</span>
         <button onClick={handleLogout} style={{ background: "none", border: "none", fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.4)", cursor: "pointer" }}>Log out</button>
       </div>
-      <ProfileHeader user={user} />
+      <ProfileHeader user={user} onViewPublicProfile={handleViewPublicProfile} />
       <div style={{ padding: "8px 20px 0" }}>
         <TabBar active={activeTab} onSelect={setActiveTab} />
       </div>
@@ -230,7 +369,19 @@ export default function App() {
         {activeTab === "Live" && <LiveTab concerts={concerts} onAdd={() => setShowConcert(true)} onEdit={(c) => setEditingConcert(c)} />}
         {activeTab === "Digital" && <DigitalTab data={streamingData} onUpload={() => setShowUpload(true)} />}
         {activeTab === "Physical" && <PhysicalTab vinyl={vinyl} merch={merch} onAddVinyl={() => setShowVinyl(true)} onAddMerch={() => setShowMerch(true)} />}
-        {activeTab === "Curate" && <CurateTab concerts={concerts} merch={merch} vinyl={vinyl} data={streamingData} />}
+        {activeTab === "Curate" && (
+          <CurateTab
+            concerts={concerts}
+            merch={merch}
+            vinyl={vinyl}
+            data={streamingData}
+            onToggleConcertFeatured={handleToggleConcertFeatured}
+            onToggleVinylFeatured={handleToggleVinylFeatured}
+            onToggleMerchFeatured={handleToggleMerchFeatured}
+            onToggleArtistFeatured={handleToggleArtistFeatured}
+            onPreviewProfile={handleViewPublicProfile}
+          />
+        )}
       </div>
       {showUpload && <SpotifyUploadModal onClose={() => setShowUpload(false)} onComplete={handleStreamingComplete} />}
       {showConcert && <AddConcertModal onClose={() => setShowConcert(false)} onAdd={handleAddConcert} />}

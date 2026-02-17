@@ -39,7 +39,7 @@ export const TabBar = ({ active, onSelect }) => (
   </div>
 );
 
-export const ProfileHeader = ({ user }) => (
+export const ProfileHeader = ({ user, onViewPublicProfile }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "24px 20px 12px" }}>
     <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #a78bfa, #c4b5fd)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F, fontSize: 24, fontWeight: 700, color: "#fff", boxShadow: "0 4px 20px rgba(99,102,241,0.35)", flexShrink: 0 }}>
       {user.display_name.split(" ").map((n) => n[0]).join("")}
@@ -47,7 +47,13 @@ export const ProfileHeader = ({ user }) => (
     <div>
       <div style={{ fontFamily: F, fontSize: 22, fontWeight: 700, color: "#1e1b4b" }}>{user.display_name}</div>
       <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", marginTop: 2 }}>@{user.username}</div>
-      <button style={{ marginTop: 8, padding: "6px 24px", borderRadius: 20, border: "none", background: "linear-gradient(135deg, #6366f1, #818cf8)", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 12px rgba(99,102,241,0.3)" }}>Public Profile</button>
+      <button
+        type="button"
+        onClick={onViewPublicProfile}
+        style={{ marginTop: 8, padding: "6px 24px", borderRadius: 20, border: "none", background: "linear-gradient(135deg, #6366f1, #818cf8)", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 12px rgba(99,102,241,0.3)" }}
+      >
+        Public Profile
+      </button>
     </div>
   </div>
 );
