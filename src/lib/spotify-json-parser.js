@@ -1,9 +1,24 @@
 /**
  * Parse Spotify Extended Streaming History JSON into aggregate stats.
+ * Accepts: raw array of records, or object with a key containing the array.
  * Schema per record: ts, ms_played, master_metadata_track_name,
  * master_metadata_album_artist_name, master_metadata_album_album_name, etc.
- * Files: Streaming_History_Audio_YYYY-YYYY_N.json
+ * Files: Streaming_History_Audio_YYYY-YYYY_N.json (or similar from export ZIP).
  */
+
+function toRecordArray(fileData) {
+  if (Array.isArray(fileData)) return fileData;
+  if (fileData && typeof fileData === "object") {
+    for (const key of Object.keys(fileData)) {
+      const val = fileData[key];
+      if (Array.isArray(val) && val.length > 0 && val[0] != null && typeof val[0] === "object") {
+        const first = val[0];
+        if ("ms_played" in first || "ts" in first || "master_metadata_track_name" in first) return val;
+      }
+    }
+  }
+  return [];
+}
 
 export function parseSpotifyFiles(filesContent) {
   const artistStats = {};
@@ -12,11 +27,12 @@ export function parseSpotifyFiles(filesContent) {
   let totalRecords = 0;
 
   for (const fileData of filesContent) {
-    for (const r of fileData) {
+    const rows = toRecordArray(fileData);
+    for (const r of rows) {
       const artist = r.master_metadata_album_artist_name;
       const track = r.master_metadata_track_name;
       const album = r.master_metadata_album_album_name;
-      const ms = r.ms_played || 0;
+      const ms = typeof r.ms_played === "number" ? r.ms_played : 0;
       // Only skip rows that don't have a track + artist; count all listening time
       if (!artist || !track) continue;
 

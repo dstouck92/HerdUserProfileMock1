@@ -14,7 +14,7 @@ export default function SpotifyUploadModal({ onClose, onComplete }) {
       setProcessing(true);
       const audio = [];
       for (const f of files) {
-        if (f.name.endsWith(".json") && f.name.includes("Streaming_History_Audio")) {
+        if (f.name.endsWith(".json")) {
           setProgress(`Reading ${f.name}...`);
           try {
             audio.push(JSON.parse(await f.text()));
@@ -22,7 +22,7 @@ export default function SpotifyUploadModal({ onClose, onComplete }) {
         }
       }
       if (!audio.length) {
-        setProgress("No valid Spotify audio files found.");
+        setProgress("No JSON files found. Use Streaming_History_Audio_*.json from your export.");
         setProcessing(false);
         return;
       }
@@ -62,7 +62,7 @@ export default function SpotifyUploadModal({ onClose, onComplete }) {
             <>
               <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
               <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b", marginBottom: 4 }}>Drag & drop files here</div>
-              <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>Streaming_History_Audio_*.json or .zip</div>
+              <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>Streaming_History_Audio_*.json (or any .json from the export)</div>
             </>
           )}
         </div>
