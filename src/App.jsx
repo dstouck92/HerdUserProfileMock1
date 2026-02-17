@@ -16,7 +16,7 @@ import { useNavigate } from "react-router-dom";
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(!!supabase);
-  const [activeTab, setActiveTab] = useState("Digital");
+  const [activeTab, setActiveTab] = useState("Curate");
   const [streamingData, setStreamingData] = useState(null);
   const [concerts, setConcerts] = useState([]);
   const [vinyl, setVinyl] = useState([]);
