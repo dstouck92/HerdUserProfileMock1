@@ -61,8 +61,9 @@ export default function App() {
         setStreamingData(null);
         return;
       }
+      const fallback = { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" };
       const { data: profile } = await supabase.from("profiles").select("id, display_name, username").eq("id", session.user.id).single();
-      setUser(profile || { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" });
+      setUser(profile && profile.id ? profile : fallback);
     });
     return () => {
       cancelled = true;

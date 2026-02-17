@@ -12,17 +12,26 @@ export default function AuthScreen({ onAuth }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function fallbackProfile(authUser, displayName, username) {
+    const name = displayName ?? authUser.user_metadata?.display_name ?? authUser.email?.split("@")[0] ?? "User";
+    const uname = username ?? authUser.user_metadata?.username ?? authUser.email?.split("@")[0] ?? "user";
+    return { id: authUser.id, display_name: name, username: uname };
+  }
+
   async function getOrCreateProfile(authUser, displayName, username, phone) {
-    const { data: existing } = await supabase.from("profiles").select("*").eq("id", authUser.id).single();
-    const payload = {
-      id: authUser.id,
-      display_name: displayName ?? existing?.display_name ?? authUser.user_metadata?.display_name ?? authUser.email?.split("@")[0] ?? "",
-      username: username ?? existing?.username ?? authUser.user_metadata?.username ?? authUser.email?.split("@")[0] ?? "",
-      phone: phone ?? existing?.phone ?? authUser.user_metadata?.phone ?? null,
-      updated_at: new Date().toISOString(),
-    };
-    await supabase.from("profiles").upsert(payload, { onConflict: "id" });
-    return { id: payload.id, display_name: payload.display_name, username: payload.username };
+    try {
+      const { data: existing } = await supabase.from("profiles").select("*").eq("id", authUser.id).single();
+      const payload = {
+        id: authUser.id,
+        display_name: displayName ?? existing?.display_name ?? authUser.user_metadata?.display_name ?? authUser.email?.split("@")[0] ?? "",
+        username: username ?? existing?.username ?? authUser.user_metadata?.username ?? authUser.email?.split("@")[0] ?? "",
+        phone: phone ?? existing?.phone ?? authUser.user_metadata?.phone ?? null,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+      if (!error) return { id: payload.id, display_name: payload.display_name, username: payload.username };
+    } catch (_) {}
+    return fallbackProfile(authUser, displayName, username);
   }
 
   const handleSubmit = (e) => {
@@ -52,6 +61,8 @@ export default function AuthScreen({ onAuth }) {
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user, displayName, username, phone);
             onAuth(profile);
+          } else {
+            setError("Sign up succeeded but no user returned. Check your email to confirm, or try logging in.");
           }
         } else {
           const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
@@ -59,10 +70,12 @@ export default function AuthScreen({ onAuth }) {
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user);
             onAuth(profile);
+          } else {
+            setError("Login succeeded but no session. Try again or check if email confirmation is required.");
           }
         }
       } catch (err) {
-        setError(err.message || "Something went wrong.");
+        setError(err?.message || "Something went wrong.");
       } finally {
         setLoading(false);
       }
@@ -95,7 +108,7 @@ export default function AuthScreen({ onAuth }) {
             )}
             <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" autoComplete="email" />
             <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" autoComplete={mode === "login" ? "current-password" : "new-password"} />
-            {error && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", marginBottom: 12, textAlign: "left" }}>{error}</div>}
+            {error && <div role="alert" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", marginBottom: 12, textAlign: "left", padding: "8px 10px", background: "#fef2f2", borderRadius: 8 }}>{error}</div>}
             <Btn type="submit" disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
           </form>
           <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
