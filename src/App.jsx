@@ -31,13 +31,25 @@ export default function App() {
       setAuthLoading(false);
       return;
     }
+    let cancelled = false;
     const loadSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase.from("profiles").select("id, display_name, username").eq("id", session.user.id).single();
-        setUser(profile || { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" });
+      try {
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
+        const { data: { session } } = await Promise.race([supabase.auth.getSession(), timeout]);
+        if (cancelled) return;
+        if (session?.user) {
+          try {
+            const { data: profile } = await supabase.from("profiles").select("id, display_name, username").eq("id", session.user.id).single();
+            if (!cancelled) setUser(profile || { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" });
+          } catch (_) {
+            if (!cancelled) setUser({ id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" });
+          }
+        }
+      } catch (_) {
+        // timeout or network error: show login so user isn't stuck
+      } finally {
+        if (!cancelled) setAuthLoading(false);
       }
-      setAuthLoading(false);
     };
     loadSession();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -52,7 +64,10 @@ export default function App() {
       const { data: profile } = await supabase.from("profiles").select("id, display_name, username").eq("id", session.user.id).single();
       setUser(profile || { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" });
     });
-    return () => subscription?.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription?.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
