@@ -25,19 +25,28 @@ export function parseSpotifyFiles(filesContent) {
   const trackStats = {};
   let totalMs = 0;
   let totalRecords = 0;
+  let firstTs = null;
+  let lastTs = null;
 
   for (const fileData of filesContent) {
     const rows = toRecordArray(fileData);
     for (const r of rows) {
+      if (r.ts) {
+        const t = new Date(r.ts).getTime();
+        if (firstTs == null || t < firstTs) firstTs = t;
+        if (lastTs == null || t > lastTs) lastTs = t;
+      }
       const artist = r.master_metadata_album_artist_name;
       const track = r.master_metadata_track_name;
       const album = r.master_metadata_album_album_name;
       const ms = typeof r.ms_played === "number" ? r.ms_played : 0;
-      // Only skip rows that don't have a track + artist; count all listening time
-      if (!artist || !track) continue;
 
+      // Count every row toward total (music + podcast + audiobook + video) so totals match export
       totalMs += ms;
       totalRecords++;
+
+      // Top artists/tracks: music only (rows with track + artist)
+      if (!artist || !track) continue;
 
       if (!artistStats[artist]) artistStats[artist] = { total_ms: 0, play_count: 0 };
       artistStats[artist].total_ms += ms;
@@ -55,6 +64,8 @@ export function parseSpotifyFiles(filesContent) {
     totalRecords,
     uniqueArtists: Object.keys(artistStats).length,
     uniqueTracks: Object.keys(trackStats).length,
+    startDate: firstTs != null ? new Date(firstTs).toISOString() : null,
+    endDate: lastTs != null ? new Date(lastTs).toISOString() : null,
     topArtists: Object.entries(artistStats)
       .map(([name, s]) => ({
         name,

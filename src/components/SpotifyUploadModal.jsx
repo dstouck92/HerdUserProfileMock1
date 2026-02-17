@@ -44,8 +44,9 @@ export default function SpotifyUploadModal({ onClose, onComplete }) {
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: "#94a3b8", cursor: "pointer" }}>✕</button>
         </div>
         <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", marginBottom: 20, lineHeight: 1.6 }}>
-          Upload your Spotify Extended Streaming History JSON files or ZIP.<br /><br />
-          <strong style={{ color: "#4f46e5" }}>How:</strong> Spotify → Settings → Privacy → Request data → "Extended streaming history"
+          Upload your Spotify Extended Streaming History JSON files.<br /><br />
+          <strong style={{ color: "#4f46e5" }}>How:</strong> Spotify → Settings → Privacy → Request data → "Extended streaming history".<br /><br />
+          <strong style={{ color: "#4f46e5" }}>Tip:</strong> Select <em>all</em> Streaming_History_*.json files from the export folder so your total hours match Spotify (we count music, podcasts, and audiobooks).
         </div>
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -62,7 +63,7 @@ export default function SpotifyUploadModal({ onClose, onComplete }) {
             <>
               <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
               <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b", marginBottom: 4 }}>Drag & drop files here</div>
-              <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>Streaming_History_Audio_*.json (or any .json from the export)</div>
+              <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>Select all Streaming_History_*.json files for accurate totals</div>
             </>
           )}
         </div>

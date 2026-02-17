@@ -139,6 +139,8 @@ export default function App() {
           topTracks: s.top_tracks ?? [],
           featuredArtists: s.featured_artists ?? [],
           featuredTracks: s.featured_tracks ?? [],
+          startDate: s.start_date ?? null,
+          endDate: s.end_date ?? null,
         });
       }
     })();
@@ -278,12 +280,14 @@ export default function App() {
       await supabase.from("user_streaming_stats").upsert(
         {
           user_id: user.id,
-          total_hours: d.totalHours,
+          total_hours: Math.round(d.totalHours),
           total_records: d.totalRecords,
           unique_artists: d.uniqueArtists,
           unique_tracks: d.uniqueTracks,
           top_artists: d.topArtists,
           top_tracks: d.topTracks,
+          start_date: d.startDate || null,
+          end_date: d.endDate || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id" },

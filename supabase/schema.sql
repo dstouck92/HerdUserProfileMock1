@@ -99,6 +99,8 @@ create table if not exists public.user_streaming_stats (
   unique_tracks integer not null default 0,
   top_artists jsonb not null default '[]',
   top_tracks jsonb not null default '[]',
+  start_date timestamptz,
+  end_date timestamptz,
   updated_at timestamptz default now()
 );
 
@@ -109,6 +111,17 @@ create policy "Users can manage own streaming stats"
   on public.user_streaming_stats for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Add date range columns if missing (for existing DBs that ran schema before this change)
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_streaming_stats' and column_name = 'start_date') then
+    alter table public.user_streaming_stats add column start_date timestamptz;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_streaming_stats' and column_name = 'end_date') then
+    alter table public.user_streaming_stats add column end_date timestamptz;
+  end if;
+end $$;
 
 -- Optional: create profile when user signs up (from metadata)
 create or replace function public.handle_new_user()
