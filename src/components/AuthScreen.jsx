@@ -50,14 +50,20 @@ export default function AuthScreen({ onAuth }) {
 
     if (supabase) {
       setLoading(true);
+      setError("");
       try {
+        const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error("Connection timed out. Check your internet and Vercel/Supabase settings.")), ms));
         if (mode === "signup") {
-          const { data, error: authError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { display_name: displayName, username, phone: phone || null } },
-          });
-          if (authError) throw authError;
+          const result = await Promise.race([
+            supabase.auth.signUp({
+              email,
+              password,
+              options: { data: { display_name: displayName, username, phone: phone || null } },
+            }),
+            timeout(15000),
+          ]).catch((err) => ({ data: null, error: err }));
+          const { data, error: authError } = result?.data !== undefined ? result : { data: result?.data, error: result?.error ?? result };
+          if (authError) throw typeof authError === "object" && authError?.message ? authError : new Error(authError?.message || "Sign up failed.");
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user, displayName, username, phone);
             onAuth(profile);
@@ -65,8 +71,12 @@ export default function AuthScreen({ onAuth }) {
             setError("Sign up succeeded but no user returned. Check your email to confirm, or try logging in.");
           }
         } else {
-          const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-          if (authError) throw authError;
+          const result = await Promise.race([
+            supabase.auth.signInWithPassword({ email, password }),
+            timeout(15000),
+          ]).catch((err) => ({ data: null, error: err }));
+          const { data, error: authError } = result?.data !== undefined ? result : { data: result?.data, error: result?.error ?? result };
+          if (authError) throw (typeof authError === "object" && authError?.message ? authError : new Error(authError?.message || "Login failed."));
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user);
             onAuth(profile);
@@ -107,8 +117,11 @@ export default function AuthScreen({ onAuth }) {
               </>
             )}
             <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" autoComplete="email" />
+            {mode === "login" && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(55,48,107,0.5)", marginTop: -8, marginBottom: 12 }}>Use the email you signed up with, not your display name.</div>}
             <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" autoComplete={mode === "login" ? "current-password" : "new-password"} />
-            {error && <div role="alert" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", marginBottom: 12, textAlign: "left", padding: "8px 10px", background: "#fef2f2", borderRadius: 8 }}>{error}</div>}
+            <div role="alert" style={{ minHeight: error ? "auto" : 0, marginBottom: 12, textAlign: "left" }}>
+              {error && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", padding: "8px 10px", background: "#fef2f2", borderRadius: 8 }}>{error}</div>}
+            </div>
             <Btn type="submit" disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
           </form>
           <div style={{ marginTop: 16, display: "flex", gap: 10 }}>

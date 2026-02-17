@@ -12,14 +12,17 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+drop policy if exists "Users can read own profile" on public.profiles;
 create policy "Users can read own profile"
   on public.profiles for select
   using (auth.uid() = id);
 
+drop policy if exists "Users can insert own profile" on public.profiles;
 create policy "Users can insert own profile"
   on public.profiles for insert
   with check (auth.uid() = id);
 
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id);
@@ -41,6 +44,7 @@ create table if not exists public.concerts (
 
 alter table public.concerts enable row level security;
 
+drop policy if exists "Users can manage own concerts" on public.concerts;
 create policy "Users can manage own concerts"
   on public.concerts for all
   using (auth.uid() = user_id)
@@ -58,6 +62,7 @@ create table if not exists public.vinyl (
 
 alter table public.vinyl enable row level security;
 
+drop policy if exists "Users can manage own vinyl" on public.vinyl;
 create policy "Users can manage own vinyl"
   on public.vinyl for all
   using (auth.uid() = user_id)
@@ -79,6 +84,7 @@ create table if not exists public.merch (
 
 alter table public.merch enable row level security;
 
+drop policy if exists "Users can manage own merch" on public.merch;
 create policy "Users can manage own merch"
   on public.merch for all
   using (auth.uid() = user_id)
@@ -98,6 +104,7 @@ create table if not exists public.user_streaming_stats (
 
 alter table public.user_streaming_stats enable row level security;
 
+drop policy if exists "Users can manage own streaming stats" on public.user_streaming_stats;
 create policy "Users can manage own streaming stats"
   on public.user_streaming_stats for all
   using (auth.uid() = user_id)
