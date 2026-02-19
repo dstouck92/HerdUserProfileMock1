@@ -6,6 +6,7 @@ create table if not exists public.profiles (
   display_name text not null default '',
   username text not null default '',
   phone text,
+  avatar_id integer not null default 7,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -124,6 +125,9 @@ begin
   end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_streaming_stats' and column_name = 'featured_artists') then
     alter table public.user_streaming_stats add column featured_artists jsonb not null default '[]';
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'avatar_id') then
+    alter table public.profiles add column avatar_id integer not null default 7;
   end if;
 end $$;
 

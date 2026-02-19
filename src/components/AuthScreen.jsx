@@ -15,7 +15,7 @@ export default function AuthScreen({ onAuth }) {
   function fallbackProfile(authUser, displayName, username) {
     const name = displayName ?? authUser.user_metadata?.display_name ?? authUser.email?.split("@")[0] ?? "User";
     const uname = username ?? authUser.user_metadata?.username ?? authUser.email?.split("@")[0] ?? "user";
-    return { id: authUser.id, display_name: name, username: uname };
+    return { id: authUser.id, display_name: name, username: uname, avatar_id: 7 };
   }
 
   async function getOrCreateProfile(authUser, displayName, username, phone) {
@@ -90,8 +90,8 @@ export default function AuthScreen({ onAuth }) {
       return;
     }
 
-    if (mode === "signup") onAuth({ id: "mock", email, phone, username, display_name: displayName });
-    else onAuth({ id: "mock", email, phone: "", username: email.split("@")[0], display_name: email.split("@")[0] });
+    if (mode === "signup") onAuth({ id: "mock", email, phone, username, display_name: displayName, avatar_id: 7 });
+    else onAuth({ id: "mock", email, phone: "", username: email.split("@")[0], display_name: email.split("@")[0], avatar_id: 7 });
   };
 
   return (

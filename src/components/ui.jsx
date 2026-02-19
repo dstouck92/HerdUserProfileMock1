@@ -1,6 +1,52 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 export const F = "'DM Sans', sans-serif";
+
+export const AvatarSprite = ({ avatarId, size = 72 }) => {
+  const id = Math.max(0, Math.min(11, Number(avatarId) || 0));
+  const [imgError, setImgError] = React.useState(false);
+  if (imgError) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, #0d9488, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F, fontSize: Math.round(size * 0.4), fontWeight: 700, color: "#fff" }}>
+        {id + 1}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={`/avatars/${id}.png`}
+      alt=""
+      width={size}
+      height={size}
+      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+      onError={() => setImgError(true)}
+    />
+  );
+};
+
+export const AvatarPicker = ({ selectedId, onSelect, onClose }) => {
+  return (
+    <>
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 9998 }} onClick={onClose} />
+      <div style={{ position: "fixed", left: "50%", top: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, background: "rgba(255,255,255,0.98)", backdropFilter: "blur(16px)", borderRadius: 20, padding: 24, boxShadow: "0 8px 32px rgba(13,148,136,0.2)", border: "1px solid rgba(13,148,136,0.2)" }}>
+        <div style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: "#1e1b4b", marginBottom: 16, textAlign: "center" }}>Choose your avatar</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          {Array.from({ length: 12 }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onSelect(i)}
+              style={{ padding: 4, border: selectedId === i ? "3px solid #0d9488" : "2px solid transparent", borderRadius: "50%", background: "none", cursor: "pointer" }}
+            >
+              <AvatarSprite avatarId={i} size={64} />
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={onClose} style={{ marginTop: 16, width: "100%", padding: "10px", border: "none", borderRadius: 12, background: "rgba(13,148,136,0.15)", color: "#0d9488", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+      </div>
+    </>
+  );
+};
 
 export const GradientBg = ({ children }) => (
   <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "linear-gradient(165deg, #e0f2fe 0%, #cffafe 22%, #ccfbf1 45%, #d1fae5 70%, #dcfce7 100%)", fontFamily: F, position: "relative" }}>
@@ -39,24 +85,49 @@ export const TabBar = ({ active, onSelect }) => (
   </div>
 );
 
-export const ProfileHeader = ({ user, onViewPublicProfile }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "24px 20px 12px" }}>
-    <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, #0d9488, #10b981, #34d399)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F, fontSize: 24, fontWeight: 700, color: "#fff", boxShadow: "0 4px 20px rgba(13,148,136,0.4)", flexShrink: 0 }}>
-      {user.display_name.split(" ").map((n) => n[0]).join("")}
-    </div>
-    <div>
-      <div style={{ fontFamily: F, fontSize: 22, fontWeight: 700, color: "#1e1b4b" }}>{user.display_name}</div>
-      <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", marginTop: 2 }}>@{user.username}</div>
+export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supabase, showAvatarPicker, onCloseAvatarPicker, onOpenAvatarPicker }) => {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const avatarId = user?.avatar_id ?? 7;
+
+  useEffect(() => {
+    if (showAvatarPicker) setPickerOpen(true);
+  }, [showAvatarPicker]);
+
+  const handleSelect = (id) => {
+    onAvatarChange?.(id);
+    setPickerOpen(false);
+    onCloseAvatarPicker?.();
+  };
+
+  const handleClosePicker = () => {
+    setPickerOpen(false);
+    onCloseAvatarPicker?.();
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "24px 20px 12px" }}>
       <button
         type="button"
-        onClick={onViewPublicProfile}
-        style={{ marginTop: 8, padding: "6px 24px", borderRadius: 20, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 12px rgba(13,148,136,0.35)" }}
+        onClick={() => onOpenAvatarPicker ? onOpenAvatarPicker() : (onAvatarChange && setPickerOpen(true))}
+        style={{ width: 72, height: 72, borderRadius: "50%", border: "none", padding: 0, cursor: (onAvatarChange || onOpenAvatarPicker) ? "pointer" : "default", flexShrink: 0, boxShadow: "0 4px 20px rgba(13,148,136,0.4)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #0d9488, #10b981, #34d399)", fontFamily: F, fontSize: 24, fontWeight: 700, color: "#fff" }}
       >
-        Public Profile
+        <AvatarSprite avatarId={avatarId} size={72} />
       </button>
+      <div>
+        <div style={{ fontFamily: F, fontSize: 22, fontWeight: 700, color: "#1e1b4b" }}>{user?.display_name}</div>
+        <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", marginTop: 2 }}>@{user?.username}</div>
+        <button
+          type="button"
+          onClick={onViewPublicProfile}
+          style={{ marginTop: 8, padding: "6px 24px", borderRadius: 20, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 12px rgba(13,148,136,0.35)" }}
+        >
+          Public Profile
+        </button>
+      </div>
+      {pickerOpen && <AvatarPicker selectedId={avatarId} onSelect={handleSelect} onClose={handleClosePicker} />}
     </div>
-  </div>
-);
+  );
+};
 
 export const Sec = ({ children, icon, right, onRightClick }) => (
   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", marginBottom: 10, marginTop: 4 }}>

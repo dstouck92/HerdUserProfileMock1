@@ -26,6 +26,7 @@ export default function App() {
   const [editingConcert, setEditingConcert] = useState(null);
   const [showVinyl, setShowVinyl] = useState(false);
   const [showMerch, setShowMerch] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,10 +45,10 @@ export default function App() {
         if (cancelled) return;
         if (session?.user) {
           try {
-            const { data: profile } = await supabase.from("profiles").select("id, display_name, username").eq("id", session.user.id).single();
-            if (!cancelled) setUser(profile || { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" });
+            const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
+            if (!cancelled) setUser(profile ? { ...profile, avatar_id: profile.avatar_id ?? 7 } : { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user", avatar_id: 7 });
           } catch (_) {
-            if (!cancelled) setUser({ id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" });
+            if (!cancelled) setUser({ id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user", avatar_id: 7 });
           }
         }
       } catch (_) {
@@ -65,9 +66,9 @@ export default function App() {
         setStreamingData(null);
         return;
       }
-      const fallback = { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user" };
-      const { data: profile } = await supabase.from("profiles").select("id, display_name, username").eq("id", session.user.id).single();
-      setUser(profile && profile.id ? profile : fallback);
+      const fallback = { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user", avatar_id: 7 };
+      const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
+      setUser(profile && profile.id ? { ...profile, avatar_id: profile.avatar_id ?? 7 } : fallback);
     });
     return () => {
       cancelled = true;
@@ -338,6 +339,12 @@ export default function App() {
     }
   };
 
+  const handleAvatarChange = async (avatarId) => {
+    if (!user?.id || !supabase) return;
+    const { error } = await supabase.from("profiles").update({ avatar_id: avatarId }).eq("id", user.id);
+    if (!error) setUser((prev) => (prev ? { ...prev, avatar_id: avatarId } : prev));
+  };
+
   const handleToggleArtistFeatured = async (artistName, isFeatured) => {
     if (!streamingData) return;
     let nextFeatured = streamingData.featuredArtists || [];
@@ -373,7 +380,7 @@ export default function App() {
         <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{activeTab}</span>
         <button onClick={handleLogout} style={{ background: "none", border: "none", fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.4)", cursor: "pointer" }}>Log out</button>
       </div>
-      <ProfileHeader user={user} onViewPublicProfile={handleViewPublicProfile} />
+      <ProfileHeader user={user} onViewPublicProfile={handleViewPublicProfile} onAvatarChange={handleAvatarChange} supabase={supabase} showAvatarPicker={showAvatarPicker} onCloseAvatarPicker={() => setShowAvatarPicker(false)} onOpenAvatarPicker={() => setShowAvatarPicker(true)} />
       <div style={{ padding: "8px 20px 0" }}>
         <TabBar active={activeTab} onSelect={setActiveTab} />
       </div>
@@ -387,11 +394,13 @@ export default function App() {
             merch={merch}
             vinyl={vinyl}
             data={streamingData}
+            user={user}
             onToggleConcertFeatured={handleToggleConcertFeatured}
             onToggleVinylFeatured={handleToggleVinylFeatured}
             onToggleMerchFeatured={handleToggleMerchFeatured}
             onToggleArtistFeatured={handleToggleArtistFeatured}
             onPreviewProfile={handleViewPublicProfile}
+            onOpenAvatarPicker={() => setShowAvatarPicker(true)}
           />
         )}
       </div>

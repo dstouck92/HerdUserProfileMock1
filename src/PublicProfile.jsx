@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import { supabase } from './lib/supabase';
-import { GradientBg, Card, Sec, Stats, F } from './components/ui';
+import { GradientBg, Card, Sec, Stats, F, AvatarSprite } from './components/ui';
 
 export default function PublicProfile() {
   const { username } = useParams();
@@ -30,7 +30,7 @@ export default function PublicProfile() {
         // 1) Find profile by username
         const { data: prof, error: profError } = await supabase
           .from('profiles')
-          .select('id, display_name, username')
+          .select('id, display_name, username, avatar_id')
           .eq('username', username)
           .single();
         if (profError || !prof) {
@@ -157,10 +157,14 @@ export default function PublicProfile() {
   return (
     <GradientBg>
       <div ref={profileRef} style={{ paddingBottom: 8 }}>
-        <div style={{ padding: '24px 20px 12px' }}>
-          <div style={{ fontSize: 24, marginBottom: 8 }}>🐾</div>
-          <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: '#1e1b4b' }}>{profile.display_name}</div>
-          <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)', marginTop: 2 }}>@{profile.username}</div>
+        <div style={{ padding: '24px 20px 12px', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <AvatarSprite avatarId={profile.avatar_id ?? 7} size={72} />
+          <div>
+            <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: '#1e1b4b' }}>{profile.display_name}</div>
+            <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)', marginTop: 2 }}>@{profile.username}</div>
+          </div>
+        </div>
+        <div style={{ padding: '0 20px 12px' }}>
           <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               type="button"
