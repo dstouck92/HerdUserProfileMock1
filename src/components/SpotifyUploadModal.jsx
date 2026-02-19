@@ -45,19 +45,19 @@ export default function SpotifyUploadModal({ onClose, onComplete }) {
         </div>
         <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", marginBottom: 20, lineHeight: 1.6 }}>
           Upload your Spotify Extended Streaming History JSON files.<br /><br />
-          <strong style={{ color: "#4f46e5" }}>How:</strong> Spotify → Settings → Privacy → Request data → "Extended streaming history".<br /><br />
-          <strong style={{ color: "#4f46e5" }}>Tip:</strong> Select <em>all</em> Streaming_History_*.json files from the export folder so your total hours match Spotify (we count music, podcasts, and audiobooks).
+          <strong style={{ color: "#0f766e" }}>How:</strong> Spotify → Settings → Privacy → Request data → "Extended streaming history".<br /><br />
+          <strong style={{ color: "#0f766e" }}>Tip:</strong> Select <em>all</em> Streaming_History_*.json files from the export folder so your total hours match Spotify (we count music, podcasts, and audiobooks).
         </div>
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); handle(Array.from(e.dataTransfer.files)); }}
-          style={{ border: `2px dashed ${dragging ? "#6366f1" : "rgba(99,102,241,0.25)"}`, borderRadius: 16, padding: "36px 20px", textAlign: "center", background: dragging ? "rgba(99,102,241,0.05)" : "rgba(99,102,241,0.02)", marginBottom: 16 }}
+          style={{ border: `2px dashed ${dragging ? "#0d9488" : "rgba(13,148,136,0.3)"}`, borderRadius: 16, padding: "36px 20px", textAlign: "center", background: dragging ? "rgba(13,148,136,0.08)" : "rgba(13,148,136,0.04)", marginBottom: 16 }}
         >
           {processing ? (
             <>
               <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
-              <div style={{ fontFamily: F, fontSize: 14, color: "#4f46e5", fontWeight: 600 }}>{progress}</div>
+              <div style={{ fontFamily: F, fontSize: 14, color: "#0f766e", fontWeight: 600 }}>{progress}</div>
             </>
           ) : (
             <>

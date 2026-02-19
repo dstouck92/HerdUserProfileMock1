@@ -35,7 +35,7 @@ export default function DigitalTab({ data, onUpload }) {
             fontFamily: F,
             fontSize: 12,
             fontWeight: 600,
-            color: "#6366f1",
+            color: "#0d9488",
             cursor: "pointer",
             textDecoration: "underline",
           }}
@@ -58,7 +58,7 @@ export default function DigitalTab({ data, onUpload }) {
             <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</div>
             <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{getTopTrackForArtist(a.name) ? `Top Track: ${getTopTrackForArtist(a.name).name}` : `${a.plays.toLocaleString()} plays`}</div>
           </div>
-          <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#4f46e5" }}>{Math.round(a.hours * 60)} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+          <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(a.hours * 60)} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
         </div>
       ))}</Card>
       <Sec
@@ -76,7 +76,7 @@ export default function DigitalTab({ data, onUpload }) {
             <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</div>
             <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{t.artist}</div>
           </div>
-          <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#4f46e5" }}>{Math.round(t.hours * 60)} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+          <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(t.hours * 60)} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
         </div>
       ))}</Card>
       <Sec icon="📊">Platform Usage</Sec>
@@ -95,7 +95,7 @@ export default function DigitalTab({ data, onUpload }) {
             <span style={{ color: "rgba(55,48,107,0.55)" }}>Years in data</span><span style={{ fontWeight: 600, textAlign: "right" }}>{data.startDate && data.endDate ? (Math.round((new Date(data.endDate) - new Date(data.startDate)) / (365.25 * 24 * 3600 * 1000) * 10) / 10) : "—"}</span>
           </div>
           {data.startDate && data.endDate && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(99,102,241,0.1)", fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.55)" }}>
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(13,148,136,0.12)", fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.55)" }}>
               <span>Average minutes per day </span>
               <strong style={{ color: "#1e1b4b", fontSize: 15 }}>{Math.round((data.totalHours * 60) / Math.max(1, (new Date(data.endDate) - new Date(data.startDate)) / (24 * 3600 * 1000)))}</strong>
             </div>
@@ -115,7 +115,7 @@ export default function DigitalTab({ data, onUpload }) {
 }
 
 // --- Insights modal (View All): pie chart, averages, vibe, top 50 list ---
-const PIE_COLORS = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#818cf8", "#6366f1", "#94a3b8"];
+const PIE_COLORS = ["#0d9488", "#10b981", "#34d399", "#6ee7b7", "#14b8a6", "#0d9488", "#94a3b8"];
 function InsightsModal({ mode, data, onClose }) {
   const totalMinutes = data.totalHours * 60;
   const musicMinutes = data.topArtists.reduce((s, a) => s + a.hours * 60, 0);
@@ -150,7 +150,7 @@ function InsightsModal({ mode, data, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div style={{ width: "100%", maxWidth: 420, maxHeight: "90vh", background: "#fff", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(99,102,241,0.1)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(13,148,136,0.12)" }}>
           <span style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: "#1e1b4b" }}>{mode === "artists" ? "Artist Insights" : "Song Insights"}</span>
           <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>✕</button>
         </div>
@@ -167,20 +167,20 @@ function InsightsModal({ mode, data, onClose }) {
               ))}
             </div>
           </div>
-          <div style={{ marginBottom: 16, padding: "12px 14px", background: "rgba(99,102,241,0.06)", borderRadius: 12, fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.8)" }}>
-            <strong style={{ color: "#4f46e5" }}>Averages:</strong> {Math.round(avgMinPerArtist)} min per artist · {avgPlaysPerTrack.toFixed(0)} plays per track (music). Based on your exported history (retroactive only).
+          <div style={{ marginBottom: 16, padding: "12px 14px", background: "rgba(13,148,136,0.08)", borderRadius: 12, fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.8)" }}>
+            <strong style={{ color: "#0f766e" }}>Averages:</strong> {Math.round(avgMinPerArtist)} min per artist · {avgPlaysPerTrack.toFixed(0)} plays per track (music). Based on your exported history (retroactive only).
           </div>
           <div style={{ marginBottom: 16, padding: "12px 14px", background: "rgba(236,72,153,0.06)", borderRadius: 12, fontFamily: F, fontSize: 13, color: "#1e1b4b", fontStyle: "italic" }}>
             {vibeText}
           </div>
           <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>Top 50 {mode === "artists" ? "Artists" : "Songs"}</div>
-          <div style={{ maxHeight: 280, overflow: "auto", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 12 }}>
+          <div style={{ maxHeight: 280, overflow: "auto", border: "1px solid rgba(13,148,136,0.15)", borderRadius: 12 }}>
             {mode === "artists"
               ? top50Artists.map((a, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 10, borderBottom: i < top50Artists.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
                     <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "rgba(55,48,107,0.4)", width: 24, textAlign: "right" }}>{i + 1}</span>
                     <span style={{ flex: 1, fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>
-                    <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#4f46e5" }}>{Math.round(a.hours * 60)} min</span>
+                    <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0f766e" }}>{Math.round(a.hours * 60)} min</span>
                   </div>
                 ))
               : top50Tracks.map((t, i) => (
@@ -190,7 +190,7 @@ function InsightsModal({ mode, data, onClose }) {
                       <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
                       <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{t.artist}</div>
                     </div>
-                    <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#4f46e5" }}>{Math.round(t.hours * 60)} min</span>
+                    <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0f766e" }}>{Math.round(t.hours * 60)} min</span>
                   </div>
                 ))}
           </div>

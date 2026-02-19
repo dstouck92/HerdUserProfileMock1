@@ -100,9 +100,9 @@ export default function AuthScreen({ onAuth }) {
         <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 32, fontWeight: 800, color: "#1e1b4b" }}>Herd</div>
         <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "rgba(55,48,107,0.55)", marginTop: 4, marginBottom: 32 }}>Your music fandom, all in one place</div>
         <Card style={{ margin: "0 0 20px", padding: "24px 20px" }}>
-          <div style={{ display: "flex", marginBottom: 24, background: "rgba(99,102,241,0.06)", borderRadius: 10, padding: 3 }}>
+          <div style={{ display: "flex", marginBottom: 24, background: "rgba(13,148,136,0.08)", borderRadius: 10, padding: 3 }}>
             {["login", "signup"].map((m) => (
-              <button key={m} type="button" onClick={() => { setMode(m); setError(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: mode === m ? "#fff" : "transparent", boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: mode === m ? "#4f46e5" : "rgba(55,48,107,0.4)", cursor: "pointer" }}>{m === "login" ? "Log In" : "Sign Up"}</button>
+              <button key={m} type="button" onClick={() => { setMode(m); setError(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: mode === m ? "#fff" : "transparent", boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: mode === m ? "#0f766e" : "rgba(55,48,107,0.4)", cursor: "pointer" }}>{m === "login" ? "Log In" : "Sign Up"}</button>
             ))}
           </div>
           <form onSubmit={handleSubmit} noValidate>

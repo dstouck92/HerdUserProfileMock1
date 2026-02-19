@@ -360,7 +360,7 @@ export default function App() {
   if (authLoading) {
     return (
       <GradientBg>
-        <div style={{ padding: "80px 24px", textAlign: "center", fontFamily: F, fontSize: 15, color: "#4f46e5" }}>Loading…</div>
+        <div style={{ padding: "80px 24px", textAlign: "center", fontFamily: F, fontSize: 15, color: "#0f766e" }}>Loading…</div>
       </GradientBg>
     );
   }
@@ -369,7 +369,7 @@ export default function App() {
   return (
     <GradientBg>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px 0" }}>
-        <span style={{ fontSize: 22, color: "#6366f1", fontWeight: 700 }}>‹</span>
+        <span style={{ fontSize: 22, color: "#0d9488", fontWeight: 700 }}>‹</span>
         <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{activeTab}</span>
         <button onClick={handleLogout} style={{ background: "none", border: "none", fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.4)", cursor: "pointer" }}>Log out</button>
       </div>

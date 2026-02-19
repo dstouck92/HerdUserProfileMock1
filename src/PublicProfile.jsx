@@ -75,7 +75,7 @@ export default function PublicProfile() {
   if (!supabase) {
     return (
       <GradientBg>
-        <div style={{ padding: '80px 24px', textAlign: 'center', fontFamily: F, fontSize: 15, color: '#4f46e5' }}>
+        <div style={{ padding: '80px 24px', textAlign: 'center', fontFamily: F, fontSize: 15, color: '#0f766e' }}>
           Public profiles require Supabase to be configured.
         </div>
       </GradientBg>
@@ -85,7 +85,7 @@ export default function PublicProfile() {
   if (loading) {
     return (
       <GradientBg>
-        <div style={{ padding: '80px 24px', textAlign: 'center', fontFamily: F, fontSize: 15, color: '#4f46e5' }}>
+        <div style={{ padding: '80px 24px', textAlign: 'center', fontFamily: F, fontSize: 15, color: '#0f766e' }}>
           Loading profile…
         </div>
       </GradientBg>
@@ -140,7 +140,7 @@ export default function PublicProfile() {
       const canvas = await html2canvas(profileRef.current, {
         useCORS: true,
         scale: 2,
-        backgroundColor: '#ede9fe',
+        backgroundColor: '#dcfce7',
         logging: false,
       });
       const link = document.createElement('a');
@@ -165,14 +165,14 @@ export default function PublicProfile() {
             <button
               type="button"
               onClick={handleShareLink}
-              style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(255,255,255,0.8)', fontFamily: F, fontSize: 14, fontWeight: 600, color: '#4f46e5', cursor: 'pointer' }}
+              style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(13,148,136,0.35)', background: 'rgba(255,255,255,0.8)', fontFamily: F, fontSize: 14, fontWeight: 600, color: '#0f766e', cursor: 'pointer' }}
             >
               Share
             </button>
             <button
               type="button"
               onClick={handleDownload}
-              style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(255,255,255,0.8)', fontFamily: F, fontSize: 14, fontWeight: 600, color: '#4f46e5', cursor: 'pointer' }}
+              style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(13,148,136,0.35)', background: 'rgba(255,255,255,0.8)', fontFamily: F, fontSize: 14, fontWeight: 600, color: '#0f766e', cursor: 'pointer' }}
             >
               Download
             </button>
@@ -203,7 +203,7 @@ export default function PublicProfile() {
           <Sec icon="🎵">Featured Artists</Sec>
           <Card>
             {streaming.featuredArtists.map((a, i) => (
-              <div key={i} style={{ padding: '10px 20px', borderBottom: i < streaming.featuredArtists.length - 1 ? '1px solid rgba(99,102,241,0.06)' : 'none' }}>
+              <div key={i} style={{ padding: '10px 20px', borderBottom: i < streaming.featuredArtists.length - 1 ? '1px solid rgba(13,148,136,0.08)' : 'none' }}>
                 <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: '#1e1b4b' }}>{a.name}</div>
                 {a.hours != null && (
                   <div style={{ fontFamily: F, fontSize: 11, color: 'rgba(55,48,107,0.5)', marginTop: 2 }}>{a.hours} hours</div>
@@ -226,7 +226,7 @@ export default function PublicProfile() {
                   alignItems: 'center',
                   padding: '12px 20px',
                   gap: 12,
-                  borderBottom: i < concerts.length - 1 ? '1px solid rgba(99,102,241,0.06)' : 'none',
+                  borderBottom: i < concerts.length - 1 ? '1px solid rgba(13,148,136,0.08)' : 'none',
                 }}
               >
                 <span style={{ fontSize: 22 }}>🎫</span>
@@ -257,7 +257,7 @@ export default function PublicProfile() {
                   alignItems: 'center',
                   padding: '12px 20px',
                   gap: 12,
-                  borderBottom: i < vinyl.length - 1 ? '1px solid rgba(99,102,241,0.06)' : 'none',
+                  borderBottom: i < vinyl.length - 1 ? '1px solid rgba(13,148,136,0.08)' : 'none',
                 }}
               >
                 <span style={{ fontSize: 22 }}>💿</span>
@@ -265,7 +265,7 @@ export default function PublicProfile() {
                   <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: '#1e1b4b' }}>{v.artist_name}</div>
                   <div style={{ fontFamily: F, fontSize: 11, color: 'rgba(55,48,107,0.5)', marginTop: 2 }}>
                     {v.album_name}
-                    {v.is_limited_edition && <span style={{ color: '#6366f1', fontWeight: 600 }}> · Limited</span>}
+                    {v.is_limited_edition && <span style={{ color: '#0d9488', fontWeight: 600 }}> · Limited</span>}
                   </div>
                 </div>
               </div>
@@ -286,7 +286,7 @@ export default function PublicProfile() {
                   alignItems: 'center',
                   padding: '12px 20px',
                   gap: 12,
-                  borderBottom: i < merch.length - 1 ? '1px solid rgba(99,102,241,0.06)' : 'none',
+                  borderBottom: i < merch.length - 1 ? '1px solid rgba(13,148,136,0.08)' : 'none',
                 }}
               >
                 <span style={{ fontSize: 22 }}>👕</span>
