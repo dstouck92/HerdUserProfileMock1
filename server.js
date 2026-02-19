@@ -1,8 +1,12 @@
 import express from 'express'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { createServer as createViteServer } from 'vite'
 import { config } from 'dotenv'
 
 config()
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const SETLIST_API_KEY = process.env.SETLIST_FM_API_KEY || 'sMd8Hesl527ESeQAgkrbTEKg0E_e96X2642X'
 const CACHE_TTL_MS = 2 * 60 * 1000 // 2 minutes
@@ -195,7 +199,10 @@ app.get('/api/vinyl/search', (req, res) => {
     })
 })
 
-// Vite dev server
+// Serve static files from public/ (avatars, etc.) so /avatars/* and /goat-headphones.png work
+app.use(express.static(path.join(__dirname, 'public')))
+
+// Vite dev server (handles HTML, JS, HMR)
 const vite = await createViteServer({ server: { middlewareMode: true } })
 app.use(vite.middlewares)
 
