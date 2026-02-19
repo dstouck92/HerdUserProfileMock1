@@ -97,7 +97,7 @@ export default function AuthScreen({ onAuth }) {
   return (
     <GradientBg>
       <div style={{ padding: "60px 24px 40px", textAlign: "center" }}>
-        <img src="/goat-headphones.png" alt="Herd" style={{ width: 88, height: 88, objectFit: "contain", marginBottom: 8 }} />
+        <img src="/goat-headphones.png" alt="Herd" style={{ width: 88, height: 88, objectFit: "contain", marginBottom: 8, mixBlendMode: "multiply" }} />
         <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 32, fontWeight: 800, color: "#1e1b4b" }}>Herd</div>
         <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "rgba(55,48,107,0.55)", marginTop: 4, marginBottom: 32 }}>Prove you&apos;re the Goat</div>
         <Card style={{ margin: "0 0 20px", padding: "24px 20px" }}>
