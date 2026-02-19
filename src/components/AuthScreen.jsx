@@ -48,7 +48,8 @@ export default function AuthScreen({ onAuth }) {
   const submit = async () => {
     setError("");
     if (mode === "signup") {
-      if (!email?.trim() || !username?.trim() || !displayName?.trim() || !phone?.trim() || !password) return setError("All fields required.");
+      if (!email?.trim() || !username?.trim() || !displayName?.trim() || !password) return setError("All fields required.");
+      if (!phone?.trim()) return setError("Phone number is required.");
       if (password.length < 6) return setError("Password must be 6+ characters.");
     } else {
       if (!email || !password) return setError("Email and password required.");
@@ -110,7 +111,7 @@ export default function AuthScreen({ onAuth }) {
               <>
                 <Inp label="Display Name" value={displayName} onChange={setDisplayName} placeholder="David Stouck" />
                 <Inp label="Username" value={username} onChange={setUsername} placeholder="davidstouck" />
-                <Inp label="Phone *" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" />
+                <Inp label="Phone *" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" required />
               </>
             )}
             <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" autoComplete="email" />

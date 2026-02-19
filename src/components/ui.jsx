@@ -21,10 +21,10 @@ export const Btn2 = ({ children, onClick, style }) => (
   <button onClick={onClick} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "1px solid rgba(13,148,136,0.3)", background: "rgba(255,255,255,0.7)", color: "#0d9488", fontFamily: F, fontSize: 15, fontWeight: 600, cursor: "pointer", ...style }}>{children}</button>
 );
 
-export const Inp = ({ label, type, value, onChange, placeholder, autoComplete }) => (
+export const Inp = ({ label, type, value, onChange, placeholder, autoComplete, required }) => (
   <div style={{ marginBottom: 16 }}>
     <label style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#0f766e", display: "block", marginBottom: 6 }}>{label}</label>
-    <input type={type || "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoComplete={autoComplete} style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(13,148,136,0.25)", background: "rgba(255,255,255,0.8)", fontFamily: F, fontSize: 14, color: "#1e1b4b", outline: "none", boxSizing: "border-box" }} />
+    <input type={type || "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoComplete={autoComplete} required={required} style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(13,148,136,0.25)", background: "rgba(255,255,255,0.8)", fontFamily: F, fontSize: 14, color: "#1e1b4b", outline: "none", boxSizing: "border-box" }} />
   </div>
 );
 
