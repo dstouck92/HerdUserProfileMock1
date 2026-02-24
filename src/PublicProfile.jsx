@@ -16,6 +16,7 @@ export default function PublicProfile() {
   const [streaming, setStreaming] = useState(null);
   const [shareFeedback, setShareFeedback] = useState('');
   const [downloadFeedback, setDownloadFeedback] = useState('');
+  const [featuredYoutubeChannels, setFeaturedYoutubeChannels] = useState([]);
 
   useEffect(() => {
     if (!supabase || !username) {
@@ -41,16 +42,18 @@ export default function PublicProfile() {
 
         // 2) Load featured items
         const uid = prof.id;
-        const [cRes, vRes, mRes, sRes] = await Promise.all([
+        const [cRes, vRes, mRes, sRes, yRes] = await Promise.all([
           supabase.from('concerts').select('*').eq('user_id', uid).eq('is_featured', true).order('date', { ascending: false }),
           supabase.from('vinyl').select('*').eq('user_id', uid).eq('is_featured', true).order('created_at', { ascending: false }),
           supabase.from('merch').select('*').eq('user_id', uid).eq('is_featured', true).order('created_at', { ascending: false }),
           supabase.from('user_streaming_stats').select('*').eq('user_id', uid).single(),
+          supabase.from('featured_youtube_channels_public').select('featured_youtube_channels').eq('user_id', uid).single(),
         ]);
         if (cancelled) return;
         if (cRes.data) setConcerts(cRes.data);
         if (vRes.data) setVinyl(vRes.data);
         if (mRes.data) setMerch(mRes.data);
+        if (yRes.data?.featured_youtube_channels?.length) setFeaturedYoutubeChannels(yRes.data.featured_youtube_channels);
         if (sRes.data && sRes.data.user_id) {
           setStreaming({
             totalHours: sRes.data.total_hours ?? 0,
@@ -212,6 +215,25 @@ export default function PublicProfile() {
                 {a.hours != null && (
                   <div style={{ fontFamily: F, fontSize: 11, color: 'rgba(55,48,107,0.5)', marginTop: 2 }}>{a.hours} hours</div>
                 )}
+              </div>
+            ))}
+          </Card>
+        </>
+      )}
+
+      {featuredYoutubeChannels.length > 0 && (
+        <>
+          <Sec icon="▶️">Featured YouTube Channels</Sec>
+          <Card>
+            {featuredYoutubeChannels.map((fc, i) => (
+              <div
+                key={(fc.channelId || fc.channelTitle) || i}
+                style={{
+                  padding: '12px 20px',
+                  borderBottom: i < featuredYoutubeChannels.length - 1 ? '1px solid rgba(13,148,136,0.08)' : 'none',
+                }}
+              >
+                <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: '#1e1b4b' }}>{fc.channelTitle || fc.channelId || '—'}</div>
               </div>
             ))}
           </Card>

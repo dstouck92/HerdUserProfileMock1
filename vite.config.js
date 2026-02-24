@@ -6,4 +6,7 @@ export default defineConfig({
   server: {
     hmr: { port: 24690 },
   },
+  build: {
+    chunkSizeWarningLimit: 700,
+  },
 })

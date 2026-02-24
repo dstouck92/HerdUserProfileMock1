@@ -129,7 +129,69 @@ begin
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'avatar_id') then
     alter table public.profiles add column avatar_id integer not null default 7;
   end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_youtube' and column_name = 'featured_youtube_channels') then
+    alter table public.user_youtube add column featured_youtube_channels jsonb not null default '[]';
+  end if;
 end $$;
+
+-- YouTube (OAuth + cached API data; Takeout can be added later in separate table/columns)
+create table if not exists public.user_youtube (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  refresh_token text not null,
+  access_token text,
+  token_expires_at timestamptz,
+  youtube_channel_id text,
+  youtube_channel_title text,
+  herd_display_name text,
+  herd_email text,
+  herd_phone text,
+  subscription_count integer not null default 0,
+  playlist_count integer not null default 0,
+  liked_count integer not null default 0,
+  subscriptions_json jsonb not null default '[]',
+  playlists_json jsonb not null default '[]',
+  liked_videos_json jsonb not null default '[]',
+  subscriptions_ranked_by_likes_json jsonb not null default '[]',
+  last_fetched_at timestamptz,
+  featured_youtube_channels jsonb not null default '[]',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.user_youtube enable row level security;
+
+drop policy if exists "Users can manage own youtube" on public.user_youtube;
+create policy "Users can manage own youtube"
+  on public.user_youtube for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- YouTube Takeout: watch history import (separate from OAuth API data)
+create table if not exists public.user_youtube_takeout (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  watch_history_json jsonb not null default '[]',
+  video_count integer not null default 0,
+  total_watch_minutes numeric not null default 0,
+  imported_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.user_youtube_takeout enable row level security;
+
+drop policy if exists "Users can manage own youtube takeout" on public.user_youtube_takeout;
+create policy "Users can manage own youtube takeout"
+  on public.user_youtube_takeout for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Public view: only featured_youtube_channels for public profiles (no tokens)
+create or replace view public.featured_youtube_channels_public as
+  select user_id, featured_youtube_channels from public.user_youtube;
+
+alter view public.featured_youtube_channels_public set (security_invoker = false);
+
+grant select on public.featured_youtube_channels_public to anon;
+grant select on public.featured_youtube_channels_public to authenticated;
 
 -- Optional: create profile when user signs up (from metadata)
 create or replace function public.handle_new_user()

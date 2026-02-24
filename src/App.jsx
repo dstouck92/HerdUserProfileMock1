@@ -11,7 +11,7 @@ import DigitalTab from "./components/tabs/DigitalTab";
 import PhysicalTab from "./components/tabs/PhysicalTab";
 import CurateTab from "./components/tabs/CurateTab";
 import { TabBar, ProfileHeader, F } from "./components/ui";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -27,7 +27,10 @@ export default function App() {
   const [showVinyl, setShowVinyl] = useState(false);
   const [showMerch, setShowMerch] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [youtubeData, setYoutubeData] = useState(null);
+  const [youtubeTakeout, setYoutubeTakeout] = useState(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (!supabase) {
@@ -81,11 +84,13 @@ export default function App() {
     if (!supabase || !user?.id) return;
     const uid = user.id;
     (async () => {
-      const [cRes, vRes, mRes, sRes] = await Promise.all([
+      const [cRes, vRes, mRes, sRes, yRes, takeoutRes] = await Promise.all([
         supabase.from("concerts").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("vinyl").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("merch").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("user_streaming_stats").select("*").eq("user_id", uid).single(),
+        supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, featured_youtube_channels, last_fetched_at").eq("user_id", uid).single(),
+        supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at").eq("user_id", uid).single(),
       ]);
       if (cRes.data) {
         setConcerts(
@@ -129,6 +134,10 @@ export default function App() {
           })),
         );
       }
+      if (yRes.data?.user_id) setYoutubeData(yRes.data);
+      else setYoutubeData(null);
+      if (takeoutRes.data?.user_id) setYoutubeTakeout(takeoutRes.data);
+      else setYoutubeTakeout(null);
       if (sRes.data?.user_id) {
         const s = sRes.data;
         let featuredArtists = s.featured_artists ?? [];
@@ -152,9 +161,50 @@ export default function App() {
     })();
   }, [user?.id]);
 
+  useEffect(() => {
+    const youtube = searchParams.get("youtube");
+    if (youtube === "connected") {
+      setActiveTab("Digital");
+      setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete("youtube"); next.delete("tab"); return next; }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handleYoutubeConnect = async () => {
+    const { data: { session } } = await supabase?.auth.getSession() ?? {};
+    if (!session?.access_token) return;
+    const res = await fetch("/api/auth/youtube", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ access_token: session.access_token }) });
+    if (!res.ok) return;
+    const { url } = await res.json();
+    if (url) window.location.href = url;
+  };
+
+  const handleYoutubeSync = async () => {
+    const { data: { session } } = await supabase?.auth.getSession() ?? {};
+    if (!session?.access_token || !user?.id) return;
+    const res = await fetch("/api/youtube/sync", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } });
+    if (!res.ok) return;
+    const { data } = await supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, last_fetched_at").eq("user_id", user.id).single();
+    if (data) setYoutubeData(data);
+  };
+
+  const handleYoutubeTakeoutImport = async (watchHistory) => {
+    const { data: { session } } = await supabase?.auth.getSession() ?? {};
+    if (!session?.access_token || !user?.id) return;
+    const res = await fetch("/api/youtube/takeout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ watchHistory }),
+    });
+    if (!res.ok) return;
+    const { data } = await supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at").eq("user_id", user.id).single();
+    if (data) setYoutubeTakeout(data);
+  };
+
   const handleLogout = () => {
     if (supabase) supabase.auth.signOut();
     setUser(null);
+    setYoutubeData(null);
+    setYoutubeTakeout(null);
   };
 
   const handleViewPublicProfile = () => {
@@ -364,6 +414,20 @@ export default function App() {
     }
   };
 
+  const handleToggleYoutubeChannelFeatured = async (channelId, channelTitle, isFeatured) => {
+    const current = youtubeData?.featured_youtube_channels ?? [];
+    let next = current;
+    if (isFeatured) {
+      next = [...next.filter((c) => (c.channelId || c.channelTitle) !== (channelId || channelTitle)), { channelId: channelId || null, channelTitle: channelTitle || "" }];
+    } else {
+      next = next.filter((c) => (c.channelId || c.channelTitle) !== (channelId || channelTitle));
+    }
+    setYoutubeData((prev) => (prev ? { ...prev, featured_youtube_channels: next } : prev));
+    if (supabase && user?.id) {
+      await supabase.from("user_youtube").update({ featured_youtube_channels: next }).eq("user_id", user.id);
+    }
+  };
+
   if (authLoading) {
     return (
       <GradientBg>
@@ -386,7 +450,7 @@ export default function App() {
       </div>
       <div style={{ paddingBottom: 40 }}>
         {activeTab === "Live" && <LiveTab concerts={concerts} onAdd={() => setShowConcert(true)} onEdit={(c) => setEditingConcert(c)} />}
-        {activeTab === "Digital" && <DigitalTab data={streamingData} onUpload={() => setShowUpload(true)} />}
+        {activeTab === "Digital" && <DigitalTab data={streamingData} onUpload={() => setShowUpload(true)} youtube={youtubeData} youtubeTakeout={youtubeTakeout} onYoutubeConnect={handleYoutubeConnect} onYoutubeSync={handleYoutubeSync} onYoutubeTakeoutImport={handleYoutubeTakeoutImport} />}
         {activeTab === "Physical" && <PhysicalTab vinyl={vinyl} merch={merch} onAddVinyl={() => setShowVinyl(true)} onAddMerch={() => setShowMerch(true)} />}
         {activeTab === "Curate" && (
           <CurateTab
@@ -399,6 +463,9 @@ export default function App() {
             onToggleVinylFeatured={handleToggleVinylFeatured}
             onToggleMerchFeatured={handleToggleMerchFeatured}
             onToggleArtistFeatured={handleToggleArtistFeatured}
+            youtube={youtubeData}
+            youtubeTakeout={youtubeTakeout}
+            onToggleYoutubeChannelFeatured={handleToggleYoutubeChannelFeatured}
             onPreviewProfile={handleViewPublicProfile}
             onOpenAvatarPicker={() => setShowAvatarPicker(true)}
           />

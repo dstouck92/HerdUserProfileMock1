@@ -3,6 +3,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { createServer as createViteServer } from 'vite'
 import { config } from 'dotenv'
+import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 config()
 
@@ -14,9 +16,26 @@ const FETCH_TIMEOUT_MS = 15000
 const DISCOGS_USER_AGENT = 'HerdApp/1.0 +https://getherd.co'
 
 const app = express()
+app.use(express.json())
 
 const searchCache = new Map()
 const vinylSearchCache = new Map()
+
+// YouTube OAuth state (in-memory; expires in 10 min)
+const youtubeStateStore = new Map()
+const YOUTUBE_STATE_TTL_MS = 10 * 60 * 1000
+function pruneYoutubeState() {
+  const now = Date.now()
+  for (const [k, v] of youtubeStateStore.entries()) if (now - v.createdAt > YOUTUBE_STATE_TTL_MS) youtubeStateStore.delete(k)
+}
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null
+const youtubeClientId = process.env.YOUTUBE_CLIENT_ID
+const youtubeClientSecret = process.env.YOUTUBE_CLIENT_SECRET
+const youtubeRedirectUri = process.env.YOUTUBE_REDIRECT_URI
 
 function mapSetlistsToConcerts(data, artist) {
   const setlists = data.setlist || []
@@ -198,6 +217,209 @@ app.get('/api/vinyl/search', (req, res) => {
       }
     })
 })
+
+// --- YouTube OAuth & sync (optional; requires YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REDIRECT_URI, SUPABASE_SERVICE_ROLE_KEY) ---
+if (supabaseAdmin && youtubeClientId && youtubeClientSecret && youtubeRedirectUri) {
+  const YOUTUBE_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly'
+
+  // POST /api/auth/youtube — body: { access_token }. Returns { url } to redirect user to Google.
+  app.post('/api/auth/youtube', async (req, res) => {
+    try {
+      const accessToken = req.body?.access_token || req.headers.authorization?.replace(/^Bearer\s+/i, '')
+      if (!accessToken) return res.status(401).json({ error: 'Missing access_token' })
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(accessToken)
+      if (error || !user?.id) return res.status(401).json({ error: 'Invalid token' })
+      pruneYoutubeState()
+      const state = crypto.randomBytes(16).toString('hex')
+      youtubeStateStore.set(state, { userId: user.id, createdAt: Date.now() })
+      const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+        client_id: youtubeClientId,
+        redirect_uri: youtubeRedirectUri,
+        response_type: 'code',
+        scope: YOUTUBE_SCOPE,
+        access_type: 'offline',
+        prompt: 'consent',
+        state,
+      }).toString()
+      return res.json({ url })
+    } catch (e) {
+      console.error('YouTube auth init error:', e)
+      return res.status(500).json({ error: 'Could not start YouTube connect' })
+    }
+  })
+
+  // GET /api/auth/youtube/callback — Google redirects here with ?code= & state=
+  app.get('/api/auth/youtube/callback', async (req, res) => {
+    const { code, state } = req.query
+    if (!code || !state) return res.redirect('/?youtube=error&reason=missing')
+    const stored = youtubeStateStore.get(state)
+    youtubeStateStore.delete(state)
+    if (!stored || Date.now() - stored.createdAt > YOUTUBE_STATE_TTL_MS) return res.redirect('/?youtube=error&reason=expired')
+    try {
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: youtubeClientId,
+          client_secret: youtubeClientSecret,
+          redirect_uri: youtubeRedirectUri,
+          grant_type: 'authorization_code',
+        }).toString(),
+      })
+      if (!tokenRes.ok) {
+        const err = await tokenRes.text()
+        console.error('YouTube token exchange error:', err)
+        return res.redirect('/?youtube=error&reason=token')
+      }
+      const tokens = await tokenRes.json()
+      const { data: profile } = await supabaseAdmin.from('profiles').select('display_name, username, phone').eq('id', stored.userId).single()
+      const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(stored.userId)
+      await supabaseAdmin.from('user_youtube').upsert({
+        user_id: stored.userId,
+        refresh_token: tokens.refresh_token,
+        access_token: tokens.access_token,
+        token_expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null,
+        herd_display_name: profile?.display_name ?? null,
+        herd_email: user?.email ?? null,
+        herd_phone: profile?.phone ?? null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      return res.redirect('/?youtube=connected&tab=Digital')
+    } catch (e) {
+      console.error('YouTube callback error:', e)
+      return res.redirect('/?youtube=error&reason=server')
+    }
+  })
+
+  // POST /api/youtube/sync — Authorization: Bearer <access_token>. Fetches from YouTube API and updates cache.
+  app.post('/api/youtube/sync', async (req, res) => {
+    try {
+      const accessToken = req.body?.access_token || req.headers.authorization?.replace(/^Bearer\s+/i, '')
+      if (!accessToken) return res.status(401).json({ error: 'Missing access_token' })
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(accessToken)
+      if (error || !user?.id) return res.status(401).json({ error: 'Invalid token' })
+      const { data: row } = await supabaseAdmin.from('user_youtube').select('refresh_token, access_token, token_expires_at').eq('user_id', user.id).single()
+      if (!row?.refresh_token) return res.status(400).json({ error: 'YouTube not connected' })
+      let access = row.access_token
+      const expires = row.token_expires_at ? new Date(row.token_expires_at).getTime() : 0
+      if (!access || Date.now() > expires - 60000) {
+        const tr = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            refresh_token: row.refresh_token,
+            client_id: youtubeClientId,
+            client_secret: youtubeClientSecret,
+            grant_type: 'refresh_token',
+          }).toString(),
+        })
+        if (!tr.ok) return res.status(502).json({ error: 'YouTube token refresh failed' })
+        const tok = await tr.json()
+        access = tok.access_token
+        await supabaseAdmin.from('user_youtube').update({
+          access_token: tok.access_token,
+          token_expires_at: tok.expires_in ? new Date(Date.now() + tok.expires_in * 1000).toISOString() : null,
+          updated_at: new Date().toISOString(),
+        }).eq('user_id', user.id)
+      }
+      const headers = { Authorization: `Bearer ${access}` }
+      const base = 'https://www.googleapis.com/youtube/v3'
+      const [channelRes, subsRes, playlistsRes] = await Promise.all([
+        fetch(`${base}/channels?part=snippet,contentDetails&mine=true`, { headers }),
+        fetch(`${base}/subscriptions?part=snippet&mine=true&maxResults=50`, { headers }),
+        fetch(`${base}/playlists?part=snippet,contentDetails&mine=true&maxResults=50`, { headers }),
+      ])
+      if (!channelRes.ok) return res.status(502).json({ error: 'YouTube channel fetch failed' })
+      const channelData = await channelRes.json()
+      const channel = channelData.items?.[0]
+      const channelId = channel?.id
+      const likedPlaylistId = channel?.contentDetails?.relatedPlaylists?.likes
+      const subscriptions = subsRes.ok ? (await subsRes.json()).items || [] : []
+      const playlists = playlistsRes.ok ? (await playlistsRes.json()).items || [] : []
+      let likedVideos = []
+      if (likedPlaylistId) {
+        const likesRes = await fetch(`${base}/playlistItems?part=snippet&playlistId=${likedPlaylistId}&maxResults=50`, { headers })
+        if (likesRes.ok) likedVideos = (await likesRes.json()).items || []
+      }
+      const subscriptionsJson = subscriptions.map(s => ({
+        channelId: s.snippet?.resourceId?.channelId,
+        title: s.snippet?.title,
+      }))
+      const playlistsJson = playlists.map(p => ({
+        id: p.id,
+        title: p.snippet?.title,
+        itemCount: p.contentDetails?.itemCount ?? 0,
+      }))
+      const likedVideosJson = likedVideos.map(i => ({
+        videoId: i.contentDetails?.videoId,
+        title: i.snippet?.title,
+        channelId: i.snippet?.channelId,
+        channelTitle: i.snippet?.channelTitle,
+      }))
+      const likesByChannel = {}
+      likedVideosJson.forEach(v => {
+        const k = v.channelId || v.channelTitle || 'unknown'
+        likesByChannel[k] = (likesByChannel[k] || 0) + 1
+      })
+      const ranked = subscriptionsJson
+        .map(s => ({ ...s, likedCount: likesByChannel[s.channelId] || 0 }))
+        .sort((a, b) => b.likedCount - a.likedCount)
+      await supabaseAdmin.from('user_youtube').update({
+        youtube_channel_id: channelId,
+        youtube_channel_title: channel?.snippet?.title ?? null,
+        subscription_count: subscriptions.length,
+        playlist_count: playlists.length,
+        liked_count: likedVideosJson.length,
+        subscriptions_json: subscriptionsJson,
+        playlists_json: playlistsJson,
+        liked_videos_json: likedVideosJson,
+        subscriptions_ranked_by_likes_json: ranked,
+        last_fetched_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq('user_id', user.id)
+      return res.json({ ok: true, last_fetched_at: new Date().toISOString() })
+    } catch (e) {
+      console.error('YouTube sync error:', e)
+      return res.status(500).json({ error: 'YouTube sync failed' })
+    }
+  })
+
+  // POST /api/youtube/takeout — body: { watchHistory: array }. Import Takeout watch-history.json; adds to YouTube section + total watch time.
+  app.post('/api/youtube/takeout', async (req, res) => {
+    try {
+      const accessToken = req.body?.access_token || req.headers.authorization?.replace(/^Bearer\s+/i, '')
+      if (!accessToken) return res.status(401).json({ error: 'Missing access_token' })
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(accessToken)
+      if (error || !user?.id) return res.status(401).json({ error: 'Invalid token' })
+      const raw = req.body?.watchHistory ?? req.body?.watch_history ?? req.body
+      const list = Array.isArray(raw) ? raw : (raw?.records && Array.isArray(raw.records) ? raw.records : [])
+      const ESTIMATE_MIN_PER_VIDEO = 8
+      const records = list.map(r => ({
+        title: r.title ?? r.name ?? '',
+        titleUrl: r.titleUrl ?? r.url ?? r.title_url ?? '',
+        channelName: (r.subtitles && r.subtitles[0]?.name) ? r.subtitles[0].name : (r.channelTitle ?? r.channel ?? ''),
+        channelUrl: (r.subtitles && r.subtitles[0]?.url) ? r.subtitles[0].url : (r.channelUrl ?? ''),
+        time: r.time ?? r.timestamp ?? null,
+        durationMinutes: typeof r.durationMinutes === 'number' ? r.durationMinutes : null,
+      })).filter(r => r.title || r.titleUrl)
+      const videoCount = records.length
+      const totalMinutes = records.reduce((sum, r) => sum + (r.durationMinutes ?? ESTIMATE_MIN_PER_VIDEO), 0)
+      await supabaseAdmin.from('user_youtube_takeout').upsert({
+        user_id: user.id,
+        watch_history_json: records,
+        video_count: videoCount,
+        total_watch_minutes: Math.round(totalMinutes * 10) / 10,
+        imported_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      return res.json({ ok: true, video_count: videoCount, total_watch_minutes: Math.round(totalMinutes * 10) / 10 })
+    } catch (e) {
+      console.error('YouTube takeout import error:', e)
+      return res.status(500).json({ error: 'Takeout import failed' })
+    }
+  })
+}
 
 // Serve static files from public/ (avatars, etc.) so /avatars/* and /goat-headphones.png work
 app.use(express.static(path.join(__dirname, 'public')))

@@ -9,15 +9,19 @@ export default function CurateTab({
   vinyl,
   data,
   user,
+  youtube,
+  youtubeTakeout,
   onToggleConcertFeatured,
   onToggleVinylFeatured,
   onToggleMerchFeatured,
   onToggleArtistFeatured,
+  onToggleYoutubeChannelFeatured,
   onPreviewProfile,
   onOpenAvatarPicker,
 }) {
   const [artistSearch, setArtistSearch] = useState("");
-  const hasData = concerts.length > 0 || merch.length > 0 || vinyl.length > 0 || data;
+  const [youtubeChannelSearch, setYoutubeChannelSearch] = useState("");
+  const hasData = concerts.length > 0 || merch.length > 0 || vinyl.length > 0 || data || youtube || youtubeTakeout;
   const avatarId = user?.avatar_id ?? 7;
   const featuredArtists = data?.featuredArtists ?? [];
   const topArtists = data?.topArtists ?? [];
@@ -26,6 +30,17 @@ export default function CurateTab({
     ? topArtists.filter((a) => a.name.toLowerCase().includes(searchTrim))
     : [];
   const searchResultsNotFeatured = searchResults.filter((a) => !featuredArtists.some((fa) => fa.name === a.name));
+
+  const featuredYoutubeChannels = youtube?.featured_youtube_channels ?? [];
+  const subscriptionsForSearch = youtube?.subscriptions_ranked_by_likes_json ?? youtube?.subscriptions_json ?? [];
+  const takeoutChannels = (youtubeTakeout?.watch_history_json ?? []).map((r) => r.channelName || r.channelTitle).filter(Boolean);
+  const uniqueTakeoutChannels = [...new Set(takeoutChannels)];
+  const youtubeSearchTrim = youtubeChannelSearch.trim().toLowerCase();
+  const youtubeSearchPool = [...subscriptionsForSearch.map((s) => ({ channelId: s.channelId, channelTitle: s.title })), ...uniqueTakeoutChannels.map((t) => ({ channelId: null, channelTitle: t }))];
+  const seenKey = new Set();
+  const youtubeSearchPoolDeduped = youtubeSearchPool.filter((c) => { const k = c.channelId || c.channelTitle; if (seenKey.has(k)) return false; seenKey.add(k); return true; });
+  const youtubeSearchResults = youtubeSearchTrim ? youtubeSearchPoolDeduped.filter((c) => (c.channelTitle || "").toLowerCase().includes(youtubeSearchTrim)) : [];
+  const youtubeSearchNotFeatured = youtubeSearchResults.filter((c) => !featuredYoutubeChannels.some((f) => (f.channelId || f.channelTitle) === (c.channelId || c.channelTitle)));
 
   return (
     <div>
@@ -106,6 +121,63 @@ export default function CurateTab({
                 <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.5)", marginTop: 8 }}>All matching artists are already featured.</div>
               )}
             </div>
+          </Card>
+        </>
+      )}
+      {(youtube || youtubeTakeout) && (
+        <>
+          <Sec icon="▶️">From Your YouTube</Sec>
+          <Card>
+            {youtube ? (
+              <>
+                <div style={{ padding: "12px 20px", borderBottom: "1px solid rgba(13,148,136,0.1)" }}>
+                  <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 8 }}>Featured channels (checked = shown on public profile)</div>
+                  {featuredYoutubeChannels.length === 0 ? (
+                    <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.5)" }}>None yet. Search below to add channels you’re subscribed to or have watched (Takeout).</div>
+                  ) : (
+                    featuredYoutubeChannels.map((fc, i) => (
+                      <div key={(fc.channelId || fc.channelTitle) || i} style={{ display: "flex", alignItems: "center", padding: "8px 0", gap: 12, borderBottom: i < featuredYoutubeChannels.length - 1 ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                        <input type="checkbox" style={{ accentColor: "#0d9488" }} checked onChange={(e) => onToggleYoutubeChannelFeatured?.(fc.channelId, fc.channelTitle, e.target.checked)} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{fc.channelTitle || fc.channelId || "—"}</div>
+                        </div>
+                        <span style={{ fontFamily: F, fontSize: 10, fontWeight: 600, color: "#FF0000", background: "rgba(255,0,0,0.08)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase" }}>YouTube</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div style={{ padding: "12px 20px" }}>
+                  <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 6 }}>Search subscriptions or channels you’ve watched (Takeout)</label>
+                  <input
+                    type="text"
+                    value={youtubeChannelSearch}
+                    onChange={(e) => setYoutubeChannelSearch(e.target.value)}
+                    placeholder="Type channel name..."
+                    style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", background: "rgba(255,255,255,0.8)", fontFamily: F, fontSize: 14, color: "#1e1b4b", outline: "none", boxSizing: "border-box" }}
+                  />
+                  {youtubeSearchNotFeatured.length > 0 && (
+                    <div style={{ marginTop: 10, maxHeight: 200, overflow: "auto" }}>
+                      {youtubeSearchNotFeatured.slice(0, 20).map((c, i) => (
+                        <button
+                          type="button"
+                          key={(c.channelId || c.channelTitle) || i}
+                          onClick={() => { onToggleYoutubeChannelFeatured?.(c.channelId, c.channelTitle, true); setYoutubeChannelSearch(""); }}
+                          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", border: "none", borderBottom: i < Math.min(19, youtubeSearchNotFeatured.length - 1) ? "1px solid rgba(0,0,0,0.06)" : "none", background: "none", cursor: "pointer", textAlign: "left", fontFamily: F, fontSize: 14, color: "#1e1b4b" }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{c.channelTitle || c.channelId || "—"}</span>
+                          <span style={{ fontSize: 12, color: "#0d9488", fontWeight: 600 }}>+ Add</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {youtubeSearchTrim && youtubeSearchNotFeatured.length === 0 && youtubeSearchPoolDeduped.length > 0 && (
+                    <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.5)", marginTop: 8 }}>All matching channels are already featured.</div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: "16px 20px", fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)" }}>Connect YouTube on the Digital tab to feature channels. You can then add channels from your Takeout watch history here.</div>
+            )}
           </Card>
         </>
       )}
