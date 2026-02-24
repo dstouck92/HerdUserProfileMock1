@@ -73,14 +73,20 @@ export function parseSpotifyFiles(filesContent) {
         plays: s.play_count,
       }))
       .sort((a, b) => b.hours - a.hours),
+    // Top tracks ranked by total listening time (minutes), not just play count,
+    // so the visual ranking matches the minutes column in the UI.
     topTracks: Object.values(trackStats)
-      .sort((a, b) => b.play_count - a.play_count)
+      .sort((a, b) => {
+        const byMs = b.total_ms - a.total_ms;
+        if (byMs !== 0) return byMs;
+        return b.play_count - a.play_count;
+      })
       .map((t) => ({
         name: t.track,
         artist: t.artist,
         album: t.album,
         plays: t.play_count,
-        hours: Math.round(t.total_ms / 3600000 * 10) / 10,
+        hours: Math.round((t.total_ms / 3600000) * 10) / 10,
       })),
   };
 }
