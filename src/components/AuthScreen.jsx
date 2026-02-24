@@ -109,8 +109,8 @@ export default function AuthScreen({ onAuth }) {
           <form onSubmit={handleSubmit} noValidate>
             {mode === "signup" && (
               <>
-                <Inp label="Display Name" value={displayName} onChange={setDisplayName} placeholder="David Stouck" />
-                <Inp label="Username" value={username} onChange={setUsername} placeholder="davidstouck" />
+                <Inp label="Display Name" value={displayName} onChange={setDisplayName} placeholder="Jane Doe" />
+                <Inp label="Username" value={username} onChange={setUsername} placeholder="JaneDoe" />
                 <Inp label="Phone *" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" required />
               </>
             )}
@@ -133,10 +133,6 @@ export default function AuthScreen({ onAuth }) {
             </div>
             <Btn type="submit" disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
           </form>
-          <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-            <Btn2 type="button" style={{ flex: 1, padding: "10px 0", fontSize: 13 }}>Google</Btn2>
-            <Btn2 type="button" style={{ flex: 1, padding: "10px 0", fontSize: 13 }}>Spotify</Btn2>
-          </div>
         </Card>
       </div>
     </GradientBg>
