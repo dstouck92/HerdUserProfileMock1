@@ -59,14 +59,6 @@ export default function AuthScreen({ onAuth }) {
       setLoading(true);
       setError("");
       try {
-        if (mode === "login") {
-          // Always start from a clean Supabase auth state to avoid weird stuck sessions.
-          try {
-            await supabase.auth.signOut();
-          } catch (_) {
-            // ignore
-          }
-        }
         if (mode === "signup") {
           const { data, error: authError } = await supabase.auth.signUp({
             email,

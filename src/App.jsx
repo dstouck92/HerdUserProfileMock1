@@ -60,24 +60,9 @@ export default function App() {
       if (!cancelled) setAuthLoading(false);
     };
     loadSession();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (typeof console !== "undefined") console.log("onAuthStateChange event:", event, !!session?.user);
-      if (!session?.user) {
-        setUser(null);
-        setConcerts([]);
-        setVinyl([]);
-        setMerch([]);
-        setStreamingData(null);
-        return;
-      }
-      const fallback = { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user", avatar_id: 7 };
-      const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
-      setUser(profile && profile.id ? { ...profile, avatar_id: profile.avatar_id ?? 7 } : fallback);
-    });
     return () => {
       cancelled = true;
       clearTimeout(showLoginTimer);
-      subscription?.unsubscribe();
     };
   }, []);
 
