@@ -38,23 +38,10 @@ export default function App() {
       return;
     }
     let cancelled = false;
-    // Show login screen after short max wait so page feels fast; session check continues in background
-    const showLoginTimer = setTimeout(() => {
-      if (!cancelled) setAuthLoading(false);
-    }, 500);
-    const SESSION_LOAD_TIMEOUT_MS = 5000;
     const loadSession = async () => {
-      let done = false;
-      const timeoutId = setTimeout(() => {
-        if (done || cancelled) return;
-        done = true;
-        setAuthLoading(false);
-      }, SESSION_LOAD_TIMEOUT_MS);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (cancelled) return;
-        done = true;
-        clearTimeout(timeoutId);
         if (session?.user) {
           try {
             const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
@@ -84,7 +71,6 @@ export default function App() {
     });
     return () => {
       cancelled = true;
-      clearTimeout(showLoginTimer);
       subscription?.unsubscribe();
     };
   }, []);
