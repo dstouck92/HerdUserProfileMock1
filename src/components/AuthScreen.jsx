@@ -75,6 +75,7 @@ export default function AuthScreen({ onAuth }) {
         } else {
           const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
           if (authError) throw authError;
+          if (data && typeof console !== "undefined") console.log("signInWithPassword data:", data);
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user);
             onAuth(profile);
