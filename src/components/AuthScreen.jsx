@@ -58,20 +58,13 @@ export default function AuthScreen({ onAuth }) {
     if (supabase) {
       setLoading(true);
       setError("");
-      const LOGIN_TIMEOUT_MS = 20000;
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Request timed out. Check your connection or try again.")), LOGIN_TIMEOUT_MS)
-      );
       try {
         if (mode === "signup") {
-          const { data, error: authError } = await Promise.race([
-            supabase.auth.signUp({
-              email,
-              password,
-              options: { data: { display_name: displayName, username, phone: phone.trim() || null } },
-            }),
-            timeoutPromise,
-          ]);
+          const { data, error: authError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { display_name: displayName, username, phone: phone.trim() || null } },
+          });
           if (authError) throw authError;
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user, displayName, username, phone.trim());
@@ -80,10 +73,7 @@ export default function AuthScreen({ onAuth }) {
             setError("Sign up succeeded but no user returned. Check your email to confirm, or try logging in.");
           }
         } else {
-          const { data, error: authError } = await Promise.race([
-            supabase.auth.signInWithPassword({ email, password }),
-            timeoutPromise,
-          ]);
+          const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
           if (authError) throw authError;
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user);
@@ -93,6 +83,7 @@ export default function AuthScreen({ onAuth }) {
           }
         }
       } catch (err) {
+        if (err && typeof console !== "undefined") console.error("Auth error:", err);
         setError(err?.message || "Something went wrong.");
       } finally {
         setLoading(false);
@@ -131,11 +122,12 @@ export default function AuthScreen({ onAuth }) {
               {error && (
                 <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", padding: "10px 12px", background: "#fef2f2", borderRadius: 8 }}>
                   {error}
-                  {error.includes("Connection timed out") && (
-                    <div style={{ marginTop: 10, fontSize: 12, color: "#b91c1c", lineHeight: 1.5 }}>
-                      <strong>Fix:</strong><br />
-                      1. Supabase: open your project → if it says &quot;Paused&quot;, click <strong>Restore project</strong>.<br />
-                      2. Vercel: Project → Settings → Environment Variables. Set <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_URL</code> and <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_ANON_KEY</code> from Supabase → Settings → API. Then Deployments → Redeploy.
+                  {(error.includes("Connection timed out") || error.includes("timed out")) && (
+                    <div style={{ marginTop: 10, fontSize: 12, color: "#b91c1c", lineHeight: 1.6 }}>
+                      <strong>Try this:</strong><br />
+                      1. <strong>Supabase</strong> — Open your project at supabase.com. If it says &quot;Paused&quot;, click <strong>Restore project</strong> (free tier sleeps after inactivity).<br />
+                      2. <strong>Normal browser</strong> — Clear this site’s data: browser Settings → Privacy → Cookies / Site data → find this site → Clear. Then reload and log in again.<br />
+                      3. <strong>Vercel</strong> — Project → Settings → Environment Variables: set <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_URL</code> and <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_ANON_KEY</code> from Supabase → Settings → API, then Redeploy.
                     </div>
                   )}
                 </div>
