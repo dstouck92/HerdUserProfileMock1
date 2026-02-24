@@ -389,26 +389,34 @@ export default function App() {
   const handleStreamingComplete = async (d) => {
     const defaultFeatured = (d.topArtists?.length && !d.featuredArtists?.length) ? [d.topArtists[0]] : (d.featuredArtists ?? []);
     const payload = { ...d, featuredArtists: defaultFeatured };
-    if (supabase && user?.id) {
-      await supabase.from("user_streaming_stats").upsert(
-        {
-          user_id: user.id,
-          total_hours: Math.round(d.totalHours),
-          total_records: d.totalRecords,
-          unique_artists: d.uniqueArtists,
-          unique_tracks: d.uniqueTracks,
-          top_artists: d.topArtists,
-          top_tracks: d.topTracks,
-          featured_artists: defaultFeatured,
-          start_date: d.startDate || null,
-          end_date: d.endDate || null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
-      );
+    try {
+      if (supabase && user?.id) {
+        const { error } = await supabase.from("user_streaming_stats").upsert(
+          {
+            user_id: user.id,
+            total_hours: Math.round(d.totalHours),
+            total_records: d.totalRecords,
+            unique_artists: d.uniqueArtists,
+            unique_tracks: d.uniqueTracks,
+            top_artists: d.topArtists,
+            top_tracks: d.topTracks,
+            featured_artists: defaultFeatured,
+            start_date: d.startDate || null,
+            end_date: d.endDate || null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
+        if (error && typeof console !== "undefined") console.error("user_streaming_stats upsert error:", error);
+      }
+      setStreamingData(payload);
+    } catch (err) {
+      if (typeof console !== "undefined") console.error("handleStreamingComplete error:", err);
+      // Fall back to local-only state so the UI still updates even if Supabase is down.
+      setStreamingData(payload);
+    } finally {
+      setShowUpload(false);
     }
-    setStreamingData(payload);
-    setShowUpload(false);
   };
 
   const handleToggleConcertFeatured = async (concertId, isFeatured) => {
