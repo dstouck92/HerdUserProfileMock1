@@ -61,6 +61,7 @@ export default function App() {
     };
     loadSession();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (typeof console !== "undefined") console.log("onAuthStateChange event:", event, !!session?.user);
       if (!session?.user) {
         setUser(null);
         setConcerts([]);
