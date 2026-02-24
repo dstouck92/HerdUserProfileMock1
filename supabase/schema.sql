@@ -132,6 +132,15 @@ begin
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_youtube' and column_name = 'featured_youtube_channels') then
     alter table public.user_youtube add column featured_youtube_channels jsonb not null default '[]';
   end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_youtube_takeout' and column_name = 'channel_rankings_json') then
+    alter table public.user_youtube_takeout add column channel_rankings_json jsonb not null default '[]';
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_youtube_takeout' and column_name = 'video_rankings_json') then
+    alter table public.user_youtube_takeout add column video_rankings_json jsonb not null default '[]';
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_youtube_takeout' and column_name = 'watch_trend_json') then
+    alter table public.user_youtube_takeout add column watch_trend_json jsonb not null default '[]';
+  end if;
 end $$;
 
 -- YouTube (OAuth + cached API data; Takeout can be added later in separate table/columns)

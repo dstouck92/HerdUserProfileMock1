@@ -90,7 +90,7 @@ export default function App() {
         supabase.from("merch").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("user_streaming_stats").select("*").eq("user_id", uid).single(),
         supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, featured_youtube_channels, last_fetched_at").eq("user_id", uid).maybeSingle(),
-        supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at").eq("user_id", uid).maybeSingle(),
+        supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at, channel_rankings_json, video_rankings_json, watch_trend_json").eq("user_id", uid).maybeSingle(),
       ]);
       if (cRes.data) {
         setConcerts(
@@ -204,11 +204,57 @@ export default function App() {
       const totalMinutes = records.reduce((sum, r) => sum + (r.durationMinutes ?? ESTIMATE_MIN_PER_VIDEO), 0);
       const roundedMinutes = Math.round(totalMinutes * 10) / 10;
 
+      // Top channels by watch time (sum minutes per channel)
+      const channelByKey = new Map();
+      for (const r of records) {
+        const key = (r.channelName || r.channelUrl || "Unknown").trim() || "Unknown";
+        const mins = r.durationMinutes ?? ESTIMATE_MIN_PER_VIDEO;
+        const cur = channelByKey.get(key) || { channelName: r.channelName || key, channelUrl: r.channelUrl || "", totalMinutes: 0, watchCount: 0 };
+        cur.totalMinutes += mins;
+        cur.watchCount += 1;
+        channelByKey.set(key, cur);
+      }
+      const channelRankings = Array.from(channelByKey.values())
+        .sort((a, b) => b.totalMinutes - a.totalMinutes)
+        .slice(0, 10)
+        .map((c) => ({ channelName: c.channelName, channelUrl: c.channelUrl, totalMinutes: Math.round(c.totalMinutes * 10) / 10, watchCount: c.watchCount }));
+
+      // Top videos by watch time (same video can be watched multiple times)
+      const videoByKey = new Map();
+      for (const r of records) {
+        const key = (r.titleUrl || (r.title + "|" + (r.channelName || ""))).trim() || "unknown";
+        const mins = r.durationMinutes ?? ESTIMATE_MIN_PER_VIDEO;
+        const cur = videoByKey.get(key) || { title: r.title, titleUrl: r.titleUrl || "", channelName: r.channelName || "", totalMinutes: 0, watchCount: 0 };
+        cur.totalMinutes += mins;
+        cur.watchCount += 1;
+        videoByKey.set(key, cur);
+      }
+      const videoRankings = Array.from(videoByKey.values())
+        .sort((a, b) => b.totalMinutes - a.totalMinutes)
+        .slice(0, 10)
+        .map((v) => ({ title: v.title, titleUrl: v.titleUrl, channelName: v.channelName, totalMinutes: Math.round(v.totalMinutes * 10) / 10, watchCount: v.watchCount }));
+
+      // Watch trend by month (parse time, group by YYYY-MM)
+      const monthByKey = new Map();
+      for (const r of records) {
+        const t = r.time ? new Date(r.time) : null;
+        if (!t || Number.isNaN(t.getTime())) continue;
+        const key = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
+        const mins = r.durationMinutes ?? ESTIMATE_MIN_PER_VIDEO;
+        monthByKey.set(key, (monthByKey.get(key) || 0) + mins);
+      }
+      const watchTrend = Array.from(monthByKey.entries())
+        .map(([month, minutes]) => ({ month, minutes: Math.round(minutes * 10) / 10 }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+
       const { error } = await supabase.from("user_youtube_takeout").upsert({
         user_id: user.id,
         watch_history_json: records,
         video_count: videoCount,
         total_watch_minutes: roundedMinutes,
+        channel_rankings_json: channelRankings,
+        video_rankings_json: videoRankings,
+        watch_trend_json: watchTrend,
         imported_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
@@ -216,7 +262,7 @@ export default function App() {
         console.error("Takeout upsert error:", error);
         return;
       }
-      const { data } = await supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at").eq("user_id", user.id).maybeSingle();
+      const { data } = await supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at, channel_rankings_json, video_rankings_json, watch_trend_json").eq("user_id", user.id).maybeSingle();
       if (data) setYoutubeTakeout(data);
     } catch (e) {
       console.error("Takeout import error (client-side):", e);

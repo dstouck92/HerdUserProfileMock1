@@ -176,6 +176,68 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
               </>
             )}
           </Card>
+
+          {/* Takeout rankings and trend (after re-import, data comes from new columns) */}
+          {(youtubeTakeout?.channel_rankings_json?.length > 0 || youtubeTakeout?.video_rankings_json?.length > 0 || youtubeTakeout?.watch_trend_json?.length > 0) && (
+            <>
+              {youtubeTakeout.channel_rankings_json?.length > 0 && (
+                <>
+                  <Sec icon="📺">Top channels (Takeout)</Sec>
+                  <Card>{(youtubeTakeout.channel_rankings_json || []).slice(0, 10).map((c, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, (youtubeTakeout.channel_rankings_json || []).length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                      <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${0 + i * 36},70%,55%), hsl(${20 + i * 36},60%,60%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "rgba(255,255,255,0.9)" }}>▶</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.channelName || "Unknown"}</div>
+                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{c.watchCount?.toLocaleString?.() ?? 0} video{c.watchCount !== 1 ? "s" : ""}</div>
+                      </div>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(c.totalMinutes).toLocaleString()} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+                    </div>
+                  ))}</Card>
+                </>
+              )}
+              {youtubeTakeout.video_rankings_json?.length > 0 && (
+                <>
+                  <Sec icon="🎬">Top videos (Takeout)</Sec>
+                  <Card>{(youtubeTakeout.video_rankings_json || []).slice(0, 10).map((v, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, (youtubeTakeout.video_rankings_json || []).length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                      <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${260 + i * 8},65%,${50 + i * 4}%), hsl(${270 + i * 10},55%,${60 + i * 3}%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "rgba(255,255,255,0.9)" }}>♪</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.title || "Unknown"}</div>
+                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{v.channelName || ""}{v.watchCount > 1 ? ` · ${v.watchCount} views` : ""}</div>
+                      </div>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(v.totalMinutes).toLocaleString()} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+                    </div>
+                  ))}</Card>
+                </>
+              )}
+              {youtubeTakeout.watch_trend_json?.length > 0 && (
+                <>
+                  <Sec icon="📈">Watch time over time</Sec>
+                  <Card>
+                    {(youtubeTakeout.watch_trend_json || []).map((row, i) => {
+                      const [y, m] = (row.month || "").split("-");
+                      const monthLabel = y && m ? new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : row.month;
+                      const maxMin = Math.max(1, ...(youtubeTakeout.watch_trend_json || []).map((r) => r.minutes || 0));
+                      const pct = Math.min(100, ((row.minutes || 0) / maxMin) * 100);
+                      return (
+                        <div key={i} style={{ padding: "10px 20px", borderBottom: i < (youtubeTakeout.watch_trend_json || []).length - 1 ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                            <span style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b" }}>{monthLabel}</span>
+                            <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(row.minutes || 0).toLocaleString()} min</span>
+                          </div>
+                          <div style={{ height: 8, borderRadius: 4, background: "rgba(13,148,136,0.12)", overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: "linear-gradient(90deg, #0d9488, #10b981)", transition: "width 0.2s ease" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </Card>
+                </>
+              )}
+            </>
+          )}
         </>
       )}
 
