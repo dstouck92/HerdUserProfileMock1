@@ -89,8 +89,8 @@ export default function App() {
         supabase.from("vinyl").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("merch").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("user_streaming_stats").select("*").eq("user_id", uid).single(),
-        supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, featured_youtube_channels, last_fetched_at").eq("user_id", uid).single(),
-        supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at").eq("user_id", uid).single(),
+        supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, featured_youtube_channels, last_fetched_at").eq("user_id", uid).maybeSingle(),
+        supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at").eq("user_id", uid).maybeSingle(),
       ]);
       if (cRes.data) {
         setConcerts(
@@ -188,16 +188,39 @@ export default function App() {
   };
 
   const handleYoutubeTakeoutImport = async (watchHistory) => {
-    const { data: { session } } = await supabase?.auth.getSession() ?? {};
-    if (!session?.access_token || !user?.id) return;
-    const res = await fetch("/api/youtube/takeout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ watchHistory }),
-    });
-    if (!res.ok) return;
-    const { data } = await supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at").eq("user_id", user.id).single();
-    if (data) setYoutubeTakeout(data);
+    if (!supabase || !user?.id) return;
+    try {
+      const ESTIMATE_MIN_PER_VIDEO = 8;
+      const records = (Array.isArray(watchHistory) ? watchHistory : []).map((r) => ({
+        title: r.title ?? r.name ?? "",
+        titleUrl: r.titleUrl ?? r.url ?? r.title_url ?? "",
+        channelName: (r.subtitles && r.subtitles[0]?.name) ? r.subtitles[0].name : (r.channelTitle ?? r.channel ?? ""),
+        channelUrl: (r.subtitles && r.subtitles[0]?.url) ? r.subtitles[0].url : (r.channelUrl ?? ""),
+        time: r.time ?? r.timestamp ?? null,
+        durationMinutes: typeof r.durationMinutes === "number" ? r.durationMinutes : null,
+      })).filter((r) => r.title || r.titleUrl);
+
+      const videoCount = records.length;
+      const totalMinutes = records.reduce((sum, r) => sum + (r.durationMinutes ?? ESTIMATE_MIN_PER_VIDEO), 0);
+      const roundedMinutes = Math.round(totalMinutes * 10) / 10;
+
+      const { error } = await supabase.from("user_youtube_takeout").upsert({
+        user_id: user.id,
+        watch_history_json: records,
+        video_count: videoCount,
+        total_watch_minutes: roundedMinutes,
+        imported_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      if (error) {
+        console.error("Takeout upsert error:", error);
+        return;
+      }
+      const { data } = await supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at").eq("user_id", user.id).maybeSingle();
+      if (data) setYoutubeTakeout(data);
+    } catch (e) {
+      console.error("Takeout import error (client-side):", e);
+    }
   };
 
   const handleLogout = () => {
