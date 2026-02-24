@@ -8,8 +8,9 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
   const [youtubeSyncing, setYoutubeSyncing] = useState(false);
   const [takeoutImporting, setTakeoutImporting] = useState(false);
    const [spotifyOpen, setSpotifyOpen] = useState(true);
-   const [youtubeOpen, setYoutubeOpen] = useState(true);
-   const [usageOpen, setUsageOpen] = useState(true);
+  const [youtubeOpen, setYoutubeOpen] = useState(true);
+  const [usageOpen, setUsageOpen] = useState(true);
+  const [watchTrendExpanded, setWatchTrendExpanded] = useState(false);
   const takeoutInputRef = useRef(null);
 
   const artistsToShow = data?.topArtists?.slice(0, 10) ?? [];
@@ -100,22 +101,154 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
       {youtubeOpen && (
         <>
           {!youtube ? (
-            <Card style={{ padding: "20px" }}>
-              <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Connect your YouTube account to see subscriptions, playlists, and liked videos. Data is cached and you can refresh anytime.</div>
-              {onYoutubeConnect && <Btn onClick={onYoutubeConnect}>Connect YouTube</Btn>}
-            </Card>
+            <>
+              <Card style={{ padding: "20px" }}>
+                <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Connect your YouTube account to see subscriptions, playlists, and liked videos. Data is cached and you can refresh anytime.</div>
+                {onYoutubeConnect && <Btn onClick={onYoutubeConnect}>Connect YouTube</Btn>}
+              </Card>
+              <Sec icon="📥">Watch history (Takeout)</Sec>
+              <Card style={{ padding: "16px 20px" }}>
+                <input ref={takeoutInputRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleTakeoutFile} />
+                {!youtubeTakeout ? (
+                  <>
+                    <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Import your YouTube watch history from Google Takeout (takeout.google.com → YouTube → History, JSON). Adds total watch time to your stats.</div>
+                    {onYoutubeTakeoutImport && <Btn onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting}>{takeoutImporting ? "Importing…" : "Import from Takeout"}</Btn>}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{youtubeTakeout.video_count.toLocaleString()} videos · {Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min total watch time</div>
+                    <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)", marginTop: 4 }}>Imported {youtubeTakeout.imported_at ? new Date(youtubeTakeout.imported_at).toLocaleDateString() : ""}</div>
+                    {onYoutubeTakeoutImport && <button type="button" onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting} style={{ marginTop: 12, padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: takeoutImporting ? "wait" : "pointer" }}>{takeoutImporting ? "Importing…" : "Re-import Takeout"}</button>}
+                  </>
+                )}
+              </Card>
+            </>
           ) : (
             <>
+              {/* YouTube header: Stats bar (like Spotify) + Refresh */}
+              <Stats stats={[
+                { value: youtubeTakeout?.video_count > 0 ? Math.round(youtubeTakeout.total_watch_minutes).toLocaleString() : "0", label: "Total Watch Time (min)" },
+                { value: youtubeTakeout?.video_count > 0 ? youtubeTakeout.video_count.toLocaleString() : "0", label: "Total Videos Watched" },
+                { value: (youtube.subscription_count ?? 0).toLocaleString(), label: "Subscriptions" },
+              ]} />
+              <div style={{ margin: "0 20px 12px", display: "flex", justifyContent: "flex-end" }}>
+                {onYoutubeSync && <button type="button" onClick={handleRefresh} disabled={youtubeSyncing} style={{ border: "none", background: "none", padding: 0, fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0d9488", cursor: youtubeSyncing ? "wait" : "pointer", textDecoration: "underline" }}>{youtubeSyncing ? "Refreshing…" : "Refresh YouTube data"}</button>}
+              </div>
+
+              {/* 1. Top channels (Takeout) - hide "Unknown" row */}
+              {(youtubeTakeout?.channel_rankings_json?.length > 0) && (
+                <>
+                  <Sec icon="📺">Top channels (Takeout)</Sec>
+                  <Card>{(youtubeTakeout.channel_rankings_json || []).filter((c) => (c.channelName || "").trim().toLowerCase() !== "unknown").slice(0, 10).map((c, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, (youtubeTakeout.channel_rankings_json || []).filter((c) => (c.channelName || "").trim().toLowerCase() !== "unknown").length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                      <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${0 + i * 36},70%,55%), hsl(${20 + i * 36},60%,60%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "rgba(255,255,255,0.9)" }}>▶</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.channelName || "—"}</div>
+                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{c.watchCount?.toLocaleString?.() ?? 0} video{c.watchCount !== 1 ? "s" : ""}</div>
+                      </div>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(c.totalMinutes).toLocaleString()} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+                    </div>
+                  ))}</Card>
+                </>
+              )}
+
+              {/* 2. Top videos (Takeout) - strip leading "Watched " from title */}
+              {(youtubeTakeout?.video_rankings_json?.length > 0) && (
+                <>
+                  <Sec icon="🎬">Top videos (Takeout)</Sec>
+                  <Card>{(youtubeTakeout.video_rankings_json || []).slice(0, 10).map((v, i) => {
+                    const displayTitle = (v.title || "").replace(/^Watched\s+/i, "").trim() || "Unknown";
+                    return (
+                      <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, (youtubeTakeout.video_rankings_json || []).length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                        <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${260 + i * 8},65%,${50 + i * 4}%), hsl(${270 + i * 10},55%,${60 + i * 3}%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "rgba(255,255,255,0.9)" }}>♪</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayTitle}</div>
+                          <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{v.channelName || ""}{v.watchCount > 1 ? ` · ${v.watchCount} views` : ""}</div>
+                        </div>
+                        <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(v.totalMinutes).toLocaleString()} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+                      </div>
+                    );
+                  })}</Card>
+                </>
+              )}
+
+              {/* 3. Watch time over time - by year first, "See more" for months */}
+              {youtubeTakeout?.watch_trend_json?.length > 0 && (() => {
+                const trend = youtubeTakeout.watch_trend_json || [];
+                const byYear = trend.reduce((acc, row) => {
+                  const y = (row.month || "").split("-")[0];
+                  if (!y) return acc;
+                  acc[y] = (acc[y] || 0) + (row.minutes || 0);
+                  return acc;
+                }, {});
+                const yearRows = Object.entries(byYear).sort((a, b) => a[0].localeCompare(b[0])).map(([year, minutes]) => ({ year, minutes: Math.round(minutes * 10) / 10 }));
+                return (
+                  <>
+                    <Sec icon="📈">Watch time over time</Sec>
+                    <Card>
+                      {yearRows.map((row, i) => {
+                        const maxMin = Math.max(1, ...yearRows.map((r) => r.minutes));
+                        const pct = Math.min(100, ((row.minutes || 0) / maxMin) * 100);
+                        return (
+                          <div key={row.year} style={{ padding: "10px 20px", borderBottom: i < yearRows.length - 1 ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                              <span style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b" }}>{row.year}</span>
+                              <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(row.minutes || 0).toLocaleString()} min</span>
+                            </div>
+                            <div style={{ height: 8, borderRadius: 4, background: "rgba(13,148,136,0.12)", overflow: "hidden" }}>
+                              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: "linear-gradient(90deg, #0d9488, #10b981)", transition: "width 0.2s ease" }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {trend.length > 0 && (
+                        <div style={{ padding: "12px 20px" }}>
+                          <button type="button" onClick={() => setWatchTrendExpanded((e) => !e)} style={{ border: "none", background: "none", padding: 0, fontFamily: F, fontSize: 13, fontWeight: 600, color: "#0d9488", cursor: "pointer", textDecoration: "underline" }}>{watchTrendExpanded ? "See less" : "See more"}</button>
+                          {watchTrendExpanded && trend.map((row, i) => {
+                            const [y, m] = (row.month || "").split("-");
+                            const monthLabel = y && m ? new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : row.month;
+                            const maxMin = Math.max(1, ...trend.map((r) => r.minutes || 0));
+                            const pct = Math.min(100, ((row.minutes || 0) / maxMin) * 100);
+                            return (
+                              <div key={i} style={{ padding: "8px 0", borderTop: "1px solid rgba(13,148,136,0.08)" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                                  <span style={{ fontFamily: F, fontSize: 13, fontWeight: 500, color: "#1e1b4b" }}>{monthLabel}</span>
+                                  <span style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#0f766e" }}>{Math.round(row.minutes || 0).toLocaleString()} min</span>
+                                </div>
+                                <div style={{ height: 6, borderRadius: 3, background: "rgba(13,148,136,0.1)", overflow: "hidden" }}>
+                                  <div style={{ width: `${pct}%`, height: "100%", borderRadius: 3, background: "linear-gradient(90deg, #0d9488, #10b981)" }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </Card>
+                  </>
+                );
+              })()}
+
+              {/* 4. Watch history (Takeout) import card */}
+              <Sec icon="📥">Watch history (Takeout)</Sec>
               <Card style={{ padding: "16px 20px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-                  <div>
-                    <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{youtube.youtube_channel_title || "YouTube"}</div>
-                    <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)" }}>Subscriptions: {youtube.subscription_count} · Playlists: {youtube.playlist_count} · Likes: {youtube.liked_count}</div>
-                    {youtube.last_fetched_at && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)", marginTop: 4 }}>Last synced: {new Date(youtube.last_fetched_at).toLocaleDateString()}</div>}
-                  </div>
-                  {onYoutubeSync && <button type="button" onClick={handleRefresh} disabled={youtubeSyncing} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: youtubeSyncing ? "wait" : "pointer" }}>{youtubeSyncing ? "Refreshing…" : "Refresh"}</button>}
-                </div>
+                <input ref={takeoutInputRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleTakeoutFile} />
+                {!youtubeTakeout ? (
+                  <>
+                    <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Import your YouTube watch history from Google Takeout (takeout.google.com → YouTube → History, JSON). Adds total watch time to your stats.</div>
+                    {onYoutubeTakeoutImport && <Btn onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting}>{takeoutImporting ? "Importing…" : "Import from Takeout"}</Btn>}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{youtubeTakeout.video_count.toLocaleString()} videos · {Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min total watch time</div>
+                    <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)", marginTop: 4 }}>Imported {youtubeTakeout.imported_at ? new Date(youtubeTakeout.imported_at).toLocaleDateString() : ""}</div>
+                    {onYoutubeTakeoutImport && <button type="button" onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting} style={{ marginTop: 12, padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: takeoutImporting ? "wait" : "pointer" }}>{takeoutImporting ? "Importing…" : "Re-import Takeout"}</button>}
+                  </>
+                )}
               </Card>
+
+              {/* 5. Subscriptions (ranked by your likes) */}
               {rankedSubs.length > 0 && (
                 <>
                   <Sec icon="📌">Subscriptions (ranked by your likes)</Sec>
@@ -130,19 +263,8 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
                   ))}</Card>
                 </>
               )}
-              {likedVideos.length > 0 && (
-                <>
-                  <Sec icon="👍">Recent liked videos</Sec>
-                  <Card>{likedVideos.slice(0, 8).map((v, i) => (
-                    <div key={v.videoId || i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(7, likedVideos.length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
-                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{v.channelTitle}</div>
-                      </div>
-                    </div>
-                  ))}</Card>
-                </>
-              )}
+
+              {/* 6. Playlists */}
               {playlists.length > 0 && playlists.length <= 15 && (
                 <>
                   <Sec icon="📁">Playlists</Sec>
@@ -156,86 +278,54 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
                   ))}</Card>
                 </>
               )}
+
+              {/* 7. Recent liked videos */}
+              {likedVideos.length > 0 && (
+                <>
+                  <Sec icon="👍">Recent liked videos</Sec>
+                  <Card>{likedVideos.slice(0, 8).map((v, i) => (
+                    <div key={v.videoId || i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(7, likedVideos.length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
+                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{v.channelTitle}</div>
+                      </div>
+                    </div>
+                  ))}</Card>
+                </>
+              )}
             </>
           )}
 
-          {/* YouTube Takeout: watch history import */}
-          <Sec icon="📥">Watch history (Takeout)</Sec>
-          <Card style={{ padding: "16px 20px" }}>
-            <input ref={takeoutInputRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleTakeoutFile} />
-            {!youtubeTakeout ? (
-              <>
-                <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Import your YouTube watch history from Google Takeout (takeout.google.com → YouTube → History, JSON). Adds total watch time to your stats.</div>
-                {onYoutubeTakeoutImport && <Btn onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting}>{takeoutImporting ? "Importing…" : "Import from Takeout"}</Btn>}
-              </>
-            ) : (
-              <>
-                <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{youtubeTakeout.video_count.toLocaleString()} videos · {Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min total watch time</div>
-                <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)", marginTop: 4 }}>Imported {youtubeTakeout.imported_at ? new Date(youtubeTakeout.imported_at).toLocaleDateString() : ""}</div>
-                {onYoutubeTakeoutImport && <button type="button" onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting} style={{ marginTop: 12, padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: takeoutImporting ? "wait" : "pointer" }}>{takeoutImporting ? "Importing…" : "Re-import Takeout"}</button>}
-              </>
-            )}
-          </Card>
-
-          {/* Takeout rankings and trend (after re-import, data comes from new columns) */}
-          {(youtubeTakeout?.channel_rankings_json?.length > 0 || youtubeTakeout?.video_rankings_json?.length > 0 || youtubeTakeout?.watch_trend_json?.length > 0) && (
+          {/* When YouTube not connected: still show Takeout import and any Takeout rankings if present */}
+          {!youtube && youtubeTakeout && (youtubeTakeout?.channel_rankings_json?.length > 0 || youtubeTakeout?.video_rankings_json?.length > 0 || youtubeTakeout?.watch_trend_json?.length > 0) && (
             <>
-              {youtubeTakeout.channel_rankings_json?.length > 0 && (
-                <>
-                  <Sec icon="📺">Top channels (Takeout)</Sec>
-                  <Card>{(youtubeTakeout.channel_rankings_json || []).slice(0, 10).map((c, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, (youtubeTakeout.channel_rankings_json || []).length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
-                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
-                      <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${0 + i * 36},70%,55%), hsl(${20 + i * 36},60%,60%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "rgba(255,255,255,0.9)" }}>▶</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.channelName || "Unknown"}</div>
-                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{c.watchCount?.toLocaleString?.() ?? 0} video{c.watchCount !== 1 ? "s" : ""}</div>
-                      </div>
-                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(c.totalMinutes).toLocaleString()} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+              <Sec icon="📺">Top channels (Takeout)</Sec>
+              <Card>{(youtubeTakeout.channel_rankings_json || []).filter((c) => (c.channelName || "").trim().toLowerCase() !== "unknown").slice(0, 10).map((c, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, (youtubeTakeout.channel_rankings_json || []).filter((x) => (x.channelName || "").trim().toLowerCase() !== "unknown").length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                  <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${0 + i * 36},70%,55%), hsl(${20 + i * 36},60%,60%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "rgba(255,255,255,0.9)" }}>▶</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.channelName || "—"}</div>
+                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{c.watchCount?.toLocaleString?.() ?? 0} video{c.watchCount !== 1 ? "s" : ""}</div>
+                  </div>
+                  <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(c.totalMinutes).toLocaleString()} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+                </div>
+              ))}</Card>
+              <Sec icon="🎬">Top videos (Takeout)</Sec>
+              <Card>{(youtubeTakeout.video_rankings_json || []).slice(0, 10).map((v, i) => {
+                const displayTitle = (v.title || "").replace(/^Watched\s+/i, "").trim() || "Unknown";
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, (youtubeTakeout.video_rankings_json || []).length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                    <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${260 + i * 8},65%,${50 + i * 4}%), hsl(${270 + i * 10},55%,${60 + i * 3}%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "rgba(255,255,255,0.9)" }}>♪</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayTitle}</div>
+                      <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{v.channelName || ""}{v.watchCount > 1 ? ` · ${v.watchCount} views` : ""}</div>
                     </div>
-                  ))}</Card>
-                </>
-              )}
-              {youtubeTakeout.video_rankings_json?.length > 0 && (
-                <>
-                  <Sec icon="🎬">Top videos (Takeout)</Sec>
-                  <Card>{(youtubeTakeout.video_rankings_json || []).slice(0, 10).map((v, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, (youtubeTakeout.video_rankings_json || []).length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
-                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
-                      <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${260 + i * 8},65%,${50 + i * 4}%), hsl(${270 + i * 10},55%,${60 + i * 3}%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "rgba(255,255,255,0.9)" }}>♪</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.title || "Unknown"}</div>
-                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{v.channelName || ""}{v.watchCount > 1 ? ` · ${v.watchCount} views` : ""}</div>
-                      </div>
-                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(v.totalMinutes).toLocaleString()} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
-                    </div>
-                  ))}</Card>
-                </>
-              )}
-              {youtubeTakeout.watch_trend_json?.length > 0 && (
-                <>
-                  <Sec icon="📈">Watch time over time</Sec>
-                  <Card>
-                    {(youtubeTakeout.watch_trend_json || []).map((row, i) => {
-                      const [y, m] = (row.month || "").split("-");
-                      const monthLabel = y && m ? new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : row.month;
-                      const maxMin = Math.max(1, ...(youtubeTakeout.watch_trend_json || []).map((r) => r.minutes || 0));
-                      const pct = Math.min(100, ((row.minutes || 0) / maxMin) * 100);
-                      return (
-                        <div key={i} style={{ padding: "10px 20px", borderBottom: i < (youtubeTakeout.watch_trend_json || []).length - 1 ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                            <span style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b" }}>{monthLabel}</span>
-                            <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(row.minutes || 0).toLocaleString()} min</span>
-                          </div>
-                          <div style={{ height: 8, borderRadius: 4, background: "rgba(13,148,136,0.12)", overflow: "hidden" }}>
-                            <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: "linear-gradient(90deg, #0d9488, #10b981)", transition: "width 0.2s ease" }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </Card>
-                </>
-              )}
+                    <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(v.totalMinutes).toLocaleString()} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+                  </div>
+                );
+              })}</Card>
             </>
           )}
         </>
@@ -255,8 +345,6 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px", fontFamily: F, fontSize: 13, color: "#1e1b4b" }}>
               <span style={{ color: "rgba(55,48,107,0.55)" }}>Total hours</span><span style={{ fontWeight: 600, textAlign: "right" }}>{data.totalHours.toLocaleString()}</span>
               <span style={{ color: "rgba(55,48,107,0.55)" }}>Total minutes</span><span style={{ fontWeight: 600, textAlign: "right" }}>{Math.round(data.totalHours * 60).toLocaleString()}</span>
-              <span style={{ color: "rgba(55,48,107,0.55)" }}>Top artist</span><span style={{ fontWeight: 600, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data.topArtists[0]?.name ?? "—"}</span>
-              <span style={{ color: "rgba(55,48,107,0.55)" }}>Top track</span><span style={{ fontWeight: 600, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data.topTracks[0]?.name ?? "—"}</span>
               {data.startDate && data.endDate && <><span style={{ color: "rgba(55,48,107,0.55)" }}>Years in data</span><span style={{ fontWeight: 600, textAlign: "right" }}>{(Math.round((new Date(data.endDate) - new Date(data.startDate)) / (365.25 * 24 * 3600 * 1000) * 10) / 10)}</span></>}
             </div>
             {data.startDate && data.endDate && (
@@ -275,16 +363,15 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
             </div>
             <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", marginBottom: 12 }}>From your connected account (subscriptions, playlists, likes). Refresh to update.</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px", fontFamily: F, fontSize: 13, color: "#1e1b4b" }}>
+              {youtubeTakeout && youtubeTakeout.video_count > 0 && (
+                <>
+                  <span style={{ color: "rgba(55,48,107,0.55)" }}>Total watch time</span><span style={{ fontWeight: 600, textAlign: "right" }}>{Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min</span>
+                  <span style={{ color: "rgba(55,48,107,0.55)" }}>Total videos watched</span><span style={{ fontWeight: 600, textAlign: "right" }}>{youtubeTakeout.video_count.toLocaleString()}</span>
+                </>
+              )}
               <span style={{ color: "rgba(55,48,107,0.55)" }}>Total subscriptions</span><span style={{ fontWeight: 600, textAlign: "right" }}>{youtube.subscription_count ?? 0}</span>
               <span style={{ color: "rgba(55,48,107,0.55)" }}>Total playlists</span><span style={{ fontWeight: 600, textAlign: "right" }}>{youtube.playlist_count ?? 0}</span>
               <span style={{ color: "rgba(55,48,107,0.55)" }}>Liked videos (cached)</span><span style={{ fontWeight: 600, textAlign: "right" }}>{youtube.liked_count ?? 0}</span>
-              <span style={{ color: "rgba(55,48,107,0.55)" }}>Channel</span><span style={{ fontWeight: 600, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{youtube.youtube_channel_title ?? "—"}</span>
-              {youtubeTakeout && youtubeTakeout.video_count > 0 && (
-                <>
-                  <span style={{ color: "rgba(55,48,107,0.55)" }}>Total watch time (Takeout)</span><span style={{ fontWeight: 600, textAlign: "right" }}>{Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min</span>
-                  <span style={{ color: "rgba(55,48,107,0.55)" }}>Videos in Takeout</span><span style={{ fontWeight: 600, textAlign: "right" }}>{youtubeTakeout.video_count.toLocaleString()}</span>
-                </>
-              )}
             </div>
           </div>
           )}
@@ -292,8 +379,8 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
           <div style={{ padding: "16px 20px", borderTop: "1px solid rgba(13,148,136,0.12)" }}>
             <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", marginBottom: 8 }}>From Takeout import (no YouTube connected)</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px", fontFamily: F, fontSize: 13, color: "#1e1b4b" }}>
-              <span style={{ color: "rgba(55,48,107,0.55)" }}>Total watch time (Takeout)</span><span style={{ fontWeight: 600, textAlign: "right" }}>{Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min</span>
-              <span style={{ color: "rgba(55,48,107,0.55)" }}>Videos in Takeout</span><span style={{ fontWeight: 600, textAlign: "right" }}>{youtubeTakeout.video_count.toLocaleString()}</span>
+              <span style={{ color: "rgba(55,48,107,0.55)" }}>Total watch time</span><span style={{ fontWeight: 600, textAlign: "right" }}>{Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min</span>
+              <span style={{ color: "rgba(55,48,107,0.55)" }}>Total videos watched</span><span style={{ fontWeight: 600, textAlign: "right" }}>{youtubeTakeout.video_count.toLocaleString()}</span>
             </div>
           </div>
           )}
