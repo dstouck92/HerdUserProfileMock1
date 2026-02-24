@@ -129,11 +129,19 @@ export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supab
   );
 };
 
-export const Sec = ({ children, icon, right, onRightClick }) => (
+export const Sec = ({ children, icon, right, onRightClick, onToggle, isOpen }) => (
   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", marginBottom: 10, marginTop: 4 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 8, cursor: onToggle ? "pointer" : "default" }}
+      onClick={onToggle}
+    >
       {icon && <span style={{ fontSize: 20 }}>{icon}</span>}
       <span style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: "#1e1b4b" }}>{children}</span>
+      {onToggle && (
+        <span style={{ marginLeft: 6, fontSize: 14, color: "rgba(55,48,107,0.55)" }}>
+          {isOpen ? "▾" : "▸"}
+        </span>
+      )}
     </div>
     {right && (
       <button

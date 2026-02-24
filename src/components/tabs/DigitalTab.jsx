@@ -7,6 +7,9 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
   const [insightsModal, setInsightsModal] = useState(null);
   const [youtubeSyncing, setYoutubeSyncing] = useState(false);
   const [takeoutImporting, setTakeoutImporting] = useState(false);
+   const [spotifyOpen, setSpotifyOpen] = useState(true);
+   const [youtubeOpen, setYoutubeOpen] = useState(true);
+   const [usageOpen, setUsageOpen] = useState(true);
   const takeoutInputRef = useRef(null);
 
   const artistsToShow = data?.topArtists?.slice(0, 10) ?? [];
@@ -54,125 +57,133 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
   return (
     <div>
       {/* Spotify section */}
-      {data ? (
-        <>
-          <Stats stats={[{ value: Math.round(data.totalHours * 60).toLocaleString(), label: "Total Minutes" }, { value: data.uniqueArtists.toLocaleString(), label: "Artists" }, { value: data.uniqueTracks.toLocaleString(), label: "Tracks" }]} />
-          <div style={{ margin: "0 20px 12px", display: "flex", justifyContent: "flex-end" }}>
-            <button type="button" onClick={onUpload} style={{ border: "none", background: "none", padding: 0, fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0d9488", cursor: "pointer", textDecoration: "underline" }}>Re-upload Spotify history</button>
-          </div>
-          <Sec icon="🎵" right={hasMoreArtists ? "View All ›" : undefined} onRightClick={hasMoreArtists ? () => setInsightsModal("artists") : undefined}>Top Artists</Sec>
-          <Card>{artistsToShow.map((a, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12 }}>
-              <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
-              <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${240 + i * 10},70%,${55 + i * 4}%), hsl(${250 + i * 12},60%,${65 + i * 3}%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "rgba(255,255,255,0.8)" }}>♫</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</div>
-                <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{getTopTrackForArtist(a.name) ? `Top Track: ${getTopTrackForArtist(a.name).name}` : `${a.plays.toLocaleString()} plays`}</div>
-              </div>
-              <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(a.hours * 60)} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
-            </div>
-          ))}</Card>
-          <Sec icon="🎶" right={hasMoreTracks ? "View All ›" : undefined} onRightClick={hasMoreTracks ? () => setInsightsModal("tracks") : undefined}>Top Songs</Sec>
-          <Card>{tracksToShow.map((t, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12 }}>
-              <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
-              <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${260 + i * 8},65%,${50 + i * 4}%), hsl(${270 + i * 10},55%,${60 + i * 3}%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "rgba(255,255,255,0.8)" }}>♪</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</div>
-                <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{t.artist}</div>
-              </div>
-              <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(t.hours * 60)} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
-            </div>
-          ))}</Card>
-        </>
-      ) : (
-        <Empty icon="🎵" title="No Streaming Data Yet" desc="Upload your Spotify Extended Streaming History to see top artists, songs, and stats." btn="Upload Spotify History" onAction={onUpload} />
-      )}
-
-      {/* YouTube section */}
-      <Sec icon="▶️">YouTube</Sec>
-      {!youtube ? (
-        <Card style={{ padding: "20px" }}>
-          <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Connect your YouTube account to see subscriptions, playlists, and liked videos. Data is cached and you can refresh anytime.</div>
-          {onYoutubeConnect && <Btn onClick={onYoutubeConnect}>Connect YouTube</Btn>}
-        </Card>
-      ) : (
-        <>
-          <Card style={{ padding: "16px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-              <div>
-                <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{youtube.youtube_channel_title || "YouTube"}</div>
-                <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)" }}>Subscriptions: {youtube.subscription_count} · Playlists: {youtube.playlist_count} · Likes: {youtube.liked_count}</div>
-                {youtube.last_fetched_at && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)", marginTop: 4 }}>Last synced: {new Date(youtube.last_fetched_at).toLocaleDateString()}</div>}
-              </div>
-              {onYoutubeSync && <button type="button" onClick={handleRefresh} disabled={youtubeSyncing} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: youtubeSyncing ? "wait" : "pointer" }}>{youtubeSyncing ? "Refreshing…" : "Refresh"}</button>}
-            </div>
-          </Card>
-          {rankedSubs.length > 0 && (
-            <>
-              <Sec icon="📌">Subscriptions (ranked by your likes)</Sec>
-              <Card>{rankedSubs.slice(0, 10).map((s, i) => (
-                <div key={s.channelId || i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, rankedSubs.length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
-                  <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.title}</div>
-                    {s.likedCount != null && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{s.likedCount} liked video{s.likedCount !== 1 ? "s" : ""}</div>}
-                  </div>
-                </div>
-              ))}</Card>
-            </>
-          )}
-          {likedVideos.length > 0 && (
-            <>
-              <Sec icon="👍">Recent liked videos</Sec>
-              <Card>{likedVideos.slice(0, 8).map((v, i) => (
-                <div key={v.videoId || i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(7, likedVideos.length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
-                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{v.channelTitle}</div>
-                  </div>
-                </div>
-              ))}</Card>
-            </>
-          )}
-          {playlists.length > 0 && playlists.length <= 15 && (
-            <>
-              <Sec icon="📁">Playlists</Sec>
-              <Card>{playlists.slice(0, 10).map((p, i) => (
-                <div key={p.id || i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, playlists.length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
-                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{p.itemCount ?? 0} items</div>
-                  </div>
-                </div>
-              ))}</Card>
-            </>
-          )}
-        </>
-      )}
-
-      {/* YouTube Takeout: watch history import */}
-      <Sec icon="📥">Watch history (Takeout)</Sec>
-      <Card style={{ padding: "16px 20px" }}>
-        <input ref={takeoutInputRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleTakeoutFile} />
-        {!youtubeTakeout ? (
+      <Sec icon="🎧" onToggle={() => setSpotifyOpen((v) => !v)} isOpen={spotifyOpen}>Spotify</Sec>
+      {spotifyOpen && (
+        data ? (
           <>
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Import your YouTube watch history from Google Takeout (takeout.google.com → YouTube → History, JSON). Adds total watch time to your stats.</div>
-            {onYoutubeTakeoutImport && <Btn onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting}>{takeoutImporting ? "Importing…" : "Import from Takeout"}</Btn>}
+            <Stats stats={[{ value: Math.round(data.totalHours * 60).toLocaleString(), label: "Total Minutes" }, { value: data.uniqueArtists.toLocaleString(), label: "Artists" }, { value: data.uniqueTracks.toLocaleString(), label: "Tracks" }]} />
+            <div style={{ margin: "0 20px 12px", display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" onClick={onUpload} style={{ border: "none", background: "none", padding: 0, fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0d9488", cursor: "pointer", textDecoration: "underline" }}>Re-upload Spotify history</button>
+            </div>
+            <Sec icon="🎵" right={hasMoreArtists ? "View All ›" : undefined} onRightClick={hasMoreArtists ? () => setInsightsModal("artists") : undefined}>Top Artists</Sec>
+            <Card>{artistsToShow.map((a, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12 }}>
+                <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${240 + i * 10},70%,${55 + i * 4}%), hsl(${250 + i * 12},60%,${65 + i * 3}%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "rgba(255,255,255,0.8)" }}>♫</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</div>
+                  <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{getTopTrackForArtist(a.name) ? `Top Track: ${getTopTrackForArtist(a.name).name}` : `${a.plays.toLocaleString()} plays`}</div>
+                </div>
+                <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(a.hours * 60)} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+              </div>
+            ))}</Card>
+            <Sec icon="🎶" right={hasMoreTracks ? "View All ›" : undefined} onRightClick={hasMoreTracks ? () => setInsightsModal("tracks") : undefined}>Top Songs</Sec>
+            <Card>{tracksToShow.map((t, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12 }}>
+                <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, hsl(${260 + i * 8},65%,${50 + i * 4}%), hsl(${270 + i * 10},55%,${60 + i * 3}%))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "rgba(255,255,255,0.8)" }}>♪</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</div>
+                  <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{t.artist}</div>
+                </div>
+                <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e" }}>{Math.round(t.hours * 60)} <span style={{ fontWeight: 500, fontSize: 12, color: "rgba(55,48,107,0.45)" }}>min</span></span>
+              </div>
+            ))}</Card>
           </>
         ) : (
-          <>
-            <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{youtubeTakeout.video_count.toLocaleString()} videos · {Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min total watch time</div>
-            <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)", marginTop: 4 }}>Imported {youtubeTakeout.imported_at ? new Date(youtubeTakeout.imported_at).toLocaleDateString() : ""}</div>
-            {onYoutubeTakeoutImport && <button type="button" onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting} style={{ marginTop: 12, padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: takeoutImporting ? "wait" : "pointer" }}>{takeoutImporting ? "Importing…" : "Re-import Takeout"}</button>}
-          </>
-        )}
-      </Card>
+          <Empty icon="🎵" title="No Streaming Data Yet" desc="Upload your Spotify Extended Streaming History to see top artists, songs, and stats." btn="Upload Spotify History" onAction={onUpload} />
+        )
+      )}
+
+      {/* YouTube section (includes Takeout) */}
+      <Sec icon="▶️" onToggle={() => setYoutubeOpen((v) => !v)} isOpen={youtubeOpen}>YouTube</Sec>
+      {youtubeOpen && (
+        <>
+          {!youtube ? (
+            <Card style={{ padding: "20px" }}>
+              <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Connect your YouTube account to see subscriptions, playlists, and liked videos. Data is cached and you can refresh anytime.</div>
+              {onYoutubeConnect && <Btn onClick={onYoutubeConnect}>Connect YouTube</Btn>}
+            </Card>
+          ) : (
+            <>
+              <Card style={{ padding: "16px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                  <div>
+                    <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{youtube.youtube_channel_title || "YouTube"}</div>
+                    <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)" }}>Subscriptions: {youtube.subscription_count} · Playlists: {youtube.playlist_count} · Likes: {youtube.liked_count}</div>
+                    {youtube.last_fetched_at && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)", marginTop: 4 }}>Last synced: {new Date(youtube.last_fetched_at).toLocaleDateString()}</div>}
+                  </div>
+                  {onYoutubeSync && <button type="button" onClick={handleRefresh} disabled={youtubeSyncing} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: youtubeSyncing ? "wait" : "pointer" }}>{youtubeSyncing ? "Refreshing…" : "Refresh"}</button>}
+                </div>
+              </Card>
+              {rankedSubs.length > 0 && (
+                <>
+                  <Sec icon="📌">Subscriptions (ranked by your likes)</Sec>
+                  <Card>{rankedSubs.slice(0, 10).map((s, i) => (
+                    <div key={s.channelId || i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, rankedSubs.length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "rgba(55,48,107,0.35)", width: 18, textAlign: "right" }}>{i + 1}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.title}</div>
+                        {s.likedCount != null && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.45)" }}>{s.likedCount} liked video{s.likedCount !== 1 ? "s" : ""}</div>}
+                      </div>
+                    </div>
+                  ))}</Card>
+                </>
+              )}
+              {likedVideos.length > 0 && (
+                <>
+                  <Sec icon="👍">Recent liked videos</Sec>
+                  <Card>{likedVideos.slice(0, 8).map((v, i) => (
+                    <div key={v.videoId || i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(7, likedVideos.length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
+                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{v.channelTitle}</div>
+                      </div>
+                    </div>
+                  ))}</Card>
+                </>
+              )}
+              {playlists.length > 0 && playlists.length <= 15 && (
+                <>
+                  <Sec icon="📁">Playlists</Sec>
+                  <Card>{playlists.slice(0, 10).map((p, i) => (
+                    <div key={p.id || i} style={{ display: "flex", alignItems: "center", padding: "10px 20px", gap: 12, borderBottom: i < Math.min(9, playlists.length - 1) ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
+                        <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{p.itemCount ?? 0} items</div>
+                      </div>
+                    </div>
+                  ))}</Card>
+                </>
+              )}
+            </>
+          )}
+
+          {/* YouTube Takeout: watch history import */}
+          <Sec icon="📥">Watch history (Takeout)</Sec>
+          <Card style={{ padding: "16px 20px" }}>
+            <input ref={takeoutInputRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleTakeoutFile} />
+            {!youtubeTakeout ? (
+              <>
+                <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", marginBottom: 14 }}>Import your YouTube watch history from Google Takeout (takeout.google.com → YouTube → History, JSON). Adds total watch time to your stats.</div>
+                {onYoutubeTakeoutImport && <Btn onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting}>{takeoutImporting ? "Importing…" : "Import from Takeout"}</Btn>}
+              </>
+            ) : (
+              <>
+                <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{youtubeTakeout.video_count.toLocaleString()} videos · {Math.round(youtubeTakeout.total_watch_minutes).toLocaleString()} min total watch time</div>
+                <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)", marginTop: 4 }}>Imported {youtubeTakeout.imported_at ? new Date(youtubeTakeout.imported_at).toLocaleDateString() : ""}</div>
+                {onYoutubeTakeoutImport && <button type="button" onClick={() => takeoutInputRef.current?.click()} disabled={takeoutImporting} style={{ marginTop: 12, padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: takeoutImporting ? "wait" : "pointer" }}>{takeoutImporting ? "Importing…" : "Re-import Takeout"}</button>}
+              </>
+            )}
+          </Card>
+        </>
+      )}
 
       {/* Platform usage */}
-      <Sec icon="📊">Platform Usage</Sec>
-      <Card>
-        {data && (
+      <Sec icon="📊" onToggle={() => setUsageOpen((v) => !v)} isOpen={usageOpen}>Platform Usage</Sec>
+      {usageOpen && (
+        <Card>
+          {data && (
           <div style={{ padding: "16px 20px", borderBottom: youtube ? "1px solid rgba(13,148,136,0.12)" : "none" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: 14, gap: 12 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: "#1DB954", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16 }}>♫</div>
@@ -193,8 +204,8 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
               </div>
             )}
           </div>
-        )}
-        {youtube && (
+          )}
+          {youtube && (
           <div style={{ padding: "16px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: youtube && data ? 14 : 0, gap: 12 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: "#FF0000", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14 }}>▶</div>
@@ -214,8 +225,8 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
               )}
             </div>
           </div>
-        )}
-        {youtubeTakeout && !youtube && (
+          )}
+          {youtubeTakeout && !youtube && (
           <div style={{ padding: "16px 20px", borderTop: "1px solid rgba(13,148,136,0.12)" }}>
             <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", marginBottom: 8 }}>From Takeout import (no YouTube connected)</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px", fontFamily: F, fontSize: 13, color: "#1e1b4b" }}>
@@ -223,11 +234,12 @@ export default function DigitalTab({ data, onUpload, youtube, youtubeTakeout, on
               <span style={{ color: "rgba(55,48,107,0.55)" }}>Videos in Takeout</span><span style={{ fontWeight: 600, textAlign: "right" }}>{youtubeTakeout.video_count.toLocaleString()}</span>
             </div>
           </div>
-        )}
-        {!data && !youtube && (
+          )}
+          {!data && !youtube && (
           <div style={{ padding: "16px 20px", fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.55)" }}>Connect Spotify (upload) or YouTube above to see platform stats here.</div>
-        )}
-      </Card>
+          )}
+        </Card>
+      )}
 
       {data && insightsModal && (
         <InsightsModal mode={insightsModal} data={data} onClose={() => setInsightsModal(null)} />
