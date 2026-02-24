@@ -38,6 +38,10 @@ export default function App() {
       return;
     }
     let cancelled = false;
+    // Show login screen after short max wait so page feels fast; session check continues in background.
+    const showLoginTimer = setTimeout(() => {
+      if (!cancelled) setAuthLoading(false);
+    }, 500);
     const loadSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -71,6 +75,7 @@ export default function App() {
     });
     return () => {
       cancelled = true;
+      clearTimeout(showLoginTimer);
       subscription?.unsubscribe();
     };
   }, []);
