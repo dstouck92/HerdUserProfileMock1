@@ -58,13 +58,20 @@ export default function AuthScreen({ onAuth }) {
     if (supabase) {
       setLoading(true);
       setError("");
+      const LOGIN_TIMEOUT_MS = 20000;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out. Check your connection or try again.")), LOGIN_TIMEOUT_MS)
+      );
       try {
         if (mode === "signup") {
-          const { data, error: authError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { display_name: displayName, username, phone: phone.trim() || null } },
-          });
+          const { data, error: authError } = await Promise.race([
+            supabase.auth.signUp({
+              email,
+              password,
+              options: { data: { display_name: displayName, username, phone: phone.trim() || null } },
+            }),
+            timeoutPromise,
+          ]);
           if (authError) throw authError;
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user, displayName, username, phone.trim());
@@ -73,7 +80,10 @@ export default function AuthScreen({ onAuth }) {
             setError("Sign up succeeded but no user returned. Check your email to confirm, or try logging in.");
           }
         } else {
-          const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+          const { data, error: authError } = await Promise.race([
+            supabase.auth.signInWithPassword({ email, password }),
+            timeoutPromise,
+          ]);
           if (authError) throw authError;
           if (data?.user) {
             const profile = await getOrCreateProfile(data.user);
