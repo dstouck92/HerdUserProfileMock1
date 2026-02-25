@@ -48,15 +48,39 @@ export function parseSpotifyFiles(filesContent) {
       // Top artists/tracks: music only (rows with track + artist)
       if (!artist || !track) continue;
 
-      if (!artistStats[artist]) artistStats[artist] = { total_ms: 0, play_count: 0 };
+      const monthKey = r.ts ? (() => {
+        const d = new Date(r.ts);
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        return `${y}-${String(m).padStart(2, "0")}`;
+      })() : null;
+
+      if (!artistStats[artist]) artistStats[artist] = { total_ms: 0, play_count: 0, byMonth: {} };
       artistStats[artist].total_ms += ms;
       artistStats[artist].play_count++;
+      if (monthKey) {
+        const min = ms / 60000;
+        artistStats[artist].byMonth[monthKey] = (artistStats[artist].byMonth[monthKey] || 0) + min;
+      }
 
       const tk = `${track}|||${artist}|||${album || ""}`;
-      if (!trackStats[tk]) trackStats[tk] = { track, artist, album, total_ms: 0, play_count: 0 };
+      if (!trackStats[tk]) trackStats[tk] = { track, artist, album, total_ms: 0, play_count: 0, byMonth: {} };
       trackStats[tk].total_ms += ms;
       trackStats[tk].play_count++;
+      if (monthKey) {
+        const min = ms / 60000;
+        trackStats[tk].byMonth[monthKey] = (trackStats[tk].byMonth[monthKey] || 0) + min;
+      }
     }
+  }
+
+  const artistMinutesByMonth = {};
+  for (const [name, s] of Object.entries(artistStats)) {
+    if (s.byMonth && Object.keys(s.byMonth).length) artistMinutesByMonth[name] = s.byMonth;
+  }
+  const trackMinutesByMonth = {};
+  for (const [tk, s] of Object.entries(trackStats)) {
+    if (s.byMonth && Object.keys(s.byMonth).length) trackMinutesByMonth[tk] = s.byMonth;
   }
 
   return {
@@ -66,6 +90,8 @@ export function parseSpotifyFiles(filesContent) {
     uniqueTracks: Object.keys(trackStats).length,
     startDate: firstTs != null ? new Date(firstTs).toISOString() : null,
     endDate: lastTs != null ? new Date(lastTs).toISOString() : null,
+    artistMinutesByMonth,
+    trackMinutesByMonth,
     topArtists: Object.entries(artistStats)
       .map(([name, s]) => ({
         name,

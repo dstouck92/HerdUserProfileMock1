@@ -465,35 +465,165 @@ function YouTubeViewAllModal({ onClose, rankedSubs, playlists, likedVideos, yout
   );
 }
 
-// --- Insights modal (View All): pie chart, averages, vibe, top 50 list ---
-const PIE_COLORS = ["#0d9488", "#10b981", "#34d399", "#6ee7b7", "#14b8a6", "#0d9488", "#94a3b8"];
-function InsightsModal({ mode, data, onClose }) {
-  const totalMinutes = data.totalHours * 60;
-  const musicMinutes = data.topArtists.reduce((s, a) => s + a.hours * 60, 0);
-  const top50Artists = data.topArtists.slice(0, 50);
-  const top50Tracks = data.topTracks.slice(0, 50);
+// --- Insights modal (View All): line graphs + time/top-N filters + tables (no pie, no bio) ---
+const LINE_COLORS = ["#0d9488", "#10b981", "#059669", "#0f766e", "#134e4a", "#34d399", "#6ee7b7", "#14b8a6", "#5eead4", "#99f6e4", "#94a3b8", "#64748b", "#475569", "#334155", "#1e293b"];
 
-  // Pie: top 6 artists or top 6 tracks by listen time (music only so % add up)
-  const pieSlices = mode === "artists"
-    ? top50Artists.slice(0, 6).map((a) => ({ label: a.name, value: a.hours * 60 }))
-    : top50Tracks.slice(0, 6).map((t) => ({ label: t.name, value: t.hours * 60 }));
-  const sliceSum = pieSlices.reduce((s, x) => s + x.value, 0);
-  const otherMinutes = Math.max(0, musicMinutes - sliceSum);
-  if (otherMinutes > 0) pieSlices.push({ label: "Other", value: otherMinutes });
-  const totalPie = pieSlices.reduce((s, x) => s + x.value, 0) || 1;
-  let acc = 0;
-  const conicParts = pieSlices.map((s, i) => {
-    const pct = (s.value / totalPie) * 100;
-    const start = acc;
-    acc += pct;
-    return `${PIE_COLORS[i % PIE_COLORS.length]} ${start}% ${acc}%`;
+function getAllMonthsFromData(minutesByMonth) {
+  const set = new Set();
+  for (const obj of Object.values(minutesByMonth || {})) {
+    if (obj && typeof obj === "object") Object.keys(obj).forEach((m) => set.add(m));
+  }
+  return Array.from(set).sort();
+}
+
+function getMonthsInRange(allMonths, timePeriod) {
+  if (!timePeriod || timePeriod === "all") return allMonths;
+  return allMonths.filter((m) => m.startsWith(String(timePeriod)));
+}
+
+function sumMinutesInMonths(byMonth, monthsInRange) {
+  if (!byMonth || !monthsInRange.length) return 0;
+  return monthsInRange.reduce((s, m) => s + (byMonth[m] || 0), 0);
+}
+
+function SpotifyLineBlock({ title, topItems, minutesByMonth, getKey, getLabel, getSublabel, timePeriod, setTimePeriod, topN, setTopN }) {
+  const allMonths = getAllMonthsFromData(minutesByMonth);
+  const years = [...new Set(allMonths.map((m) => m.split("-")[0]))].sort((a, b) => Number(b) - Number(a));
+  const periodOptions = [{ value: "all", label: "All time" }, ...years.map((y) => ({ value: y, label: y }))];
+  const monthsInRange = getMonthsInRange(allMonths, timePeriod);
+  const topNVal = topN || 10;
+  const topNOptions = [10, 20, 30, 40, 50];
+
+  const hasMonthlyData = allMonths.length > 0;
+  const tableItems = (topItems || []).slice(0, 50).map((item) => {
+    const key = getKey(item);
+    const byMonth = (minutesByMonth || {})[key] || {};
+    const minutesInPeriod = hasMonthlyData ? sumMinutesInMonths(byMonth, monthsInRange) : (item.hours != null ? item.hours * 60 : 0);
+    return { ...item, key, minutesInPeriod };
   });
-  const conicGradient = `conic-gradient(${conicParts.join(", ")})`;
 
-  const avgMinPerArtist = data.topArtists.length ? totalMinutes / data.uniqueArtists : 0;
-  const avgPlaysPerTrack = data.topTracks.length ? data.topTracks.reduce((s, t) => s + t.plays, 0) / data.uniqueTracks : 0;
-  const topShare = data.topArtists[0] && musicMinutes > 0 ? (data.topArtists[0].hours * 60 / musicMinutes) * 100 : 0;
-  const vibeText = topShare > 15 ? "You're loyal to a few favorites — when you love an artist, you really go deep." : data.uniqueArtists > 500 ? "Eclectic listener — you explore widely across many artists and sounds." : "Your taste spans a solid mix of go-tos and discovery.";
+  const maxY = Math.max(1, ...tableItems.slice(0, topNVal).flatMap((item) => {
+    const byMonth = (minutesByMonth || {})[item.key] || {};
+    return monthsInRange.map((m) => byMonth[m] || 0);
+  }));
+
+  const chartW = 360;
+  const chartH = 180;
+  const pad = { left: 32, right: 12, top: 8, bottom: 28 };
+  const innerW = chartW - pad.left - pad.right;
+  const innerH = chartH - pad.top - pad.bottom;
+
+  const linesToShow = tableItems.slice(0, topNVal);
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b", marginBottom: 12 }}>{title}</div>
+      {!hasMonthlyData && (
+        <div style={{ padding: "12px 14px", background: "rgba(13,148,136,0.06)", borderRadius: 12, fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.7)", marginBottom: 12 }}>
+          Re-upload your Spotify history to see the line graph and filter by time period.
+        </div>
+      )}
+      {(hasMonthlyData ? (
+        <>
+          <div style={{ width: "100%", maxWidth: chartW, height: chartH, marginBottom: 12 }}>
+            <svg width="100%" height={chartH} viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+              {/* Y axis labels */}
+              {[0, 0.25, 0.5, 0.75, 1].map((p) => {
+                const y = pad.top + innerH * (1 - p);
+                const val = Math.round(maxY * p);
+                return (
+                  <text key={p} x={pad.left - 6} y={y + 4} textAnchor="end" fontFamily={F} fontSize={10} fill="rgba(55,48,107,0.5)">{val}</text>
+                );
+              })}
+              {/* X axis labels (months) */}
+              {monthsInRange.length > 0 && monthsInRange.map((m, i) => {
+                const x = pad.left + (innerW * (i + 0.5)) / monthsInRange.length;
+                const [, monthNum] = m.split("-");
+                const short = new Date(2000, Number(monthNum) - 1, 1).toLocaleDateString("en-US", { month: "short" });
+                return (
+                  <text key={m} x={x} y={chartH - 6} textAnchor="middle" fontFamily={F} fontSize={9} fill="rgba(55,48,107,0.5)">{short}</text>
+                );
+              })}
+              {/* Lines */}
+              {linesToShow.map((item, idx) => {
+                const byMonth = (minutesByMonth || {})[item.key] || {};
+                const points = monthsInRange.map((m, i) => {
+                  const x = pad.left + (innerW * (i + 0.5)) / monthsInRange.length;
+                  const v = byMonth[m] || 0;
+                  const y = maxY > 0 ? pad.top + innerH * (1 - v / maxY) : pad.top + innerH;
+                  return `${x},${y}`;
+                });
+                if (points.length < 2) return null;
+                return (
+                  <polyline
+                    key={item.key}
+                    points={points.join(" ")}
+                    fill="none"
+                    stroke={LINE_COLORS[idx % LINE_COLORS.length]}
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                );
+              })}
+            </svg>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.7)" }}>Time period:</span>
+              <select
+                value={timePeriod || "all"}
+                onChange={(e) => setTimePeriod(e.target.value)}
+                style={{ fontFamily: F, fontSize: 12, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.3)", background: "#fff", color: "#1e1b4b" }}
+              >
+                {periodOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.7)" }}>Top:</span>
+              <select
+                value={topNVal}
+                onChange={(e) => setTopN(Number(e.target.value))}
+                style={{ fontFamily: F, fontSize: 12, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.3)", background: "#fff", color: "#1e1b4b" }}
+              >
+                {topNOptions.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </>
+      ) : null)}
+      <div style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>{hasMonthlyData ? "Top 50 (minutes in selected period)" : "Top 50 (all-time minutes)"}</div>
+      <div style={{ maxHeight: 240, overflow: "auto", border: "1px solid rgba(13,148,136,0.15)", borderRadius: 12 }}>
+        {tableItems.map((item, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 10, borderBottom: i < tableItems.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
+            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "rgba(55,48,107,0.4)", width: 24, textAlign: "right" }}>{i + 1}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(item)}</div>
+              {getSublabel && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{getSublabel(item)}</div>}
+            </div>
+            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0f766e" }}>{Math.round(item.minutesInPeriod)} min</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InsightsModal({ mode, data, onClose }) {
+  const [artistTimePeriod, setArtistTimePeriod] = useState("all");
+  const [artistTopN, setArtistTopN] = useState(10);
+  const [trackTimePeriod, setTrackTimePeriod] = useState("all");
+  const [trackTopN, setTrackTopN] = useState(10);
+
+  const top50Artists = (data?.topArtists ?? []).slice(0, 50);
+  const top50Tracks = (data?.topTracks ?? []).slice(0, 50);
+  const artistMinutesByMonth = data?.artistMinutesByMonth ?? {};
+  const trackMinutesByMonth = data?.trackMinutesByMonth ?? {};
+  const trackKey = (t) => `${t.name}|||${t.artist}|||${t.album || ""}`;
 
   return (
     <div
@@ -502,49 +632,33 @@ function InsightsModal({ mode, data, onClose }) {
     >
       <div style={{ width: "100%", maxWidth: 420, maxHeight: "90vh", background: "#fff", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(13,148,136,0.12)" }}>
-          <span style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: "#1e1b4b" }}>{mode === "artists" ? "Artist Insights" : "Song Insights"}</span>
+          <span style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: "#1e1b4b" }}>Spotify — View All</span>
           <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>✕</button>
         </div>
         <div style={{ overflow: "auto", padding: "16px 20px", flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 20 }}>
-            <div style={{ width: 140, height: 140, borderRadius: "50%", background: conicGradient, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {pieSlices.slice(0, 7).map((s, i) => (
-                <div key={i} style={{ fontFamily: F, fontSize: 12, color: "#1e1b4b", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-                  <span style={{ color: "rgba(55,48,107,0.5)", marginLeft: "auto" }}>{((s.value / totalPie) * 100).toFixed(0)}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ marginBottom: 16, padding: "12px 14px", background: "rgba(13,148,136,0.08)", borderRadius: 12, fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.8)" }}>
-            <strong style={{ color: "#0f766e" }}>Averages:</strong> {Math.round(avgMinPerArtist)} min per artist · {avgPlaysPerTrack.toFixed(0)} plays per track (music). Based on your exported history (retroactive only).
-          </div>
-          <div style={{ marginBottom: 16, padding: "12px 14px", background: "rgba(236,72,153,0.06)", borderRadius: 12, fontFamily: F, fontSize: 13, color: "#1e1b4b", fontStyle: "italic" }}>
-            {vibeText}
-          </div>
-          <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>Top 50 {mode === "artists" ? "Artists" : "Songs"}</div>
-          <div style={{ maxHeight: 280, overflow: "auto", border: "1px solid rgba(13,148,136,0.15)", borderRadius: 12 }}>
-            {mode === "artists"
-              ? top50Artists.map((a, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 10, borderBottom: i < top50Artists.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
-                    <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "rgba(55,48,107,0.4)", width: 24, textAlign: "right" }}>{i + 1}</span>
-                    <span style={{ flex: 1, fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>
-                    <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0f766e" }}>{Math.round(a.hours * 60)} min</span>
-                  </div>
-                ))
-              : top50Tracks.map((t, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 10, borderBottom: i < top50Tracks.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
-                    <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "rgba(55,48,107,0.4)", width: 24, textAlign: "right" }}>{i + 1}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
-                      <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{t.artist}</div>
-                    </div>
-                    <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0f766e" }}>{Math.round(t.hours * 60)} min</span>
-                  </div>
-                ))}
-          </div>
+          <SpotifyLineBlock
+            title="Listening over time — Top Artists"
+            topItems={top50Artists}
+            minutesByMonth={artistMinutesByMonth}
+            getKey={(a) => a.name}
+            getLabel={(a) => a.name}
+            timePeriod={artistTimePeriod}
+            setTimePeriod={setArtistTimePeriod}
+            topN={artistTopN}
+            setTopN={setArtistTopN}
+          />
+          <SpotifyLineBlock
+            title="Listening over time — Top Songs"
+            topItems={top50Tracks}
+            minutesByMonth={trackMinutesByMonth}
+            getKey={trackKey}
+            getLabel={(t) => t.name}
+            getSublabel={(t) => t.artist}
+            timePeriod={trackTimePeriod}
+            setTimePeriod={setTrackTimePeriod}
+            topN={trackTopN}
+            setTopN={setTrackTopN}
+          />
         </div>
       </div>
     </div>

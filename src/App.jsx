@@ -142,6 +142,8 @@ export default function App() {
           featuredTracks: s.featured_tracks ?? [],
           startDate: s.start_date ?? null,
           endDate: s.end_date ?? null,
+          artistMinutesByMonth: s.artist_minutes_by_month ?? {},
+          trackMinutesByMonth: s.track_minutes_by_month ?? {},
         });
       }
     })();
@@ -403,6 +405,8 @@ export default function App() {
             featured_artists: defaultFeatured,
             start_date: d.startDate || null,
             end_date: d.endDate || null,
+            artist_minutes_by_month: d.artistMinutesByMonth ?? {},
+            track_minutes_by_month: d.trackMinutesByMonth ?? {},
             updated_at: new Date().toISOString(),
           },
           { onConflict: "user_id" },
