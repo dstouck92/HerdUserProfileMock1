@@ -10,6 +10,7 @@ import LiveTab from "./components/tabs/LiveTab";
 import DigitalTab from "./components/tabs/DigitalTab";
 import PhysicalTab from "./components/tabs/PhysicalTab";
 import CurateTab from "./components/tabs/CurateTab";
+import PublicProfile from "./PublicProfile";
 import { TabBar, ProfileHeader, F } from "./components/ui";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -27,6 +28,7 @@ export default function App() {
   const [showVinyl, setShowVinyl] = useState(false);
   const [showMerch, setShowMerch] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showPublicProfilePreview, setShowPublicProfilePreview] = useState(false);
   const [youtubeData, setYoutubeData] = useState(null);
   const [youtubeTakeout, setYoutubeTakeout] = useState(null);
   const navigate = useNavigate();
@@ -266,7 +268,7 @@ export default function App() {
 
   const handleViewPublicProfile = () => {
     if (!user?.username) return;
-    navigate(`/u/${user.username}`);
+    setShowPublicProfilePreview(true);
   };
 
   const handleAddConcert = async (c) => {
@@ -543,6 +545,21 @@ export default function App() {
       {editingConcert && <EditConcertModal concert={editingConcert} onClose={() => setEditingConcert(null)} onSave={handleUpdateConcert} />}
       {showVinyl && <AddItemModal type="vinyl" onClose={() => setShowVinyl(false)} onAdd={handleAddVinyl} />}
       {showMerch && <AddItemModal type="merch" onClose={() => setShowMerch(false)} onAdd={handleAddMerch} />}
+      {showPublicProfilePreview && user?.username && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(30,27,75,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={(e) => e.target === e.currentTarget && setShowPublicProfilePreview(false)}
+        >
+          <div style={{ width: "100%", maxWidth: 420, maxHeight: "90vh", background: "#fff", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid rgba(13,148,136,0.12)" }}>
+              <button type="button" onClick={() => setShowPublicProfilePreview(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }} aria-label="Close">✕</button>
+            </div>
+            <div style={{ overflow: "auto", flex: 1 }}>
+              <PublicProfile username={user.username} />
+            </div>
+          </div>
+        </div>
+      )}
     </GradientBg>
   );
 }

@@ -4,8 +4,9 @@ import html2canvas from 'html2canvas';
 import { supabase } from './lib/supabase';
 import { GradientBg, Card, Sec, Stats, F, AvatarSprite } from './components/ui';
 
-export default function PublicProfile() {
-  const { username } = useParams();
+export default function PublicProfile({ username: usernameProp }) {
+  const { username: usernameFromRoute } = useParams();
+  const username = usernameProp ?? usernameFromRoute;
   const profileRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
