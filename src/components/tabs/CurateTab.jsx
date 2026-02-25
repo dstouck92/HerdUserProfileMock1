@@ -42,6 +42,17 @@ export default function CurateTab({
   const youtubeSearchResults = youtubeSearchTrim ? youtubeSearchPoolDeduped.filter((c) => (c.channelTitle || "").toLowerCase().includes(youtubeSearchTrim)) : [];
   const youtubeSearchNotFeatured = youtubeSearchResults.filter((c) => !featuredYoutubeChannels.some((f) => (f.channelId || f.channelTitle) === (c.channelId || c.channelTitle)));
 
+  const channelRankings = youtubeTakeout?.channel_rankings_json ?? [];
+  const channelMinutesMap = {};
+  channelRankings.forEach((c) => {
+    const name = (c.channelName || "").trim();
+    if (name) channelMinutesMap[name.toLowerCase()] = c.totalMinutes ?? 0;
+  });
+  const getMinutesForChannel = (channelTitle) => {
+    const key = (channelTitle || "").trim().toLowerCase();
+    return channelMinutesMap[key] != null ? channelMinutesMap[key] : null;
+  };
+
   return (
     <div>
       {/* Profile avatar - always visible on Curate */}
@@ -135,15 +146,19 @@ export default function CurateTab({
                   {featuredYoutubeChannels.length === 0 ? (
                     <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.5)" }}>None yet. Search below to add channels you’re subscribed to or have watched (Takeout).</div>
                   ) : (
-                    featuredYoutubeChannels.map((fc, i) => (
-                      <div key={(fc.channelId || fc.channelTitle) || i} style={{ display: "flex", alignItems: "center", padding: "8px 0", gap: 12, borderBottom: i < featuredYoutubeChannels.length - 1 ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
-                        <input type="checkbox" style={{ accentColor: "#0d9488" }} checked onChange={(e) => onToggleYoutubeChannelFeatured?.(fc.channelId, fc.channelTitle, e.target.checked)} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{fc.channelTitle || fc.channelId || "—"}</div>
+                    featuredYoutubeChannels.map((fc, i) => {
+                      const mins = fc.totalMinutes != null ? fc.totalMinutes : getMinutesForChannel(fc.channelTitle);
+                      return (
+                        <div key={(fc.channelId || fc.channelTitle) || i} style={{ display: "flex", alignItems: "center", padding: "8px 0", gap: 12, borderBottom: i < featuredYoutubeChannels.length - 1 ? "1px solid rgba(13,148,136,0.08)" : "none" }}>
+                          <input type="checkbox" style={{ accentColor: "#0d9488" }} checked onChange={(e) => onToggleYoutubeChannelFeatured?.(fc.channelId, fc.channelTitle, e.target.checked)} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{fc.channelTitle || fc.channelId || "—"}</div>
+                            {mins != null && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)", marginTop: 2 }}>{Math.round(mins).toLocaleString()} min watched</div>}
+                          </div>
+                          <span style={{ fontFamily: F, fontSize: 10, fontWeight: 600, color: "#FF0000", background: "rgba(255,0,0,0.08)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase" }}>YouTube</span>
                         </div>
-                        <span style={{ fontFamily: F, fontSize: 10, fontWeight: 600, color: "#FF0000", background: "rgba(255,0,0,0.08)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase" }}>YouTube</span>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
                 <div style={{ padding: "12px 20px" }}>

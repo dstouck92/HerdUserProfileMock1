@@ -487,7 +487,14 @@ export default function App() {
     const current = youtubeData?.featured_youtube_channels ?? [];
     let next = current;
     if (isFeatured) {
-      next = [...next.filter((c) => (c.channelId || c.channelTitle) !== (channelId || channelTitle)), { channelId: channelId || null, channelTitle: channelTitle || "" }];
+      const channelRankings = youtubeTakeout?.channel_rankings_json ?? [];
+      const titleLower = (channelTitle || "").trim().toLowerCase();
+      const match = channelRankings.find((c) => {
+        const name = (c.channelName || "").trim().toLowerCase();
+        return name === titleLower || name.includes(titleLower) || titleLower.includes(name);
+      });
+      const totalMinutes = match != null ? (match.totalMinutes ?? null) : null;
+      next = [...next.filter((c) => (c.channelId || c.channelTitle) !== (channelId || channelTitle)), { channelId: channelId || null, channelTitle: channelTitle || "", totalMinutes: totalMinutes ?? undefined }];
     } else {
       next = next.filter((c) => (c.channelId || c.channelTitle) !== (channelId || channelTitle));
     }

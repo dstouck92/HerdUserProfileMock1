@@ -235,6 +235,9 @@ export default function PublicProfile({ username: usernameProp }) {
                 }}
               >
                 <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: '#1e1b4b' }}>{fc.channelTitle || fc.channelId || '—'}</div>
+                {fc.totalMinutes != null && (
+                  <div style={{ fontFamily: F, fontSize: 11, color: 'rgba(55,48,107,0.5)', marginTop: 2 }}>{Math.round(fc.totalMinutes).toLocaleString()} min watched</div>
+                )}
               </div>
             ))}
           </Card>
