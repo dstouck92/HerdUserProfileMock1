@@ -502,7 +502,13 @@ function SpotifyLineBlock({ title, topItems, minutesByMonth, getKey, getLabel, g
     return { ...item, key, minutesInPeriod };
   });
 
-  const maxY = Math.max(1, ...tableItems.slice(0, topNVal).flatMap((item) => {
+  // Checkbox selection: null = use default (first topN), otherwise Set of keys to show on graph
+  const [checkedKeys, setCheckedKeys] = useState(null);
+  const defaultChecked = new Set(tableItems.slice(0, topNVal).map((i) => i.key));
+  const effectiveChecked = checkedKeys === null ? defaultChecked : checkedKeys;
+
+  const linesToShow = tableItems.filter((i) => effectiveChecked.has(i.key));
+  const maxY = Math.max(1, ...linesToShow.flatMap((item) => {
     const byMonth = (minutesByMonth || {})[item.key] || {};
     return monthsInRange.map((m) => byMonth[m] || 0);
   }));
@@ -513,7 +519,20 @@ function SpotifyLineBlock({ title, topItems, minutesByMonth, getKey, getLabel, g
   const innerW = chartW - pad.left - pad.right;
   const innerH = chartH - pad.top - pad.bottom;
 
-  const linesToShow = tableItems.slice(0, topNVal);
+  const handleTopNChange = (n) => {
+    setTopN(n);
+    setCheckedKeys(new Set(tableItems.slice(0, n).map((i) => i.key)));
+  };
+
+  const toggleChecked = (key) => {
+    setCheckedKeys((prev) => {
+      const base = prev === null ? defaultChecked : prev;
+      const next = new Set(base);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   return (
     <div style={{ marginBottom: 28 }}>
@@ -585,7 +604,7 @@ function SpotifyLineBlock({ title, topItems, minutesByMonth, getKey, getLabel, g
               <span style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.7)" }}>Top:</span>
               <select
                 value={topNVal}
-                onChange={(e) => setTopN(Number(e.target.value))}
+                onChange={(e) => handleTopNChange(Number(e.target.value))}
                 style={{ fontFamily: F, fontSize: 12, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.3)", background: "#fff", color: "#1e1b4b" }}
               >
                 {topNOptions.map((n) => (
@@ -596,18 +615,30 @@ function SpotifyLineBlock({ title, topItems, minutesByMonth, getKey, getLabel, g
           </div>
         </>
       ) : null)}
-      <div style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>{hasMonthlyData ? "Top 50 (minutes in selected period)" : "Top 50 (all-time minutes)"}</div>
+      <div style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>{hasMonthlyData ? "Top 50 — check to show on graph (minutes in selected period)" : "Top 50 (all-time minutes)"}</div>
       <div style={{ maxHeight: 240, overflow: "auto", border: "1px solid rgba(13,148,136,0.15)", borderRadius: 12 }}>
-        {tableItems.map((item, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 10, borderBottom: i < tableItems.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
-            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "rgba(55,48,107,0.4)", width: 24, textAlign: "right" }}>{i + 1}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(item)}</div>
-              {getSublabel && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{getSublabel(item)}</div>}
+        {tableItems.map((item, i) => {
+          const checked = hasMonthlyData && effectiveChecked.has(item.key);
+          return (
+            <div key={item.key} style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 10, borderBottom: i < tableItems.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
+              {hasMonthlyData ? (
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleChecked(item.key)}
+                  style={{ width: 18, height: 18, accentColor: "#0d9488", cursor: "pointer", flexShrink: 0 }}
+                  aria-label={getLabel(item)}
+                />
+              ) : null}
+              <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "rgba(55,48,107,0.4)", width: 24, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#1e1b4b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(item)}</div>
+                {getSublabel && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)" }}>{getSublabel(item)}</div>}
+              </div>
+              <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0f766e", flexShrink: 0 }}>{Math.round(item.minutesInPeriod)} min</span>
             </div>
-            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0f766e" }}>{Math.round(item.minutesInPeriod)} min</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
