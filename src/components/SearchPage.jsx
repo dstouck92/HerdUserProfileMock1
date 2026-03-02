@@ -1,0 +1,411 @@
+import { useState } from "react";
+import { Card, F } from "./ui";
+
+const recommendedArtists = [
+  { id: 1, name: "Flume", subtitle: "2 concerts attended" },
+  { id: 2, name: "Billie Eilish", subtitle: "1 concert attended" },
+  { id: 3, name: "Tame Impala", subtitle: "1 concert attended" },
+];
+
+const recommendedFriends = [
+  { id: 1, name: "Jessica Lee", subtitle: "4 mutual friends · 11 friends" },
+  { id: 2, name: "Mike Johnson", subtitle: "3 mutual friends · 9 friends" },
+  { id: 3, name: "Emma Roberts", subtitle: "6 mutual friends · 13 friends" },
+];
+
+const demoHerds = [
+  { id: 1, name: "Flume Herd", subtitle: "132 members" },
+  { id: 2, name: "West Coast Ravers", subtitle: "87 members" },
+  { id: 3, name: "Indie Night Owls", subtitle: "54 members" },
+];
+
+const searchIndex = [
+  ...recommendedArtists.map((a) => ({
+    id: `artist-${a.id}`,
+    kind: "Artist",
+    name: a.name,
+    subtitle: a.subtitle,
+    action: "Follow",
+  })),
+  ...recommendedFriends.map((f) => ({
+    id: `user-${f.id}`,
+    kind: "User",
+    name: f.name,
+    subtitle: f.subtitle,
+    action: "View",
+  })),
+  ...demoHerds.map((h) => ({
+    id: `herd-${h.id}`,
+    kind: "Herd",
+    name: h.name,
+    subtitle: h.subtitle,
+    action: "Follow",
+  })),
+];
+
+const recentActivity = [
+  {
+    id: 1,
+    title: "David Stouck attended Fred Again",
+    date: "April 3, 2026",
+    location: "Hollywood Palladium, Los Angeles, CA",
+    timeAgo: "2h ago",
+  },
+];
+
+export default function SearchPage() {
+  const [query, setQuery] = useState("");
+  const trimmedQuery = query.trim().toLowerCase();
+  const searchResults = trimmedQuery
+    ? searchIndex.filter((e) => e.name.toLowerCase().includes(trimmedQuery)).slice(0, 8)
+    : [];
+
+  return (
+    <div style={{ paddingBottom: 16 }}>
+      {/* Search bar */}
+      <div style={{ padding: "12px 20px 8px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 14px",
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.9)",
+            boxShadow: "0 4px 16px rgba(15,23,42,0.08)",
+            border: "1px solid rgba(148,163,184,0.3)",
+          }}
+        >
+          <span style={{ fontSize: 18, color: "rgba(15,23,42,0.4)" }}>🔍</span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search artists or fan clubs"
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              fontFamily: F,
+              fontSize: 14,
+              color: "#1e1b4b",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Search dropdown (local demo only) */}
+      {trimmedQuery && (
+        <div style={{ padding: "0 20px 8px" }}>
+          <Card style={{ margin: 0, padding: "8px 0" }}>
+            {searchResults.length > 0 ? (
+              searchResults.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    borderBottom: "1px solid rgba(148,163,184,0.25)",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: F,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#0f172a",
+                      }}
+                    >
+                      {item.name}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: F,
+                        fontSize: 11,
+                        color: "rgba(55,48,107,0.6)",
+                      }}
+                    >
+                      {item.subtitle}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        fontFamily: F,
+                        fontSize: 10,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.4,
+                        padding: "3px 8px",
+                        borderRadius: 999,
+                        background: "rgba(148,163,184,0.12)",
+                        color: "rgba(51,65,85,0.9)",
+                      }}
+                    >
+                      {item.kind}
+                    </span>
+                    <button
+                      type="button"
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 999,
+                        border: "none",
+                        fontFamily: F,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background:
+                          "linear-gradient(135deg, #0ea5e9, #6366f1)",
+                        color: "#fff",
+                        cursor: "default",
+                        boxShadow: "0 3px 10px rgba(37,99,235,0.4)",
+                      }}
+                    >
+                      {item.action} +
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div
+                style={{
+                  padding: "8px 12px",
+                  fontFamily: F,
+                  fontSize: 12,
+                  color: "rgba(55,48,107,0.7)",
+                }}
+              >
+                No matches yet. Try another name.
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* Recommended Artists */}
+      <SectionTitle>Recommended Artists</SectionTitle>
+      <Card style={{ padding: "12px 0 8px", marginBottom: 10 }}>
+        <HorizontalList>
+          {recommendedArtists.map((artist) => (
+            <PersonCard
+              key={artist.id}
+              title={artist.name}
+              subtitle={artist.subtitle}
+              primaryLabel="Follow +"
+            />
+          ))}
+        </HorizontalList>
+        <div
+          style={{
+            padding: "0 16px 4px",
+            fontFamily: F,
+            fontSize: 11,
+            color: "rgba(55,48,107,0.6)",
+          }}
+        >
+          Tap Follow to add artists to track.
+        </div>
+      </Card>
+
+      {/* Recommended Friends */}
+      <SectionTitle>Recommended Friends</SectionTitle>
+      <Card style={{ padding: "12px 0 8px", marginBottom: 16 }}>
+        <HorizontalList>
+          {recommendedFriends.map((friend) => (
+            <PersonCard
+              key={friend.id}
+              title={friend.name}
+              subtitle={friend.subtitle}
+              primaryLabel="Add +"
+            />
+          ))}
+        </HorizontalList>
+      </Card>
+
+      {/* Recent Activity */}
+      <SectionTitle>Your Recent Activity</SectionTitle>
+      <Card style={{ padding: "12px 16px 8px", marginBottom: 12 }}>
+        {recentActivity.map((item, idx) => (
+          <div
+            key={item.id}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+              paddingBottom: idx < recentActivity.length - 1 ? 12 : 4,
+              borderBottom:
+                idx < recentActivity.length - 1
+                  ? "1px solid rgba(148,163,184,0.3)"
+                  : "none",
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle at 30% 0%, #fee2e2, #0ea5e9)",
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontFamily: F,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#1e293b",
+                  marginBottom: 2,
+                }}
+              >
+                {item.title}
+              </div>
+              <div
+                style={{
+                  fontFamily: F,
+                  fontSize: 11,
+                  color: "rgba(55,48,107,0.6)",
+                  marginBottom: 4,
+                }}
+              >
+                {item.date}
+              </div>
+              <div
+                style={{
+                  fontFamily: F,
+                  fontSize: 11,
+                  color: "rgba(148,163,184,0.9)",
+                  marginBottom: 6,
+                }}
+              >
+                {item.location}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontFamily: F,
+                  fontSize: 11,
+                  color: "rgba(148,163,184,0.9)",
+                }}
+              >
+                <div style={{ display: "flex", gap: 12 }}>
+                  <span>♡</span>
+                  <span>💬</span>
+                  <span>↗</span>
+                </div>
+                <span>{item.timeAgo}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      {/* Milestone placeholder (hidden for now) */}
+      {/* We can show this when we define concrete milestone rules */}
+    </div>
+  );
+}
+
+function SectionTitle({ children }) {
+  return (
+    <div
+      style={{
+        padding: "4px 20px 6px",
+        fontFamily: F,
+        fontSize: 14,
+        fontWeight: 700,
+        color: "#1e1b4b",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function HorizontalList({ children }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        padding: "4px 16px 8px",
+        overflowX: "auto",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PersonCard({ title, subtitle, primaryLabel }) {
+  return (
+    <div
+      style={{
+        minWidth: 150,
+        maxWidth: 180,
+        background:
+          "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,64,175,0.8))",
+        borderRadius: 16,
+        overflow: "hidden",
+        color: "#fff",
+        boxShadow: "0 10px 25px rgba(15,23,42,0.5)",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          height: 90,
+          background:
+            "radial-gradient(circle at 10% 0%, #f97316, #0ea5e9 60%, #1d4ed8)",
+        }}
+      />
+      <div style={{ padding: "10px 12px 12px" }}>
+        <div
+          style={{
+            fontFamily: F,
+            fontSize: 14,
+            fontWeight: 700,
+            marginBottom: 2,
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            fontFamily: F,
+            fontSize: 11,
+            color: "rgba(226,232,240,0.85)",
+            marginBottom: 10,
+          }}
+        >
+          {subtitle}
+        </div>
+        <button
+          type="button"
+          style={{
+            width: "100%",
+            padding: "7px 0",
+            borderRadius: 999,
+            border: "none",
+            fontFamily: F,
+            fontSize: 12,
+            fontWeight: 700,
+            background:
+              "linear-gradient(135deg, #38bdf8, #6366f1, #a855f7)",
+            color: "#fff",
+            boxShadow: "0 4px 14px rgba(59,130,246,0.6)",
+            cursor: "default",
+          }}
+        >
+          {primaryLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+

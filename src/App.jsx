@@ -10,6 +10,7 @@ import LiveTab from "./components/tabs/LiveTab";
 import DigitalTab from "./components/tabs/DigitalTab";
 import PhysicalTab from "./components/tabs/PhysicalTab";
 import CurateTab from "./components/tabs/CurateTab";
+import SearchPage from "./components/SearchPage";
 import PublicProfile from "./PublicProfile";
 import { TabBar, ProfileHeader, BottomNav, F } from "./components/ui";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -596,6 +597,8 @@ export default function App() {
             )}
           </div>
         </>
+      ) : activePage === "Search" ? (
+        <SearchPage />
       ) : (
         renderNonProfilePage()
       )}
