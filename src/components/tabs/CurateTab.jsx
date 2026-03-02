@@ -11,8 +11,6 @@ export default function CurateTab({
   user,
   youtube,
   youtubeTakeout,
-  followersCount = 0,
-  followingCount = 0,
   onToggleConcertFeatured,
   onToggleVinylFeatured,
   onToggleMerchFeatured,
@@ -65,10 +63,6 @@ export default function CurateTab({
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b" }}>Your profile picture</div>
             <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", marginTop: 2 }}>Shown next to your name and on your public profile.</div>
-            <div style={{ display: "flex", gap: 12, marginTop: 8, fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.8)" }}>
-              <span><strong style={{ color: "#0f766e" }}>{followersCount}</strong> followers</span>
-              <span><strong style={{ color: "#0f766e" }}>{followingCount}</strong> following</span>
-            </div>
           </div>
           {onOpenAvatarPicker && (
             <button type="button" onClick={onOpenAvatarPicker} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Change</button>

@@ -626,6 +626,26 @@ export default function App() {
             onCloseAvatarPicker={() => setShowAvatarPicker(false)}
             onOpenAvatarPicker={() => setShowAvatarPicker(true)}
           />
+          {activeTab === "Curate" && (
+            <div
+              style={{
+                padding: "4px 20px 0",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 12,
+                fontFamily: F,
+                fontSize: 12,
+                color: "rgba(55,48,107,0.8)",
+              }}
+            >
+              <span>
+                <strong style={{ color: "#0f766e" }}>{followersCount}</strong> Followers
+              </span>
+              <span>
+                <strong style={{ color: "#0f766e" }}>{followingCount}</strong> Following
+              </span>
+            </div>
+          )}
           <div style={{ padding: "8px 20px 0" }}>
             <TabBar active={activeTab} onSelect={setActiveTab} />
           </div>
@@ -657,8 +677,6 @@ export default function App() {
                 vinyl={vinyl}
                 data={streamingData}
                 user={user}
-            followersCount={followersCount}
-            followingCount={followingCount}
                 onToggleConcertFeatured={handleToggleConcertFeatured}
                 onToggleVinylFeatured={handleToggleVinylFeatured}
                 onToggleMerchFeatured={handleToggleMerchFeatured}
