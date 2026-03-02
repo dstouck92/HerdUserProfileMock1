@@ -669,65 +669,33 @@ export default function App() {
     const uid = user.id;
     const loadActivity = async () => {
       try {
-        const actorIds = [uid, ...followingIds];
         const { data: rows, error } = await supabase
           .from("user_activity")
-          .select("id, actor_id, target_user_id, type, description, created_at")
-          .in("actor_id", actorIds)
+          .select("id, type, description, created_at")
+          .eq("actor_id", uid)
           .order("created_at", { ascending: false })
           .limit(25);
         if (error || !rows) {
           setRecentActivity([]);
           return;
         }
-        const userIds = Array.from(
-          new Set(
-            rows.flatMap((r) => [r.actor_id, r.target_user_id].filter(Boolean)),
-          ),
-        );
-        if (userIds.length === 0) {
-          setRecentActivity([]);
-          return;
-        }
-        const { data: profiles, error: profError } = await supabase
-          .from("profiles")
-          .select("id, display_name, username, avatar_id")
-          .in("id", userIds);
-        if (profError || !profiles) {
-          setRecentActivity(
-            rows.map((r) => ({
-              id: r.id,
-              actorName: "Someone",
-              actorUsername: "",
-              actorAvatarId: 7,
-              description: r.description,
-              createdAt: r.created_at,
-              type: r.type,
-            })),
-          );
-          return;
-        }
-        const map = new Map(profiles.map((p) => [p.id, p]));
         setRecentActivity(
-          rows.map((r) => {
-            const actor = map.get(r.actor_id);
-            return {
-              id: r.id,
-              actorName: actor?.display_name || actor?.username || "Fan",
-              actorUsername: actor?.username || "",
-              actorAvatarId: actor?.avatar_id ?? 7,
-              description: r.description,
-              createdAt: r.created_at,
-              type: r.type,
-            };
-          }),
+          rows.map((r) => ({
+            id: r.id,
+            actorName: "You",
+            actorUsername: user.username || "",
+            actorAvatarId: user.avatar_id ?? 7,
+            description: r.description,
+            createdAt: r.created_at,
+            type: r.type,
+          })),
         );
       } catch {
         setRecentActivity([]);
       }
     };
     loadActivity();
-  }, [user?.id, followingIds.join("|")]);
+  }, [user?.id, user?.username, user?.avatar_id]);
 
   const renderNonProfilePage = () => {
     const titles = {
