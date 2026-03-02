@@ -13,17 +13,7 @@ const demoHerds = [
   { id: 3, name: "Indie Night Owls", subtitle: "54 members" },
 ];
 
-const recentActivity = [
-  {
-    id: 1,
-    title: "David Stouck attended Fred Again",
-    date: "April 3, 2026",
-    location: "Hollywood Palladium, Los Angeles, CA",
-    timeAgo: "2h ago",
-  },
-];
-
-export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile, recommendedArtists }) {
+export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile, recommendedArtists, recentActivity }) {
   const [query, setQuery] = useState("");
   const friendsFromDb = Array.isArray(recommendedFriends)
     ? recommendedFriends.map((f) => ({
@@ -69,6 +59,21 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
   const searchResults = trimmedQuery
     ? searchIndex.filter((e) => e.name.toLowerCase().includes(trimmedQuery)).slice(0, 8)
     : [];
+
+  const formatTimeAgo = (isoString) => {
+    if (!isoString) return "";
+    const now = Date.now();
+    const then = new Date(isoString).getTime();
+    if (Number.isNaN(then)) return "";
+    const diffMs = now - then;
+    const diffMin = Math.round(diffMs / 60000);
+    if (diffMin < 1) return "Just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.round(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.round(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
 
   return (
     <div style={{ paddingBottom: 16 }}>
@@ -284,7 +289,7 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
       {/* Recent Activity */}
       <SectionTitle>Your Recent Activity</SectionTitle>
       <Card style={{ padding: "12px 16px 8px", marginBottom: 12 }}>
-        {recentActivity.map((item, idx) => (
+        {Array.isArray(recentActivity) && recentActivity.length > 0 ? recentActivity.map((item, idx) => (
           <div
             key={item.id}
             style={{
@@ -318,7 +323,8 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
                   marginBottom: 2,
                 }}
               >
-                {item.title}
+                <span style={{ fontWeight: 700 }}>{item.actorName}</span>{" "}
+                <span style={{ fontWeight: 400 }}>{item.description}</span>
               </div>
               <div
                 style={{
@@ -328,7 +334,7 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
                   marginBottom: 4,
                 }}
               >
-                {item.date}
+                {item.type}
               </div>
               <div
                 style={{
@@ -338,7 +344,7 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
                   marginBottom: 6,
                 }}
               >
-                {item.location}
+                {item.actorUsername ? `@${item.actorUsername}` : ""}
               </div>
               <div
                 style={{
@@ -355,11 +361,22 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
                   <span>💬</span>
                   <span>↗</span>
                 </div>
-                <span>{item.timeAgo}</span>
+                <span>{formatTimeAgo(item.createdAt)}</span>
               </div>
             </div>
           </div>
-        ))}
+        )) : (
+          <div
+            style={{
+              padding: "8px 4px 4px",
+              fontFamily: F,
+              fontSize: 12,
+              color: "rgba(55,48,107,0.7)",
+            }}
+          >
+            No recent activity yet. As you add concerts, merch, and follow fans, updates will appear here.
+          </div>
+        )}
       </Card>
 
       {/* Milestone placeholder (hidden for now) */}

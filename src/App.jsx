@@ -28,6 +28,7 @@ export default function App() {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followingIds, setFollowingIds] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
   const [showUpload, setShowUpload] = useState(false);
   const [showConcert, setShowConcert] = useState(false);
   const [editingConcert, setEditingConcert] = useState(null);
@@ -210,7 +211,16 @@ export default function App() {
     const res = await fetch("/api/youtube/sync", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } });
     if (!res.ok) return;
     const { data } = await supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, last_fetched_at").eq("user_id", user.id).single();
-    if (data) setYoutubeData(data);
+    if (data) {
+      setYoutubeData(data);
+      if (supabase) {
+        await supabase.from("user_activity").insert({
+          actor_id: user.id,
+          type: "update_youtube",
+          description: "Updated YouTube data",
+        });
+      }
+    }
   };
 
   const handleYoutubeTakeoutImport = async (watchHistory) => {
@@ -289,7 +299,14 @@ export default function App() {
         return;
       }
       const { data } = await supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at, channel_rankings_json, video_rankings_json, watch_trend_json").eq("user_id", user.id).maybeSingle();
-      if (data) setYoutubeTakeout(data);
+      if (data) {
+        setYoutubeTakeout(data);
+        await supabase.from("user_activity").insert({
+          actor_id: user.id,
+          type: "update_youtube_takeout",
+          description: "Imported YouTube Takeout watch history",
+        });
+      }
     } catch (e) {
       console.error("Takeout import error (client-side):", e);
     }
@@ -343,10 +360,23 @@ export default function App() {
           },
           ...prev,
         ]);
+        await supabase.from("user_activity").insert({
+          actor_id: user.id,
+          type: "add_concert",
+          description: `Added concert: ${data.artist}${data.venue ? ` @ ${data.venue}` : ""}`,
+        });
         return;
       }
     }
-    setConcerts((prev) => [{ ...c, id: c.id || crypto.randomUUID(), is_featured: false }, ...prev]);
+    const localConcert = { ...c, id: c.id || crypto.randomUUID(), is_featured: false };
+    setConcerts((prev) => [localConcert, ...prev]);
+    if (supabase && user?.id) {
+      await supabase.from("user_activity").insert({
+        actor_id: user.id,
+        type: "add_concert",
+        description: `Added concert: ${localConcert.artist}${localConcert.venue ? ` @ ${localConcert.venue}` : ""}`,
+      });
+    }
   };
 
   const handleUpdateConcert = async (updated) => {
@@ -394,10 +424,23 @@ export default function App() {
           },
           ...prev,
         ]);
+        await supabase.from("user_activity").insert({
+          actor_id: user.id,
+          type: "add_vinyl",
+          description: `Added vinyl: ${data.artist_name} – ${data.album_name}`,
+        });
         return;
       }
     }
-    setVinyl((prev) => [{ ...v, id: v.id || crypto.randomUUID(), is_featured: false }, ...prev]);
+    const localVinyl = { ...v, id: v.id || crypto.randomUUID(), is_featured: false };
+    setVinyl((prev) => [localVinyl, ...prev]);
+    if (supabase && user?.id) {
+      await supabase.from("user_activity").insert({
+        actor_id: user.id,
+        type: "add_vinyl",
+        description: `Added vinyl: ${localVinyl.artist_name} – ${localVinyl.album_name}`,
+      });
+    }
   };
 
   const handleAddMerch = async (m) => {
@@ -427,10 +470,23 @@ export default function App() {
           },
           ...prev,
         ]);
+        await supabase.from("user_activity").insert({
+          actor_id: user.id,
+          type: "add_merch",
+          description: `Added merch: ${data.artist_name} – ${data.item_name}`,
+        });
         return;
       }
     }
-    setMerch((prev) => [{ ...m, id: m.id || crypto.randomUUID(), is_featured: false }, ...prev]);
+    const localMerch = { ...m, id: m.id || crypto.randomUUID(), is_featured: false };
+    setMerch((prev) => [localMerch, ...prev]);
+    if (supabase && user?.id) {
+      await supabase.from("user_activity").insert({
+        actor_id: user.id,
+        type: "add_merch",
+        description: `Added merch: ${localMerch.artist_name} – ${localMerch.item_name}`,
+      });
+    }
   };
 
   const handleStreamingComplete = async (d) => {
@@ -457,6 +513,13 @@ export default function App() {
           { onConflict: "user_id" },
         );
         if (error && typeof console !== "undefined") console.error("user_streaming_stats upsert error:", error);
+        else {
+          await supabase.from("user_activity").insert({
+            actor_id: user.id,
+            type: "update_spotify",
+            description: "Updated Spotify listening history",
+          });
+        }
       }
       setStreamingData(payload);
     } catch (err) {
@@ -556,6 +619,9 @@ export default function App() {
     if (wantFollow && isAlreadyFollowing) return;
     if (!wantFollow && !isAlreadyFollowing) return;
 
+    const targetProfile = recommendedFriends.find((p) => p.id === targetUserId);
+    const targetName = targetProfile?.displayName || targetProfile?.username || "a fan";
+
     if (wantFollow) {
       setFollowingIds((prev) => (prev.includes(targetUserId) ? prev : [...prev, targetUserId]));
       setFollowingCount((c) => c + 1);
@@ -563,6 +629,13 @@ export default function App() {
       if (error) {
         setFollowingIds((prev) => prev.filter((id) => id !== targetUserId));
         setFollowingCount((c) => Math.max(0, c - 1));
+      } else {
+        await supabase.from("user_activity").insert({
+          actor_id: uid,
+          target_user_id: targetUserId,
+          type: "follow_user",
+          description: `Followed ${targetName}`,
+        });
       }
     } else {
       setFollowingIds((prev) => prev.filter((id) => id !== targetUserId));
@@ -590,6 +663,71 @@ export default function App() {
           ? `${a.hours} hours listened`
           : "From your streaming history",
     })) ?? [];
+
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const uid = user.id;
+    const loadActivity = async () => {
+      try {
+        const actorIds = [uid, ...followingIds];
+        const { data: rows, error } = await supabase
+          .from("user_activity")
+          .select("id, actor_id, target_user_id, type, description, created_at")
+          .in("actor_id", actorIds)
+          .order("created_at", { ascending: false })
+          .limit(25);
+        if (error || !rows) {
+          setRecentActivity([]);
+          return;
+        }
+        const userIds = Array.from(
+          new Set(
+            rows.flatMap((r) => [r.actor_id, r.target_user_id].filter(Boolean)),
+          ),
+        );
+        if (userIds.length === 0) {
+          setRecentActivity([]);
+          return;
+        }
+        const { data: profiles, error: profError } = await supabase
+          .from("profiles")
+          .select("id, display_name, username, avatar_id")
+          .in("id", userIds);
+        if (profError || !profiles) {
+          setRecentActivity(
+            rows.map((r) => ({
+              id: r.id,
+              actorName: "Someone",
+              actorUsername: "",
+              actorAvatarId: 7,
+              description: r.description,
+              createdAt: r.created_at,
+              type: r.type,
+            })),
+          );
+          return;
+        }
+        const map = new Map(profiles.map((p) => [p.id, p]));
+        setRecentActivity(
+          rows.map((r) => {
+            const actor = map.get(r.actor_id);
+            return {
+              id: r.id,
+              actorName: actor?.display_name || actor?.username || "Fan",
+              actorUsername: actor?.username || "",
+              actorAvatarId: actor?.avatar_id ?? 7,
+              description: r.description,
+              createdAt: r.created_at,
+              type: r.type,
+            };
+          }),
+        );
+      } catch {
+        setRecentActivity([]);
+      }
+    };
+    loadActivity();
+  }, [user?.id, followingIds.join("|")]);
 
   const renderNonProfilePage = () => {
     const titles = {
@@ -707,6 +845,7 @@ export default function App() {
           onToggleFollow={handleToggleFollowUser}
           onOpenProfile={handleViewOtherProfile}
           recommendedArtists={recommendedArtistsForSearch}
+          recentActivity={recentActivity}
         />
       ) : (
         renderNonProfilePage()
