@@ -11,13 +11,14 @@ import DigitalTab from "./components/tabs/DigitalTab";
 import PhysicalTab from "./components/tabs/PhysicalTab";
 import CurateTab from "./components/tabs/CurateTab";
 import PublicProfile from "./PublicProfile";
-import { TabBar, ProfileHeader, F } from "./components/ui";
+import { TabBar, ProfileHeader, BottomNav, F } from "./components/ui";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(!!supabase);
   const [activeTab, setActiveTab] = useState("Curate");
+  const [activePage, setActivePage] = useState("Profile");
   const [streamingData, setStreamingData] = useState(null);
   const [concerts, setConcerts] = useState([]);
   const [vinyl, setVinyl] = useState([]);
@@ -504,6 +505,26 @@ export default function App() {
     }
   };
 
+  const headerTitle = activePage === "Profile" ? activeTab : activePage;
+
+  const renderNonProfilePage = () => {
+    const titles = {
+      Feed: "Feed",
+      Herds: "Herds",
+      Search: "Search",
+      Market: "Market",
+    };
+    const title = titles[activePage] || "Coming soon";
+    return (
+      <div style={{ padding: "72px 24px 24px", textAlign: "center" }}>
+        <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: "#1e1b4b", marginBottom: 8 }}>{title}</div>
+        <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.7)", lineHeight: 1.6 }}>
+          Coming soon. This area will become your {title.toLowerCase()} experience.
+        </div>
+      </div>
+    );
+  };
+
   if (authLoading) {
     return (
       <GradientBg>
@@ -517,36 +538,67 @@ export default function App() {
     <GradientBg>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px 0" }}>
         <span style={{ fontSize: 22, color: "#0d9488", fontWeight: 700 }}>‹</span>
-        <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{activeTab}</span>
+        <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{headerTitle}</span>
         <button onClick={handleLogout} style={{ background: "none", border: "none", fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.4)", cursor: "pointer" }}>Log out</button>
       </div>
-      <ProfileHeader user={user} onViewPublicProfile={handleViewPublicProfile} onAvatarChange={handleAvatarChange} supabase={supabase} showAvatarPicker={showAvatarPicker} onCloseAvatarPicker={() => setShowAvatarPicker(false)} onOpenAvatarPicker={() => setShowAvatarPicker(true)} />
-      <div style={{ padding: "8px 20px 0" }}>
-        <TabBar active={activeTab} onSelect={setActiveTab} />
-      </div>
-      <div style={{ paddingBottom: 40 }}>
-        {activeTab === "Live" && <LiveTab concerts={concerts} onAdd={() => setShowConcert(true)} onEdit={(c) => setEditingConcert(c)} />}
-        {activeTab === "Digital" && <DigitalTab data={streamingData} onUpload={() => setShowUpload(true)} youtube={youtubeData} youtubeTakeout={youtubeTakeout} onYoutubeConnect={handleYoutubeConnect} onYoutubeSync={handleYoutubeSync} onYoutubeTakeoutImport={handleYoutubeTakeoutImport} />}
-        {activeTab === "Physical" && <PhysicalTab vinyl={vinyl} merch={merch} onAddVinyl={() => setShowVinyl(true)} onAddMerch={() => setShowMerch(true)} />}
-        {activeTab === "Curate" && (
-          <CurateTab
-            concerts={concerts}
-            merch={merch}
-            vinyl={vinyl}
-            data={streamingData}
+      {activePage === "Profile" ? (
+        <>
+          <ProfileHeader
             user={user}
-            onToggleConcertFeatured={handleToggleConcertFeatured}
-            onToggleVinylFeatured={handleToggleVinylFeatured}
-            onToggleMerchFeatured={handleToggleMerchFeatured}
-            onToggleArtistFeatured={handleToggleArtistFeatured}
-            youtube={youtubeData}
-            youtubeTakeout={youtubeTakeout}
-            onToggleYoutubeChannelFeatured={handleToggleYoutubeChannelFeatured}
-            onPreviewProfile={handleViewPublicProfile}
+            onViewPublicProfile={handleViewPublicProfile}
+            onAvatarChange={handleAvatarChange}
+            supabase={supabase}
+            showAvatarPicker={showAvatarPicker}
+            onCloseAvatarPicker={() => setShowAvatarPicker(false)}
             onOpenAvatarPicker={() => setShowAvatarPicker(true)}
           />
-        )}
-      </div>
+          <div style={{ padding: "8px 20px 0" }}>
+            <TabBar active={activeTab} onSelect={setActiveTab} />
+          </div>
+          <div>
+            {activeTab === "Live" && <LiveTab concerts={concerts} onAdd={() => setShowConcert(true)} onEdit={(c) => setEditingConcert(c)} />}
+            {activeTab === "Digital" && (
+              <DigitalTab
+                data={streamingData}
+                onUpload={() => setShowUpload(true)}
+                youtube={youtubeData}
+                youtubeTakeout={youtubeTakeout}
+                onYoutubeConnect={handleYoutubeConnect}
+                onYoutubeSync={handleYoutubeSync}
+                onYoutubeTakeoutImport={handleYoutubeTakeoutImport}
+              />
+            )}
+            {activeTab === "Physical" && (
+              <PhysicalTab
+                vinyl={vinyl}
+                merch={merch}
+                onAddVinyl={() => setShowVinyl(true)}
+                onAddMerch={() => setShowMerch(true)}
+              />
+            )}
+            {activeTab === "Curate" && (
+              <CurateTab
+                concerts={concerts}
+                merch={merch}
+                vinyl={vinyl}
+                data={streamingData}
+                user={user}
+                onToggleConcertFeatured={handleToggleConcertFeatured}
+                onToggleVinylFeatured={handleToggleVinylFeatured}
+                onToggleMerchFeatured={handleToggleMerchFeatured}
+                onToggleArtistFeatured={handleToggleArtistFeatured}
+                youtube={youtubeData}
+                youtubeTakeout={youtubeTakeout}
+                onToggleYoutubeChannelFeatured={handleToggleYoutubeChannelFeatured}
+                onPreviewProfile={handleViewPublicProfile}
+                onOpenAvatarPicker={() => setShowAvatarPicker(true)}
+              />
+            )}
+          </div>
+        </>
+      ) : (
+        renderNonProfilePage()
+      )}
       {showUpload && <SpotifyUploadModal onClose={() => setShowUpload(false)} onComplete={handleStreamingComplete} />}
       {showConcert && <AddConcertModal onClose={() => setShowConcert(false)} onAdd={handleAddConcert} />}
       {editingConcert && <EditConcertModal concert={editingConcert} onClose={() => setEditingConcert(null)} onSave={handleUpdateConcert} />}
@@ -567,6 +619,7 @@ export default function App() {
           </div>
         </div>
       )}
+      <BottomNav active={activePage} onSelect={setActivePage} />
     </GradientBg>
   );
 }

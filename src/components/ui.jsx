@@ -49,7 +49,7 @@ export const AvatarPicker = ({ selectedId, onSelect, onClose }) => {
 };
 
 export const GradientBg = ({ children }) => (
-  <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "linear-gradient(165deg, #e0f2fe 0%, #cffafe 22%, #ccfbf1 45%, #d1fae5 70%, #dcfce7 100%)", fontFamily: F, position: "relative" }}>
+  <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", paddingBottom: 80, background: "linear-gradient(165deg, #e0f2fe 0%, #cffafe 22%, #ccfbf1 45%, #d1fae5 70%, #dcfce7 100%)", fontFamily: F, position: "relative" }}>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet" />
     {children}
   </div>
@@ -84,6 +84,83 @@ export const TabBar = ({ active, onSelect }) => (
     ))}
   </div>
 );
+
+export const BottomNav = ({ active, onSelect }) => {
+  const items = [
+    { id: "Feed", label: "Feed", iconSrc: "/Nav/Navigation Bar 1.png" },
+    { id: "Herds", label: "Herds", iconSrc: "/Nav/Navigation Bar 2.png" },
+    { id: "Search", label: "Search", iconSrc: "/Nav/Navigation Bar 3.png" },
+    { id: "Market", label: "Market", iconSrc: "/Nav/Navigation Bar 4.png" },
+    { id: "Profile", label: "Profile", iconSrc: "/Nav/Navigation Bar 5.png" },
+  ];
+
+  return (
+    <nav
+      style={{
+        position: "sticky",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: "8px 16px 16px",
+        background: "linear-gradient(180deg, rgba(240,253,250,0.96), rgba(224,242,254,0.96))",
+        borderTop: "1px solid rgba(15,118,110,0.15)",
+        backdropFilter: "blur(16px)",
+        boxShadow: "0 -8px 24px rgba(15,118,110,0.16)",
+        zIndex: 20,
+      }}
+    >
+      <div style={{ display: "flex", gap: 8 }}>
+        {items.map((item) => {
+          const isActive = active === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect?.(item.id)}
+              style={{
+                flex: 1,
+                border: "none",
+                background: "none",
+                padding: 0,
+                cursor: "pointer",
+                fontFamily: F,
+                fontSize: 11,
+                color: isActive ? "#0f766e" : "rgba(55,48,107,0.6)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 4px",
+                  borderRadius: 999,
+                  background: isActive ? "rgba(16,185,129,0.12)" : "transparent",
+                  border: isActive ? "1px solid rgba(13,148,136,0.5)" : "1px solid transparent",
+                  boxShadow: isActive ? "0 4px 10px rgba(13,148,136,0.25)" : "none",
+                  transition: "all 0.18s ease-out",
+                }}
+              >
+                <img
+                  src={item.iconSrc}
+                  alt={item.label}
+                  style={{
+                    width: item.id === "Search" ? 28 : 22,
+                    height: item.id === "Search" ? 28 : 22,
+                    objectFit: "contain",
+                    display: "block",
+                  }}
+                />
+                <span style={{ fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+};
 
 export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supabase, showAvatarPicker, onCloseAvatarPicker, onOpenAvatarPicker }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
