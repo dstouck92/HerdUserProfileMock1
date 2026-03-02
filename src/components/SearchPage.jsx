@@ -7,12 +7,6 @@ const recommendedArtists = [
   { id: 3, name: "Tame Impala", subtitle: "1 concert attended" },
 ];
 
-const demoRecommendedFriends = [
-  { id: 1, name: "Jessica Lee", subtitle: "4 mutual friends · 11 friends" },
-  { id: 2, name: "Mike Johnson", subtitle: "3 mutual friends · 9 friends" },
-  { id: 3, name: "Emma Roberts", subtitle: "6 mutual friends · 13 friends" },
-];
-
 const demoHerds = [
   { id: 1, name: "Flume Herd", subtitle: "132 members" },
   { id: 2, name: "West Coast Ravers", subtitle: "87 members" },
@@ -29,13 +23,14 @@ const recentActivity = [
   },
 ];
 
-export default function SearchPage({ recommendedFriends }) {
+export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile }) {
   const [query, setQuery] = useState("");
   const friendsFromDb = Array.isArray(recommendedFriends)
     ? recommendedFriends.map((f) => ({
         id: f.id,
         name: f.displayName || f.username || "Friend",
         subtitle: f.username ? `@${f.username}` : "Herd user",
+        username: f.username || "",
         avatarId: f.avatarId ?? 7,
       }))
     : [];
@@ -55,6 +50,8 @@ export default function SearchPage({ recommendedFriends }) {
       name: f.name,
       subtitle: f.subtitle,
       action: "View",
+      userId: f.id,
+      username: f.username,
     })),
     ...demoHerds.map((h) => ({
       id: `herd-${h.id}`,
@@ -109,7 +106,10 @@ export default function SearchPage({ recommendedFriends }) {
         <div style={{ padding: "0 20px 8px" }}>
           <Card style={{ margin: 0, padding: "8px 0" }}>
             {searchResults.length > 0 ? (
-              searchResults.map((item) => (
+              searchResults.map((item) => {
+                const isUser = item.kind === "User" && item.userId;
+                const isFollowing = isUser && followingIds.includes(item.userId);
+                return (
                 <div
                   key={item.id}
                   style={{
@@ -142,6 +142,25 @@ export default function SearchPage({ recommendedFriends }) {
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {isUser && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenProfile?.(item.username)}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 999,
+                          border: "1px solid rgba(148,163,184,0.6)",
+                          background: "rgba(255,255,255,0.9)",
+                          fontFamily: F,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "#0f172a",
+                          cursor: "pointer",
+                        }}
+                      >
+                        View
+                      </button>
+                    )}
                     <span
                       style={{
                         fontFamily: F,
@@ -158,6 +177,11 @@ export default function SearchPage({ recommendedFriends }) {
                     </span>
                     <button
                       type="button"
+                      onClick={
+                        isUser && item.userId
+                          ? () => onToggleFollow?.(item.userId, !isFollowing)
+                          : undefined
+                      }
                       style={{
                         padding: "6px 10px",
                         borderRadius: 999,
@@ -165,18 +189,19 @@ export default function SearchPage({ recommendedFriends }) {
                         fontFamily: F,
                         fontSize: 11,
                         fontWeight: 600,
-                        background:
-                          "linear-gradient(135deg, #0ea5e9, #6366f1)",
-                        color: "#fff",
-                        cursor: "default",
+                        background: isUser && isFollowing
+                          ? "rgba(34,197,94,0.15)"
+                          : "linear-gradient(135deg, #0ea5e9, #6366f1)",
+                        color: isUser && isFollowing ? "#16a34a" : "#fff",
+                        cursor: isUser ? "pointer" : "default",
                         boxShadow: "0 3px 10px rgba(37,99,235,0.4)",
                       }}
                     >
-                      {item.action} +
+                      {isUser ? (isFollowing ? "Following" : "Follow +") : `${item.action} +`}
                     </button>
                   </div>
                 </div>
-              ))
+              );})
             ) : (
               <div
                 style={{
@@ -230,6 +255,11 @@ export default function SearchPage({ recommendedFriends }) {
                 subtitle={friend.subtitle}
                 primaryLabel="Add +"
                 avatarId={friend.avatarId}
+                isFollowing={followingIds.includes(friend.id)}
+                onToggleFollow={onToggleFollow}
+                onOpenProfile={onOpenProfile}
+                userId={friend.id}
+                username={friend.username}
               />
             ))}
           </HorizontalList>
@@ -365,7 +395,7 @@ function HorizontalList({ children }) {
   );
 }
 
-function PersonCard({ title, subtitle, primaryLabel, avatarId }) {
+function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onToggleFollow, onOpenProfile, userId, username }) {
   return (
     <div
       style={{
@@ -395,15 +425,34 @@ function PersonCard({ title, subtitle, primaryLabel, avatarId }) {
         ) : null}
       </div>
       <div style={{ padding: "10px 12px 12px" }}>
-        <div
-          style={{
-            fontFamily: F,
-            fontSize: 14,
-            fontWeight: 700,
-            marginBottom: 2,
-          }}
-        >
-          {title}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
+          <div
+            style={{
+              fontFamily: F,
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+          >
+            {title}
+          </div>
+          {username && (
+            <button
+              type="button"
+              onClick={() => onOpenProfile?.(username)}
+              style={{
+                border: "none",
+                background: "none",
+                padding: 0,
+                fontFamily: F,
+                fontSize: 11,
+                color: "rgba(191,219,254,0.9)",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              View
+            </button>
+          )}
         </div>
         <div
           style={{
@@ -417,6 +466,7 @@ function PersonCard({ title, subtitle, primaryLabel, avatarId }) {
         </div>
         <button
           type="button"
+          onClick={userId ? () => onToggleFollow?.(userId, !isFollowing) : undefined}
           style={{
             width: "100%",
             padding: "7px 0",
@@ -425,14 +475,15 @@ function PersonCard({ title, subtitle, primaryLabel, avatarId }) {
             fontFamily: F,
             fontSize: 12,
             fontWeight: 700,
-            background:
-              "linear-gradient(135deg, #38bdf8, #6366f1, #a855f7)",
-            color: "#fff",
+            background: isFollowing
+              ? "rgba(34,197,94,0.15)"
+              : "linear-gradient(135deg, #38bdf8, #6366f1, #a855f7)",
+            color: isFollowing ? "#4ade80" : "#fff",
             boxShadow: "0 4px 14px rgba(59,130,246,0.6)",
-            cursor: "default",
+            cursor: userId ? "pointer" : "default",
           }}
         >
-          {primaryLabel}
+          {isFollowing ? "Following" : primaryLabel}
         </button>
       </div>
     </div>

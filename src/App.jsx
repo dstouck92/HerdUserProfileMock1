@@ -25,6 +25,9 @@ export default function App() {
   const [vinyl, setVinyl] = useState([]);
   const [merch, setMerch] = useState([]);
   const [recommendedFriends, setRecommendedFriends] = useState([]);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followingIds, setFollowingIds] = useState([]);
   const [showUpload, setShowUpload] = useState(false);
   const [showConcert, setShowConcert] = useState(false);
   const [editingConcert, setEditingConcert] = useState(null);
@@ -32,6 +35,7 @@ export default function App() {
   const [showMerch, setShowMerch] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showPublicProfilePreview, setShowPublicProfilePreview] = useState(false);
+  const [previewUsername, setPreviewUsername] = useState(null);
   const [youtubeData, setYoutubeData] = useState(null);
   const [youtubeTakeout, setYoutubeTakeout] = useState(null);
   const navigate = useNavigate();
@@ -75,7 +79,7 @@ export default function App() {
     if (!supabase || !user?.id) return;
     const uid = user.id;
     (async () => {
-      const [cRes, vRes, mRes, sRes, yRes, takeoutRes, friendsRes] = await Promise.all([
+      const [cRes, vRes, mRes, sRes, yRes, takeoutRes, friendsRes, followsRes] = await Promise.all([
         supabase.from("concerts").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("vinyl").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("merch").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
@@ -83,6 +87,10 @@ export default function App() {
         supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, featured_youtube_channels, last_fetched_at").eq("user_id", uid).maybeSingle(),
         supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at, channel_rankings_json, video_rankings_json, watch_trend_json").eq("user_id", uid).maybeSingle(),
         supabase.from("profiles").select("id, display_name, username, avatar_id").neq("id", uid).order("display_name", { ascending: true }).limit(24),
+        supabase
+          .from("user_follows")
+          .select("follower_id, followed_id")
+          .or(`follower_id.eq.${uid},followed_id.eq.${uid}`),
       ]);
       if (cRes.data) {
         setConcerts(
@@ -141,6 +149,18 @@ export default function App() {
         );
       } else {
         setRecommendedFriends([]);
+      }
+      if (followsRes && !followsRes.error && followsRes.data) {
+        const all = followsRes.data;
+        const followers = all.filter((r) => r.followed_id === uid);
+        const following = all.filter((r) => r.follower_id === uid);
+        setFollowersCount(followers.length);
+        setFollowingCount(following.length);
+        setFollowingIds(following.map((r) => r.followed_id));
+      } else {
+        setFollowersCount(0);
+        setFollowingCount(0);
+        setFollowingIds([]);
       }
       if (sRes.data?.user_id) {
         const s = sRes.data;
@@ -284,6 +304,13 @@ export default function App() {
 
   const handleViewPublicProfile = () => {
     if (!user?.username) return;
+    setPreviewUsername(user.username);
+    setShowPublicProfilePreview(true);
+  };
+
+  const handleViewOtherProfile = (username) => {
+    if (!username) return;
+    setPreviewUsername(username);
     setShowPublicProfilePreview(true);
   };
 
@@ -520,6 +547,38 @@ export default function App() {
     }
   };
 
+  const handleToggleFollowUser = async (targetUserId, shouldFollow) => {
+    if (!supabase || !user?.id || !targetUserId || targetUserId === user.id) return;
+    const uid = user.id;
+    const isAlreadyFollowing = followingIds.includes(targetUserId);
+    const wantFollow = shouldFollow ?? !isAlreadyFollowing;
+
+    if (wantFollow && isAlreadyFollowing) return;
+    if (!wantFollow && !isAlreadyFollowing) return;
+
+    if (wantFollow) {
+      setFollowingIds((prev) => (prev.includes(targetUserId) ? prev : [...prev, targetUserId]));
+      setFollowingCount((c) => c + 1);
+      const { error } = await supabase.from("user_follows").insert({ follower_id: uid, followed_id: targetUserId });
+      if (error) {
+        setFollowingIds((prev) => prev.filter((id) => id !== targetUserId));
+        setFollowingCount((c) => Math.max(0, c - 1));
+      }
+    } else {
+      setFollowingIds((prev) => prev.filter((id) => id !== targetUserId));
+      setFollowingCount((c) => Math.max(0, c - 1));
+      const { error } = await supabase
+        .from("user_follows")
+        .delete()
+        .eq("follower_id", uid)
+        .eq("followed_id", targetUserId);
+      if (error) {
+        setFollowingIds((prev) => (prev.includes(targetUserId) ? prev : [...prev, targetUserId]));
+        setFollowingCount((c) => c + 1);
+      }
+    }
+  };
+
   const headerTitle = activePage === "Profile" ? activeTab : activePage;
 
   const renderNonProfilePage = () => {
@@ -598,6 +657,8 @@ export default function App() {
                 vinyl={vinyl}
                 data={streamingData}
                 user={user}
+            followersCount={followersCount}
+            followingCount={followingCount}
                 onToggleConcertFeatured={handleToggleConcertFeatured}
                 onToggleVinylFeatured={handleToggleVinylFeatured}
                 onToggleMerchFeatured={handleToggleMerchFeatured}
@@ -612,7 +673,12 @@ export default function App() {
           </div>
         </>
       ) : activePage === "Search" ? (
-        <SearchPage recommendedFriends={recommendedFriends} />
+        <SearchPage
+          recommendedFriends={recommendedFriends}
+          followingIds={followingIds}
+          onToggleFollow={handleToggleFollowUser}
+          onOpenProfile={handleViewOtherProfile}
+        />
       ) : (
         renderNonProfilePage()
       )}
@@ -621,7 +687,7 @@ export default function App() {
       {editingConcert && <EditConcertModal concert={editingConcert} onClose={() => setEditingConcert(null)} onSave={handleUpdateConcert} />}
       {showVinyl && <AddItemModal type="vinyl" onClose={() => setShowVinyl(false)} onAdd={handleAddVinyl} />}
       {showMerch && <AddItemModal type="merch" onClose={() => setShowMerch(false)} onAdd={handleAddMerch} />}
-      {showPublicProfilePreview && user?.username && (
+      {showPublicProfilePreview && previewUsername && (
         <div
           style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(30,27,75,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
           onClick={(e) => e.target === e.currentTarget && setShowPublicProfilePreview(false)}
@@ -631,7 +697,7 @@ export default function App() {
               <button type="button" onClick={() => setShowPublicProfilePreview(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }} aria-label="Close">✕</button>
             </div>
             <div style={{ overflow: "auto", flex: 1 }}>
-              <PublicProfile username={user.username} />
+              <PublicProfile username={previewUsername} />
             </div>
           </div>
         </div>

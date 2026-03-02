@@ -18,6 +18,8 @@ export default function PublicProfile({ username: usernameProp }) {
   const [shareFeedback, setShareFeedback] = useState('');
   const [downloadFeedback, setDownloadFeedback] = useState('');
   const [featuredYoutubeChannels, setFeaturedYoutubeChannels] = useState([]);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   useEffect(() => {
     if (!supabase || !username) {
@@ -43,12 +45,16 @@ export default function PublicProfile({ username: usernameProp }) {
 
         // 2) Load featured items
         const uid = prof.id;
-        const [cRes, vRes, mRes, sRes, yRes] = await Promise.all([
+        const [cRes, vRes, mRes, sRes, yRes, followsRes] = await Promise.all([
           supabase.from('concerts').select('*').eq('user_id', uid).eq('is_featured', true).order('date', { ascending: false }),
           supabase.from('vinyl').select('*').eq('user_id', uid).eq('is_featured', true).order('created_at', { ascending: false }),
           supabase.from('merch').select('*').eq('user_id', uid).eq('is_featured', true).order('created_at', { ascending: false }),
           supabase.from('user_streaming_stats').select('*').eq('user_id', uid).single(),
           supabase.from('featured_youtube_channels_public').select('featured_youtube_channels').eq('user_id', uid).single(),
+          supabase
+            .from('user_follows')
+            .select('follower_id, followed_id')
+            .or(`follower_id.eq.${uid},followed_id.eq.${uid}`),
         ]);
         if (cancelled) return;
         if (cRes.data) setConcerts(cRes.data);
@@ -63,6 +69,16 @@ export default function PublicProfile({ username: usernameProp }) {
             uniqueTracks: sRes.data.unique_tracks ?? 0,
             featuredArtists: sRes.data.featured_artists ?? [],
           });
+        }
+        if (followsRes && !followsRes.error && followsRes.data) {
+          const all = followsRes.data;
+          const followers = all.filter((r) => r.followed_id === uid);
+          const following = all.filter((r) => r.follower_id === uid);
+          setFollowersCount(followers.length);
+          setFollowingCount(following.length);
+        } else {
+          setFollowersCount(0);
+          setFollowingCount(0);
         }
       } catch (e) {
         if (!cancelled) setError(e.message || 'Could not load profile.');
@@ -166,6 +182,10 @@ export default function PublicProfile({ username: usernameProp }) {
           <div>
             <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: '#1e1b4b' }}>{profile.display_name}</div>
             <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)', marginTop: 2 }}>@{profile.username}</div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 8, fontFamily: F, fontSize: 12, color: 'rgba(55,48,107,0.8)' }}>
+              <span><strong style={{ color: '#0f766e' }}>{followersCount}</strong> followers</span>
+              <span><strong style={{ color: '#0f766e' }}>{followingCount}</strong> following</span>
+            </div>
           </div>
         </div>
         <div style={{ padding: '0 20px 12px' }}>
