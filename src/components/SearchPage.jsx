@@ -39,7 +39,7 @@ export default function SearchPage({ recommendedFriends }) {
         avatarId: f.avatarId ?? 7,
       }))
     : [];
-  const friends = friendsFromDb.length > 0 ? friendsFromDb : demoRecommendedFriends;
+  const friends = friendsFromDb;
 
   const searchIndex = [
     ...recommendedArtists.map((a) => ({
@@ -221,17 +221,30 @@ export default function SearchPage({ recommendedFriends }) {
       {/* Recommended Friends */}
       <SectionTitle>Recommended Friends</SectionTitle>
       <Card style={{ padding: "12px 0 8px", marginBottom: 16 }}>
-        <HorizontalList>
-          {friends.map((friend) => (
-            <PersonCard
-              key={friend.id}
-              title={friend.name}
-              subtitle={friend.subtitle}
-              primaryLabel="Add +"
-              avatarId={friend.avatarId}
-            />
-          ))}
-        </HorizontalList>
+        {friends.length > 0 ? (
+          <HorizontalList>
+            {friends.map((friend) => (
+              <PersonCard
+                key={friend.id}
+                title={friend.name}
+                subtitle={friend.subtitle}
+                primaryLabel="Add +"
+                avatarId={friend.avatarId}
+              />
+            ))}
+          </HorizontalList>
+        ) : (
+          <div
+            style={{
+              padding: "8px 16px 10px",
+              fontFamily: F,
+              fontSize: 12,
+              color: "rgba(55,48,107,0.7)",
+            }}
+          >
+            No friends to recommend yet. Invite others to join Herd to see them here.
+          </div>
+        )}
       </Card>
 
       {/* Recent Activity */}
