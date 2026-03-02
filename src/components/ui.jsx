@@ -87,11 +87,12 @@ export const TabBar = ({ active, onSelect }) => (
 
 export const BottomNav = ({ active, onSelect }) => {
   const items = [
-    { id: "Feed", label: "Feed", iconSrc: "/Nav/Navigation Bar 1.png" },
-    { id: "Herds", label: "Herds", iconSrc: "/Nav/Navigation Bar 2.png" },
-    { id: "Search", label: "Search", iconSrc: "/Nav/Navigation Bar 3.png" },
-    { id: "Market", label: "Market", iconSrc: "/Nav/Navigation Bar 4.png" },
-    { id: "Profile", label: "Profile", iconSrc: "/Nav/Navigation Bar 5.png" },
+    // 1 = Feed (news), 2 = Herds (fan club), 3 = Search (crest +), 4 = Market (bag), 5 = Profile (person)
+    { id: "Feed", label: "Feed", iconSrc: "/Nav/Navigation Bar 1JPG.jpg" },
+    { id: "Herds", label: "Herds", iconSrc: "/Nav/Navigation Bar 2JPG.jpg" },
+    { id: "Search", label: "Search", iconSrc: "/Nav/Navigation Bar 3JPG.jpg" },
+    { id: "Market", label: "Market", iconSrc: "/Nav/Navigation Bar 4JPG.jpg" },
+    { id: "Profile", label: "Profile", iconSrc: "/Nav/Navigation Bar 5JPG.jpg" },
   ];
 
   return (
