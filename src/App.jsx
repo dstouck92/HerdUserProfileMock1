@@ -24,6 +24,7 @@ export default function App() {
   const [concerts, setConcerts] = useState([]);
   const [vinyl, setVinyl] = useState([]);
   const [merch, setMerch] = useState([]);
+  const [recommendedFriends, setRecommendedFriends] = useState([]);
   const [showUpload, setShowUpload] = useState(false);
   const [showConcert, setShowConcert] = useState(false);
   const [editingConcert, setEditingConcert] = useState(null);
@@ -74,13 +75,14 @@ export default function App() {
     if (!supabase || !user?.id) return;
     const uid = user.id;
     (async () => {
-      const [cRes, vRes, mRes, sRes, yRes, takeoutRes] = await Promise.all([
+      const [cRes, vRes, mRes, sRes, yRes, takeoutRes, friendsRes] = await Promise.all([
         supabase.from("concerts").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("vinyl").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("merch").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("user_streaming_stats").select("*").eq("user_id", uid).single(),
         supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, featured_youtube_channels, last_fetched_at").eq("user_id", uid).maybeSingle(),
         supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at, channel_rankings_json, video_rankings_json, watch_trend_json").eq("user_id", uid).maybeSingle(),
+        supabase.from("profiles").select("id, display_name, username, avatar_id").neq("id", uid).order("display_name", { ascending: true }).limit(24),
       ]);
       if (cRes.data) {
         setConcerts(
@@ -128,6 +130,18 @@ export default function App() {
       else setYoutubeData(null);
       if (takeoutRes.data?.user_id) setYoutubeTakeout(takeoutRes.data);
       else setYoutubeTakeout(null);
+      if (friendsRes.data) {
+        setRecommendedFriends(
+          friendsRes.data.map((p) => ({
+            id: p.id,
+            displayName: p.display_name || p.username || "Friend",
+            username: p.username || "user",
+            avatarId: p.avatar_id ?? 7,
+          })),
+        );
+      } else {
+        setRecommendedFriends([]);
+      }
       if (sRes.data?.user_id) {
         const s = sRes.data;
         let featuredArtists = s.featured_artists ?? [];
@@ -598,7 +612,7 @@ export default function App() {
           </div>
         </>
       ) : activePage === "Search" ? (
-        <SearchPage />
+        <SearchPage recommendedFriends={recommendedFriends} />
       ) : (
         renderNonProfilePage()
       )}

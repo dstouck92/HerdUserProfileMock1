@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, F } from "./ui";
+import { Card, F, AvatarSprite } from "./ui";
 
 const recommendedArtists = [
   { id: 1, name: "Flume", subtitle: "2 concerts attended" },
@@ -7,7 +7,7 @@ const recommendedArtists = [
   { id: 3, name: "Tame Impala", subtitle: "1 concert attended" },
 ];
 
-const recommendedFriends = [
+const demoRecommendedFriends = [
   { id: 1, name: "Jessica Lee", subtitle: "4 mutual friends · 11 friends" },
   { id: 2, name: "Mike Johnson", subtitle: "3 mutual friends · 9 friends" },
   { id: 3, name: "Emma Roberts", subtitle: "6 mutual friends · 13 friends" },
@@ -17,30 +17,6 @@ const demoHerds = [
   { id: 1, name: "Flume Herd", subtitle: "132 members" },
   { id: 2, name: "West Coast Ravers", subtitle: "87 members" },
   { id: 3, name: "Indie Night Owls", subtitle: "54 members" },
-];
-
-const searchIndex = [
-  ...recommendedArtists.map((a) => ({
-    id: `artist-${a.id}`,
-    kind: "Artist",
-    name: a.name,
-    subtitle: a.subtitle,
-    action: "Follow",
-  })),
-  ...recommendedFriends.map((f) => ({
-    id: `user-${f.id}`,
-    kind: "User",
-    name: f.name,
-    subtitle: f.subtitle,
-    action: "View",
-  })),
-  ...demoHerds.map((h) => ({
-    id: `herd-${h.id}`,
-    kind: "Herd",
-    name: h.name,
-    subtitle: h.subtitle,
-    action: "Follow",
-  })),
 ];
 
 const recentActivity = [
@@ -53,8 +29,41 @@ const recentActivity = [
   },
 ];
 
-export default function SearchPage() {
+export default function SearchPage({ recommendedFriends }) {
   const [query, setQuery] = useState("");
+  const friendsFromDb = Array.isArray(recommendedFriends)
+    ? recommendedFriends.map((f) => ({
+        id: f.id,
+        name: f.displayName || f.username || "Friend",
+        subtitle: f.username ? `@${f.username}` : "Herd user",
+        avatarId: f.avatarId ?? 7,
+      }))
+    : [];
+  const friends = friendsFromDb.length > 0 ? friendsFromDb : demoRecommendedFriends;
+
+  const searchIndex = [
+    ...recommendedArtists.map((a) => ({
+      id: `artist-${a.id}`,
+      kind: "Artist",
+      name: a.name,
+      subtitle: a.subtitle,
+      action: "Follow",
+    })),
+    ...friends.map((f) => ({
+      id: `user-${f.id}`,
+      kind: "User",
+      name: f.name,
+      subtitle: f.subtitle,
+      action: "View",
+    })),
+    ...demoHerds.map((h) => ({
+      id: `herd-${h.id}`,
+      kind: "Herd",
+      name: h.name,
+      subtitle: h.subtitle,
+      action: "Follow",
+    })),
+  ];
   const trimmedQuery = query.trim().toLowerCase();
   const searchResults = trimmedQuery
     ? searchIndex.filter((e) => e.name.toLowerCase().includes(trimmedQuery)).slice(0, 8)
@@ -213,12 +222,13 @@ export default function SearchPage() {
       <SectionTitle>Recommended Friends</SectionTitle>
       <Card style={{ padding: "12px 0 8px", marginBottom: 16 }}>
         <HorizontalList>
-          {recommendedFriends.map((friend) => (
+          {friends.map((friend) => (
             <PersonCard
               key={friend.id}
               title={friend.name}
               subtitle={friend.subtitle}
               primaryLabel="Add +"
+              avatarId={friend.avatarId}
             />
           ))}
         </HorizontalList>
@@ -342,7 +352,7 @@ function HorizontalList({ children }) {
   );
 }
 
-function PersonCard({ title, subtitle, primaryLabel }) {
+function PersonCard({ title, subtitle, primaryLabel, avatarId }) {
   return (
     <div
       style={{
@@ -360,10 +370,17 @@ function PersonCard({ title, subtitle, primaryLabel }) {
       <div
         style={{
           height: 90,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           background:
             "radial-gradient(circle at 10% 0%, #f97316, #0ea5e9 60%, #1d4ed8)",
         }}
-      />
+      >
+        {typeof avatarId === "number" ? (
+          <AvatarSprite avatarId={avatarId} size={52} />
+        ) : null}
+      </div>
       <div style={{ padding: "10px 12px 12px" }}>
         <div
           style={{
