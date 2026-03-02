@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, F, AvatarSprite } from "./ui";
 
-const recommendedArtists = [
+const fallbackArtists = [
   { id: 1, name: "Flume", subtitle: "2 concerts attended" },
   { id: 2, name: "Billie Eilish", subtitle: "1 concert attended" },
   { id: 3, name: "Tame Impala", subtitle: "1 concert attended" },
@@ -23,7 +23,7 @@ const recentActivity = [
   },
 ];
 
-export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile }) {
+export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile, recommendedArtists }) {
   const [query, setQuery] = useState("");
   const friendsFromDb = Array.isArray(recommendedFriends)
     ? recommendedFriends.map((f) => ({
@@ -36,8 +36,12 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
     : [];
   const friends = friendsFromDb;
 
+  const artists = Array.isArray(recommendedArtists) && recommendedArtists.length > 0
+    ? recommendedArtists
+    : fallbackArtists;
+
   const searchIndex = [
-    ...recommendedArtists.map((a) => ({
+    ...artists.map((a) => ({
       id: `artist-${a.id}`,
       kind: "Artist",
       name: a.name,
@@ -222,7 +226,7 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
       <SectionTitle>Recommended Artists</SectionTitle>
       <Card style={{ padding: "12px 0 8px", marginBottom: 10 }}>
         <HorizontalList>
-          {recommendedArtists.map((artist) => (
+          {artists.map((artist) => (
             <PersonCard
               key={artist.id}
               title={artist.name}

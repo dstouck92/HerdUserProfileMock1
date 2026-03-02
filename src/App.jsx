@@ -581,6 +581,16 @@ export default function App() {
 
   const headerTitle = activePage === "Profile" ? activeTab : activePage;
 
+  const recommendedArtistsForSearch =
+    streamingData?.topArtists?.slice(0, 6).map((a, index) => ({
+      id: index + 1,
+      name: a.name || "Artist",
+      subtitle:
+        a.hours != null
+          ? `${a.hours} hours listened`
+          : "From your streaming history",
+    })) ?? [];
+
   const renderNonProfilePage = () => {
     const titles = {
       Feed: "Feed",
@@ -696,6 +706,7 @@ export default function App() {
           followingIds={followingIds}
           onToggleFollow={handleToggleFollowUser}
           onOpenProfile={handleViewOtherProfile}
+          recommendedArtists={recommendedArtistsForSearch}
         />
       ) : (
         renderNonProfilePage()
