@@ -674,33 +674,57 @@ export default function App() {
     const uid = user.id;
     const loadActivity = async () => {
       try {
+        const actorIds = [uid, ...followingIds];
         const { data: rows, error } = await supabase
           .from("user_activity")
-          .select("id, type, description, created_at")
-          .eq("actor_id", uid)
+          .select("id, type, description, created_at, actor_id, herd_id")
+          .in("actor_id", actorIds)
           .order("created_at", { ascending: false })
-          .limit(25);
+          .limit(50);
         if (error || !rows) {
           setRecentActivity([]);
           return;
         }
+        // Show all of your own activity, plus follow_herd events from people you follow
+        const filtered = rows.filter(
+          (r) => r.actor_id === uid || (r.actor_id !== uid && r.type === "follow_herd"),
+        );
+        if (filtered.length === 0) {
+          setRecentActivity([]);
+          return;
+        }
+        const actorIdSet = Array.from(new Set(filtered.map((r) => r.actor_id).filter(Boolean)));
+        const { data: profiles, error: profErr } = await supabase
+          .from("profiles")
+          .select("id, display_name, username, avatar_id")
+          .in("id", actorIdSet);
+        const profileById = {};
+        if (!profErr && profiles) {
+          profiles.forEach((p) => {
+            profileById[p.id] = p;
+          });
+        }
         setRecentActivity(
-          rows.map((r) => ({
-            id: r.id,
-            actorName: "You",
-            actorUsername: user.username || "",
-            actorAvatarId: user.avatar_id ?? 7,
-            description: r.description,
-            createdAt: r.created_at,
-            type: r.type,
-          })),
+          filtered.map((r) => {
+            const isSelf = r.actor_id === uid;
+            const prof = profileById[r.actor_id];
+            return {
+              id: r.id,
+              actorName: isSelf ? "You" : (prof?.display_name || prof?.username || "Fan"),
+              actorUsername: isSelf ? (user.username || "") : (prof?.username || ""),
+              actorAvatarId: isSelf ? (user.avatar_id ?? 7) : (prof?.avatar_id ?? 7),
+              description: r.description,
+              createdAt: r.created_at,
+              type: r.type,
+            };
+          }),
         );
       } catch {
         setRecentActivity([]);
       }
     };
     loadActivity();
-  }, [user?.id, user?.username, user?.avatar_id]);
+  }, [supabase, user?.id, user?.username, user?.avatar_id, JSON.stringify(followingIds)]);
 
   useEffect(() => {
     if (!supabase || !user?.id) return;
@@ -776,7 +800,15 @@ export default function App() {
       const { error } = await supabase.from("herd_follows").insert({ user_id: uid, herd_id: herdId });
       if (!error) {
         const { data: herd } = await supabase.from("herds").select("id, name, image_url, spotify_artist_id").eq("id", herdId).single();
-        if (herd) setUserHerds((prev) => (prev.some((h) => h.id === herd.id) ? prev : [...prev, herd]));
+        if (herd) {
+          setUserHerds((prev) => (prev.some((h) => h.id === herd.id) ? prev : [...prev, herd]));
+          await supabase.from("user_activity").insert({
+            actor_id: uid,
+            herd_id: herd.id,
+            type: "follow_herd",
+            description: `Joined ${herd.name} fan club`,
+          });
+        }
       }
     } else {
       await supabase.from("herd_follows").delete().eq("user_id", uid).eq("herd_id", herdId);
