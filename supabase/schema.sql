@@ -7,6 +7,7 @@ create table if not exists public.profiles (
   username text not null default '',
   phone text,
   avatar_id integer not null default 7,
+  profile_image_url text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -134,6 +135,9 @@ begin
   end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'avatar_id') then
     alter table public.profiles add column avatar_id integer not null default 7;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'profile_image_url') then
+    alter table public.profiles add column profile_image_url text;
   end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_youtube' and column_name = 'featured_youtube_channels') then
     alter table public.user_youtube add column featured_youtube_channels jsonb not null default '[]';

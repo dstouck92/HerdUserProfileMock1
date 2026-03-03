@@ -68,10 +68,30 @@ export default function App() {
         if (cancelled) return;
         if (session?.user) {
           try {
-            const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
-            if (!cancelled) setUser(profile ? { ...profile, avatar_id: profile.avatar_id ?? 7 } : { id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user", avatar_id: 7 });
+            const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id, profile_image_url").eq("id", session.user.id).single();
+            if (!cancelled) {
+              setUser(
+                profile
+                  ? { ...profile, avatar_id: profile.avatar_id ?? 7, profile_image_url: profile.profile_image_url || null }
+                  : {
+                      id: session.user.id,
+                      display_name: session.user.email?.split("@", 1)[0] || "User",
+                      username: session.user.email?.split("@", 1)[0] || "user",
+                      avatar_id: 7,
+                      profile_image_url: null,
+                    },
+              );
+            }
           } catch (_) {
-            if (!cancelled) setUser({ id: session.user.id, display_name: session.user.email?.split("@")[0] || "User", username: session.user.email?.split("@")[0] || "user", avatar_id: 7 });
+            if (!cancelled) {
+              setUser({
+                id: session.user.id,
+                display_name: session.user.email?.split("@", 1)[0] || "User",
+                username: session.user.email?.split("@", 1)[0] || "user",
+                avatar_id: 7,
+                profile_image_url: null,
+              });
+            }
           }
         }
       } catch (_) {
@@ -97,7 +117,7 @@ export default function App() {
         supabase.from("user_streaming_stats").select("*").eq("user_id", uid).single(),
         supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, featured_youtube_channels, last_fetched_at").eq("user_id", uid).maybeSingle(),
         supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at, channel_rankings_json, video_rankings_json, watch_trend_json").eq("user_id", uid).maybeSingle(),
-        supabase.from("profiles").select("id, display_name, username, avatar_id").neq("id", uid).order("display_name", { ascending: true }).limit(24),
+        supabase.from("profiles").select("id, display_name, username, avatar_id, profile_image_url").neq("id", uid).order("display_name", { ascending: true }).limit(24),
         supabase
           .from("user_follows")
           .select("follower_id, followed_id")
@@ -156,6 +176,7 @@ export default function App() {
             displayName: p.display_name || p.username || "Friend",
             username: p.username || "user",
             avatarId: p.avatar_id ?? 7,
+            profileImageUrl: p.profile_image_url || null,
           })),
         );
       } else {
@@ -374,7 +395,7 @@ export default function App() {
       }
       const { data: profiles, error: profErr } = await supabase
         .from("profiles")
-        .select("id, display_name, username, avatar_id")
+        .select("id, display_name, username, avatar_id, profile_image_url")
         .in("id", uniqueIds);
       if (!profErr && profiles) {
         const items = profiles
@@ -383,6 +404,7 @@ export default function App() {
             name: p.display_name || p.username || "Fan",
             username: p.username || "",
             avatarId: p.avatar_id ?? 7,
+            profileImageUrl: p.profile_image_url || null,
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
         setFollowListUsers(items);
@@ -633,6 +655,58 @@ export default function App() {
     if (!user?.id || !supabase) return;
     const { error } = await supabase.from("profiles").update({ avatar_id: avatarId }).eq("id", user.id);
     if (!error) setUser((prev) => (prev ? { ...prev, avatar_id: avatarId } : prev));
+  };
+
+  const handleProfileImageSelected = async (file) => {
+    if (!file || !supabase || !user?.id) return;
+    const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      if (typeof window !== "undefined") {
+        window.alert("Please choose an image smaller than 5 MB.");
+      }
+      return;
+    }
+    if (file.type && !file.type.startsWith("image/")) {
+      if (typeof window !== "undefined") {
+        window.alert("Please upload an image file (jpg, png, webp).");
+      }
+      return;
+    }
+    try {
+      const extMatch = file.name && file.name.includes(".") ? file.name.split(".").pop() : "";
+      const ext = (extMatch || "jpg").toLowerCase();
+      const path = `${user.id}/profile-${Date.now()}.${ext}`;
+      const bucket = supabase.storage.from("profile-pictures");
+      const { error: uploadError } = await bucket.upload(path, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+      if (uploadError) {
+        if (typeof console !== "undefined") console.error("Profile image upload error:", uploadError);
+        if (typeof window !== "undefined") window.alert("Upload failed. Please try again.");
+        return;
+      }
+      const { data: publicData } = bucket.getPublicUrl(path);
+      const publicUrl = publicData?.publicUrl || null;
+      if (!publicUrl) {
+        if (typeof window !== "undefined") window.alert("Could not get public URL for image.");
+        return;
+      }
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ profile_image_url: publicUrl })
+        .eq("id", user.id);
+      if (updateError) {
+        if (typeof console !== "undefined") console.error("Profile image URL update error:", updateError);
+        if (typeof window !== "undefined") window.alert("Saving profile picture failed. Please try again.");
+        return;
+      }
+      setUser((prev) => (prev ? { ...prev, profile_image_url: publicUrl } : prev));
+      setShowAvatarPicker(false);
+    } catch (e) {
+      if (typeof console !== "undefined") console.error("handleProfileImageSelected error:", e);
+      if (typeof window !== "undefined") window.alert("Upload failed. Please try again.");
+    }
   };
 
   const handleToggleArtistFeatured = async (artistName, isFeatured) => {
@@ -977,6 +1051,7 @@ export default function App() {
             showAvatarPicker={showAvatarPicker}
             onCloseAvatarPicker={() => setShowAvatarPicker(false)}
             onOpenAvatarPicker={() => setShowAvatarPicker(true)}
+            onProfileImageSelected={handleProfileImageSelected}
           />
           {activeTab === "Curate" && (
             <div

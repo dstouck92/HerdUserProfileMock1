@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, F, Sec } from "./ui";
+import { useDebounce } from "../hooks/useDebounce";
 
 const formatDate = (iso) => {
   if (!iso) return "";
@@ -46,8 +47,12 @@ export default function MarketPage({ userHerds }) {
     return herd?.name || "";
   }, [followedHerds, selectedHerdId]);
 
+  const debouncedArtistQuery = useDebounce(artistQuery, 400);
+  const debouncedCity = useDebounce(city, 400);
+  const debouncedCountry = useDebounce(country, 400);
+
   useEffect(() => {
-    if (!artistQuery) {
+    if (!debouncedArtistQuery) {
       setEvents([]);
       setError("");
       setLoading(false);
@@ -59,9 +64,11 @@ export default function MarketPage({ userHerds }) {
       setError("");
       try {
         const params = new URLSearchParams();
-        params.set("artists", artistQuery);
-        if (city.trim()) params.set("city", city.trim());
-        if (country.trim()) params.set("country", country.trim());
+        params.set("artists", debouncedArtistQuery);
+        const cityParam = debouncedCity.trim();
+        const countryParam = debouncedCountry.trim();
+        if (cityParam) params.set("city", cityParam);
+        if (countryParam) params.set("country", countryParam);
         const res = await fetch(`/api/market/concerts?${params.toString()}`);
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -82,7 +89,7 @@ export default function MarketPage({ userHerds }) {
     return () => {
       cancelled = true;
     };
-  }, [artistQuery, city, country]);
+  }, [debouncedArtistQuery, debouncedCity, debouncedCountry]);
 
   const handleOpenTickets = (url) => {
     if (!url) return;

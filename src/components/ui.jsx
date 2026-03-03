@@ -1,11 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 export const F = "'DM Sans', sans-serif";
 
-export const AvatarSprite = ({ avatarId, size = 72 }) => {
+export const AvatarSprite = ({ avatarId, size = 72, imageUrl }) => {
   const id = Math.max(0, Math.min(11, Number(avatarId) || 0));
-  const [imgError, setImgError] = React.useState(false);
-  if (imgError) {
+  const [spriteError, setSpriteError] = React.useState(false);
+  const [customError, setCustomError] = React.useState(false);
+
+  if (imageUrl && !customError) {
+    return (
+      <img
+        src={imageUrl}
+        alt=""
+        width={size}
+        height={size}
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+        onError={() => setCustomError(true)}
+      />
+    );
+  }
+
+  if (spriteError) {
     return (
       <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, #0d9488, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F, fontSize: Math.round(size * 0.4), fontWeight: 700, color: "#fff" }}>
         {id + 1}
@@ -19,12 +34,25 @@ export const AvatarSprite = ({ avatarId, size = 72 }) => {
       width={size}
       height={size}
       style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-      onError={() => setImgError(true)}
+      onError={() => setSpriteError(true)}
     />
   );
 };
 
-export const AvatarPicker = ({ selectedId, onSelect, onClose }) => {
+export const AvatarPicker = ({ selectedId, onSelect, onClose, onUploadImage }) => {
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (file && onUploadImage) {
+      onUploadImage(file);
+    }
+    // Reset so selecting the same file again still triggers change.
+    if (event.target) {
+      event.target.value = "";
+    }
+  };
+
   return (
     <>
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 9998 }} onClick={onClose} />
@@ -42,7 +70,23 @@ export const AvatarPicker = ({ selectedId, onSelect, onClose }) => {
             </button>
           ))}
         </div>
-        <button type="button" onClick={onClose} style={{ marginTop: 16, width: "100%", padding: "10px", border: "none", borderRadius: 12, background: "rgba(13,148,136,0.15)", color: "#0d9488", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+        />
+        {onUploadImage && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={{ marginTop: 16, width: "100%", padding: "10px", border: "none", borderRadius: 12, background: "linear-gradient(135deg, #0ea5e9, #6366f1)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 16px rgba(37,99,235,0.4)" }}
+          >
+            Upload Profile Picture
+          </button>
+        )}
+        <button type="button" onClick={onClose} style={{ marginTop: 10, width: "100%", padding: "10px", border: "none", borderRadius: 12, background: "rgba(13,148,136,0.15)", color: "#0d9488", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
       </div>
     </>
   );
@@ -163,9 +207,10 @@ export const BottomNav = ({ active, onSelect }) => {
   );
 };
 
-export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supabase, showAvatarPicker, onCloseAvatarPicker, onOpenAvatarPicker }) => {
+export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supabase, showAvatarPicker, onCloseAvatarPicker, onOpenAvatarPicker, onProfileImageSelected }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const avatarId = user?.avatar_id ?? 7;
+  const profileImageUrl = user?.profile_image_url || null;
 
   useEffect(() => {
     if (showAvatarPicker) setPickerOpen(true);
@@ -189,7 +234,7 @@ export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supab
         onClick={() => onOpenAvatarPicker ? onOpenAvatarPicker() : (onAvatarChange && setPickerOpen(true))}
         style={{ width: 72, height: 72, borderRadius: "50%", border: "none", padding: 0, cursor: (onAvatarChange || onOpenAvatarPicker) ? "pointer" : "default", flexShrink: 0, boxShadow: "0 4px 20px rgba(13,148,136,0.4)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #0d9488, #10b981, #34d399)", fontFamily: F, fontSize: 24, fontWeight: 700, color: "#fff" }}
       >
-        <AvatarSprite avatarId={avatarId} size={72} />
+        <AvatarSprite avatarId={avatarId} imageUrl={profileImageUrl} size={72} />
       </button>
       <div>
         <div style={{ fontFamily: F, fontSize: 22, fontWeight: 700, color: "#1e1b4b" }}>{user?.display_name}</div>
@@ -202,7 +247,7 @@ export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supab
           Public Profile
         </button>
       </div>
-      {pickerOpen && <AvatarPicker selectedId={avatarId} onSelect={handleSelect} onClose={handleClosePicker} />}
+      {pickerOpen && <AvatarPicker selectedId={avatarId} onSelect={handleSelect} onClose={handleClosePicker} onUploadImage={onProfileImageSelected} />}
     </div>
   );
 };

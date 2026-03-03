@@ -11,7 +11,8 @@ config()
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const SETLIST_API_KEY = process.env.SETLIST_FM_API_KEY || 'sMd8Hesl527ESeQAgkrbTEKg0E_e96X2642X'
-const CACHE_TTL_MS = 2 * 60 * 1000 // 2 minutes
+const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY || ''
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const FETCH_TIMEOUT_MS = 15000
 const DISCOGS_USER_AGENT = 'HerdApp/1.0 +https://getherd.co'
 
@@ -20,6 +21,7 @@ app.use(express.json())
 
 const searchCache = new Map()
 const vinylSearchCache = new Map()
+const ticketmasterCache = new Map()
 
 // YouTube OAuth state (in-memory; expires in 10 min)
 const youtubeStateStore = new Map()
@@ -38,6 +40,61 @@ const youtubeClientSecret = process.env.YOUTUBE_CLIENT_SECRET
 const youtubeRedirectUri = process.env.YOUTUBE_REDIRECT_URI
 const spotifyClientId = process.env.SPOTIFY_CLIENT_ID
 const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET
+
+const spotifyTokenCache = {
+  accessToken: null,
+  expiresAt: 0,
+  inFlight: null,
+}
+
+async function getSpotifyAccessToken() {
+  if (!spotifyClientId || !spotifyClientSecret) return null
+
+  const now = Date.now()
+  if (spotifyTokenCache.accessToken && now < spotifyTokenCache.expiresAt - 5000) {
+    return spotifyTokenCache.accessToken
+  }
+
+  if (spotifyTokenCache.inFlight) {
+    return spotifyTokenCache.inFlight
+  }
+
+  spotifyTokenCache.inFlight = (async () => {
+    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString('base64')}`,
+      },
+      body: 'grant_type=client_credentials',
+    })
+
+    if (!tokenRes.ok) {
+      const text = await tokenRes.text().catch(() => '')
+      throw new Error(text || 'Spotify token failed')
+    }
+
+    const tokenData = await tokenRes.json()
+    const accessToken = tokenData.access_token
+    const expiresIn = typeof tokenData.expires_in === 'number' ? tokenData.expires_in : 3600
+
+    if (!accessToken) {
+      throw new Error('No access token in Spotify response')
+    }
+
+    spotifyTokenCache.accessToken = accessToken
+    spotifyTokenCache.expiresAt = Date.now() + expiresIn * 1000
+    spotifyTokenCache.inFlight = null
+    return accessToken
+  })().catch((err) => {
+    spotifyTokenCache.inFlight = null
+    spotifyTokenCache.accessToken = null
+    spotifyTokenCache.expiresAt = 0
+    throw err
+  })
+
+  return spotifyTokenCache.inFlight
+}
 
 function mapSetlistsToConcerts(data, artist) {
   const setlists = data.setlist || []
@@ -61,6 +118,33 @@ function mapSetlistsToConcerts(data, artist) {
   })
 }
 
+function mapTicketmasterEventsToConcerts(data, artistHint) {
+  const events = data?._embedded?.events || []
+  return events.map((e) => {
+    const attractions = e._embedded?.attractions || []
+    const primaryAttraction = attractions[0]
+    const venue = e._embedded?.venues?.[0] || {}
+    const images = Array.isArray(e.images) ? e.images : []
+    const preferredImage =
+      images.find((img) => img.width >= 640) ||
+      images[0] ||
+      null
+
+    return {
+      id: e.id,
+      artist: primaryAttraction?.name || artistHint || null,
+      event_name: e.name || null,
+      date: e.dates?.start?.dateTime || e.dates?.start?.localDate || null,
+      venue: venue.name || null,
+      city: venue.city?.name || null,
+      country: venue.country?.countryCode || null,
+      ticket_url: e.url || null,
+      image_url: preferredImage?.url || null,
+      source: 'ticketmaster',
+    }
+  })
+}
+
 // API: get Spotify artist image URL (for herd/fan club avatar)
 app.get('/api/spotify/artist-image', async (req, res) => {
   const artistId = (req.query.artist_id || req.query.artistId || '').trim()
@@ -73,21 +157,10 @@ app.get('/api/spotify/artist-image', async (req, res) => {
     })
   }
   try {
-    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString('base64')}`,
-      },
-      body: 'grant_type=client_credentials',
-    })
-    if (!tokenRes.ok) {
-      const text = await tokenRes.text()
-      return res.status(502).json({ error: 'Spotify token failed', details: text })
+    const accessToken = await getSpotifyAccessToken()
+    if (!accessToken) {
+      return res.status(502).json({ error: 'Spotify token failed' })
     }
-    const tokenData = await tokenRes.json()
-    const accessToken = tokenData.access_token
-    if (!accessToken) return res.status(502).json({ error: 'No access token in Spotify response' })
     const artistRes = await fetch(`https://api.spotify.com/v1/artists/${encodeURIComponent(artistId)}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
@@ -117,21 +190,10 @@ app.get('/api/spotify/search-artists', async (req, res) => {
     })
   }
   try {
-    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString('base64')}`,
-      },
-      body: 'grant_type=client_credentials',
-    })
-    if (!tokenRes.ok) {
-      const text = await tokenRes.text()
-      return res.status(502).json({ error: 'Spotify token failed', details: text })
+    const accessToken = await getSpotifyAccessToken()
+    if (!accessToken) {
+      return res.status(502).json({ error: 'Spotify token failed' })
     }
-    const tokenData = await tokenRes.json()
-    const accessToken = tokenData.access_token
-    if (!accessToken) return res.status(502).json({ error: 'No access token in Spotify response' })
 
     const searchRes = await fetch(
       `https://api.spotify.com/v1/search?type=artist&limit=10&q=${encodeURIComponent(q)}`,
@@ -314,6 +376,143 @@ app.get('/api/vinyl/search', (req, res) => {
         res.status(500).json({ error: err.message || 'Search failed' })
       }
     })
+})
+
+// API: search concerts via Ticketmaster Discovery API
+app.get('/api/market/concerts', async (req, res) => {
+  const artistsParam = (req.query.artists || '').trim()
+  const city = (req.query.city || '').trim()
+  const countryCode = (req.query.country || req.query.countryCode || '').trim()
+  const sizePerArtist = Math.min(
+    10,
+    Math.max(1, Number(req.query.sizePerArtist) || 5),
+  )
+
+  if (!TICKETMASTER_API_KEY) {
+    return res.status(503).json({
+      error:
+        'Ticketmaster API key not configured. Add TICKETMASTER_API_KEY to your .env file.',
+    })
+  }
+
+  if (!artistsParam) {
+    return res
+      .status(400)
+      .json({ error: 'Missing artists query param (comma-separated names)' })
+  }
+
+  let artistNames = artistsParam
+    .split(',')
+    .map((a) => a.trim())
+    .filter(Boolean)
+
+  const MAX_ARTISTS = 12
+  if (artistNames.length > MAX_ARTISTS) {
+    artistNames = artistNames.slice(0, MAX_ARTISTS)
+  }
+
+  if (!artistNames.length) {
+    return res
+      .status(400)
+      .json({ error: 'No valid artist names in artists query param' })
+  }
+
+  // Ticketmaster requires YYYY-MM-DDTHH:mm:ssZ (no milliseconds)
+  const nowIso = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const TICKETMASTER_DELAY_MS = 400
+
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms))
+
+  try {
+    const results = []
+    for (let i = 0; i < artistNames.length; i++) {
+      const artist = artistNames[i]
+      const cacheKey = JSON.stringify({
+        artist: artist.toLowerCase(),
+        city,
+        countryCode: countryCode.toUpperCase(),
+        sizePerArtist,
+      })
+      const cached = ticketmasterCache.get(cacheKey)
+      if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+        results.push(cached.events)
+        if (i < artistNames.length - 1) await delay(TICKETMASTER_DELAY_MS)
+        continue
+      }
+
+      const params = new URLSearchParams({
+        apikey: TICKETMASTER_API_KEY,
+        keyword: artist,
+        sort: 'date,asc',
+        size: String(sizePerArtist),
+        startDateTime: nowIso,
+      })
+      if (city) params.append('city', city)
+      if (countryCode) params.append('countryCode', countryCode.toUpperCase())
+
+      const url = `https://app.ticketmaster.com/discovery/v2/events.json?${params.toString()}`
+
+      const resp = await fetch(url, { signal: controller.signal })
+      if (resp.status === 401 || resp.status === 403) {
+        const text = await resp.text()
+        throw new Error(
+          `Ticketmaster auth error (${resp.status}): ${text || 'Forbidden'}`,
+        )
+      }
+      if (resp.status === 429) {
+        const text = await resp.text()
+        throw new Error(
+          `Ticketmaster rate limit (${resp.status}): ${text || 'Too many requests'}`,
+        )
+      }
+      if (!resp.ok) {
+        const text = await resp.text()
+        throw new Error(
+          `Ticketmaster error (${resp.status}): ${text || 'Unknown error'}`,
+        )
+      }
+
+      const json = await resp.json()
+      const events = mapTicketmasterEventsToConcerts(json, artist)
+      ticketmasterCache.set(cacheKey, { events, at: Date.now() })
+      results.push(events)
+
+      if (i < artistNames.length - 1) await delay(TICKETMASTER_DELAY_MS)
+    }
+
+    clearTimeout(timeoutId)
+
+    // Flatten and dedupe by event id
+    const byId = new Map()
+    for (const list of results) {
+      for (const ev of list) {
+        if (!ev?.id) continue
+        if (!byId.has(ev.id)) byId.set(ev.id, ev)
+      }
+    }
+
+    const events = Array.from(byId.values()).sort((a, b) => {
+      const da = a.date ? new Date(a.date).getTime() : 0
+      const db = b.date ? new Date(b.date).getTime() : 0
+      return da - db
+    })
+
+    return res.json({ events })
+  } catch (err) {
+    clearTimeout(timeoutId)
+    if (err.name === 'AbortError') {
+      return res
+        .status(504)
+        .json({ error: 'Ticketmaster search timed out. Try again.' })
+    }
+    console.error('Ticketmaster API error:', err)
+    return res
+      .status(500)
+      .json({ error: err.message || 'Ticketmaster search failed' })
+  }
 })
 
 // --- YouTube OAuth & sync (optional; requires YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REDIRECT_URI, SUPABASE_SERVICE_ROLE_KEY) ---

@@ -154,20 +154,25 @@ export default function HerdsPage({
         const userIds = [...new Set(withMinutes.map((r) => r.user_id))];
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, display_name, username, avatar_id")
+          .select("id, display_name, username, avatar_id, profile_image_url")
           .in("id", userIds);
         const nameBy = {};
         const avatarBy = {};
-        if (profiles) profiles.forEach((p) => {
-          nameBy[p.id] = p.display_name || p.username || "Fan";
-          avatarBy[p.id] = p.avatar_id ?? 7;
-        });
+        const imageBy = {};
+        if (profiles) {
+          profiles.forEach((p) => {
+            nameBy[p.id] = p.display_name || p.username || "Fan";
+            avatarBy[p.id] = p.avatar_id ?? 7;
+            imageBy[p.id] = p.profile_image_url || null;
+          });
+        }
         const rows = withMinutes.map((r, i) => ({
           rank: i + 1,
           user_id: r.user_id,
           minutes: Math.round(r.minutes * 10) / 10,
           display_name: nameBy[r.user_id] || "Fan",
           avatar_id: avatarBy[r.user_id] ?? 7,
+          profile_image_url: imageBy[r.user_id] || null,
         }));
         if (!cancelled) setLeaderboardRows(rows);
       } catch (_) {
@@ -196,7 +201,7 @@ export default function HerdsPage({
         const userIds = [...new Set(followRows.map((r) => r.user_id))];
         const { data: profiles, error: profErr } = await supabase
           .from("profiles")
-          .select("id, display_name, username, avatar_id")
+          .select("id, display_name, username, avatar_id, profile_image_url")
           .in("id", userIds);
         if (cancelled || profErr) {
           setConnectFollowers([]);
@@ -207,6 +212,7 @@ export default function HerdsPage({
           display_name: p.display_name || p.username || "Fan",
           username: p.username || "",
           avatar_id: p.avatar_id ?? 7,
+          profile_image_url: p.profile_image_url || null,
         })).sort((a, b) => (a.display_name || "").localeCompare(b.display_name || ""));
         if (!cancelled) setConnectFollowers(list);
       } catch {
@@ -638,7 +644,7 @@ export default function HerdsPage({
                       }}
                     >
                       <span style={{ fontFamily: F, fontSize: 15, fontWeight: 800, color: "rgba(55,48,107,0.5)", minWidth: 28 }}>#{row.rank}</span>
-                      <AvatarSprite avatarId={row.avatar_id} size={36} />
+                      <AvatarSprite avatarId={row.avatar_id} imageUrl={row.profile_image_url} size={36} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{row.display_name}</div>
                         <div style={{ fontFamily: F, fontSize: 12, color: "#0d9488", fontWeight: 600 }}>
@@ -683,7 +689,7 @@ export default function HerdsPage({
                         width: "100%",
                       }}
                     >
-                      <AvatarSprite avatarId={f.avatar_id} size={40} />
+                      <AvatarSprite avatarId={f.avatar_id} imageUrl={f.profile_image_url} size={40} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>
                           {f.display_name}

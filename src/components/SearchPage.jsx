@@ -38,6 +38,7 @@ export default function SearchPage({
         subtitle: f.username ? `@${f.username}` : "Herd user",
         username: f.username || "",
         avatarId: f.avatarId ?? 7,
+        profileImageUrl: f.profileImageUrl || null,
       }))
     : [];
   const friends = friendsFromDb;
@@ -491,6 +492,7 @@ export default function SearchPage({
                 title={friend.name}
                 subtitle={friend.subtitle}
                 primaryLabel="Add +"
+                imageUrl={friend.profileImageUrl}
                 avatarId={friend.avatarId}
                 isFollowing={followingIds.includes(friend.id)}
                 onToggleFollow={onToggleFollow}

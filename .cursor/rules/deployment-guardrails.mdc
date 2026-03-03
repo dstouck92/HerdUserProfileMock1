@@ -1,0 +1,37 @@
+---
+description: Deployment guidance and safe, stepwise changes for this project
+alwaysApply: true
+---
+
+# Deployment Commands After Prod-Affecting Changes
+
+- **When to apply**: Whenever a prompt leads to changes that would require a Vercel redeploy to appear in production (any change to server code, client code, APIs, config, schema, or build tooling).
+- **Assistant behavior**:
+  - Always include a short section titled `Deployment commands` at the end of the response whenever such changes are made or proposed.
+  - In that section, provide concrete shell commands the user can paste into a terminal to deploy the change, using this project path.
+  - Use a generic but correct Git + Vercel flow, and clearly mark any placeholders the user should edit (for example, the commit message).
+  - Do NOT run these deployment commands automatically; only show them as text for the user to run manually.
+
+Example `Deployment commands` section for this project:
+
+```bash
+cd "/Users/davidstouck/Herd MVP3/HerdUserProfileMock1"
+git status
+git add .
+git commit -m "DESCRIBE_YOUR_CHANGE"
+git push origin main
+# If needed, trigger a manual Vercel deploy instead of relying on Git integration:
+# vercel --prod
+```
+
+# Stepwise, Safe Execution
+
+- **One change at a time**:
+  - Break user requests into small, ordered steps.
+  - Apply one logical change at a time (for example, update a single component or endpoint, then verify) before moving on.
+- **Keep the app running**:
+  - Prefer minimal, incremental edits over large refactors.
+  - After any non-trivial change, run or suggest an appropriate check (tests, `npm run dev`, `npm run build`, or linting) and mention what the user should look for to ensure the app did not crash.
+- **Explain the steps**:
+  - Briefly describe which step you are on and what you changed, so the user can follow the sequence.
+
