@@ -37,6 +37,7 @@ export default function HerdsPage({
   const [herdSpotifyImageUrl, setHerdSpotifyImageUrl] = useState(null);
   const [spotifyImageByArtistId, setSpotifyImageByArtistId] = useState({});
   const [herdFollowerCount, setHerdFollowerCount] = useState(null);
+  const [herdFollowerCounts, setHerdFollowerCounts] = useState({});
 
   const followingHerdIds = userHerds.map((h) => h.id);
   const isFollowingSelected =
@@ -276,6 +277,45 @@ export default function HerdsPage({
     })();
     return () => { cancelled = true; };
   }, [supabase, selectedHerdId, userHerds]);
+
+  useEffect(() => {
+    if (!supabase || !userHerds?.length) {
+      setHerdFollowerCounts({});
+      return;
+    }
+    const herdIds = Array.from(
+      new Set(
+        (userHerds || [])
+          .map((h) => h.id)
+          .filter(Boolean),
+      ),
+    );
+    if (herdIds.length === 0) {
+      setHerdFollowerCounts({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("herd_follows")
+        .select("herd_id")
+        .in("herd_id", herdIds);
+      if (cancelled || error || !data) {
+        if (!cancelled) setHerdFollowerCounts({});
+        return;
+      }
+      const counts = {};
+      data.forEach((row) => {
+        if (!row.herd_id) return;
+        counts[row.herd_id] = (counts[row.herd_id] || 0) + 1;
+      });
+      herdIds.forEach((id) => {
+        if (counts[id] == null) counts[id] = 0;
+      });
+      if (!cancelled) setHerdFollowerCounts(counts);
+    })();
+    return () => { cancelled = true; };
+  }, [supabase, userHerds]);
 
   const handleCreatePost = async () => {
     if (!supabase || !user?.id || !selectedHerdId || !newPostTitle.trim()) return;
@@ -885,6 +925,7 @@ export default function HerdsPage({
                 style={{
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 12,
                   padding: 12,
                   border: "none",
@@ -896,46 +937,69 @@ export default function HerdsPage({
                   width: "100%",
                 }}
               >
-                {(herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]) ? (
-                  <img
-                    src={herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]}
-                    alt=""
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #0d9488, #10b981)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: F,
-                      fontSize: 18,
-                      fontWeight: 800,
-                      color: "#fff",
-                    }}
-                  >
-                    {herd.name?.charAt(0) || "?"}
-                  </div>
-                )}
-                <span
+                <div
                   style={{
-                    fontFamily: F,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: "#1e1b4b",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    flex: 1,
+                    minWidth: 0,
                   }}
                 >
-                  {herd.name}
-                </span>
+                  {(herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]) ? (
+                    <img
+                      src={herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]}
+                      alt=""
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #0d9488, #10b981)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: F,
+                        fontSize: 18,
+                        fontWeight: 800,
+                        color: "#fff",
+                      }}
+                    >
+                      {herd.name?.charAt(0) || "?"}
+                    </div>
+                  )}
+                  <span
+                    style={{
+                      fontFamily: F,
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: "#1e1b4b",
+                    }}
+                  >
+                    {herd.name}
+                  </span>
+                </div>
+                {herdFollowerCounts[herd.id] != null && (
+                  <span
+                    style={{
+                      fontFamily: F,
+                      fontSize: 13,
+                      color: "rgba(55,48,107,0.7)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {herdFollowerCounts[herd.id].toLocaleString()}{" "}
+                    {herdFollowerCounts[herd.id] === 1 ? "Follower" : "Followers"}
+                  </span>
+                )}
               </button>
             ))}
           </div>
