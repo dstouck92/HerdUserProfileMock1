@@ -36,6 +36,7 @@ export default function HerdsPage({
   const [connectLoading, setConnectLoading] = useState(false);
   const [herdSpotifyImageUrl, setHerdSpotifyImageUrl] = useState(null);
   const [spotifyImageByArtistId, setSpotifyImageByArtistId] = useState({});
+  const [herdFollowerCount, setHerdFollowerCount] = useState(null);
 
   const followingHerdIds = userHerds.map((h) => h.id);
   const isFollowingSelected =
@@ -252,6 +253,24 @@ export default function HerdsPage({
     return () => { cancelled = true; };
   }, [userHerds, discoverHerds, spotifyImageByArtistId]);
 
+  useEffect(() => {
+    if (!supabase || !selectedHerdId) {
+      setHerdFollowerCount(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { count, error } = await supabase
+        .from("herd_follows")
+        .select("*", { count: "exact", head: true })
+        .eq("herd_id", selectedHerdId);
+      if (!cancelled) {
+        setHerdFollowerCount(!error && typeof count === "number" ? count : null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [supabase, selectedHerdId, userHerds]);
+
   const handleCreatePost = async () => {
     if (!supabase || !user?.id || !selectedHerdId || !newPostTitle.trim()) return;
     const title = newPostTitle.trim();
@@ -400,14 +419,22 @@ export default function HerdsPage({
           <div style={{ padding: "12px 16px 16px" }}>
             <div
               style={{
-                fontFamily: F,
-                fontSize: 20,
-                fontWeight: 800,
-                color: "#1e1b4b",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                flexWrap: "wrap",
+                gap: 8,
                 marginBottom: 8,
               }}
             >
-              {herdDetails.name}
+              <div style={{ fontFamily: F, fontSize: 20, fontWeight: 800, color: "#1e1b4b" }}>
+                {herdDetails.name}
+              </div>
+              {herdFollowerCount != null && (
+                <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", fontWeight: 600 }}>
+                  {herdFollowerCount.toLocaleString()} {herdFollowerCount === 1 ? "follower" : "followers"}
+                </div>
+              )}
             </div>
             {user && (
               <button
