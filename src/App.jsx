@@ -392,7 +392,7 @@ export default function App() {
       }
       const { data: profiles, error: profErr } = await supabase
         .from("profiles")
-        .select("id, display_name, username, avatar_id, profile_image_url")
+        .select("id, display_name, username, avatar_id")
         .in("id", uniqueIds);
       if (!profErr && profiles) {
         const items = profiles
@@ -401,7 +401,6 @@ export default function App() {
             name: p.display_name || p.username || "Fan",
             username: p.username || "",
             avatarId: p.avatar_id ?? 7,
-            profileImageUrl: p.profile_image_url || null,
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
         setFollowListUsers(items);
