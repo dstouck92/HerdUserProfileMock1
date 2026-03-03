@@ -55,8 +55,8 @@ export const GradientBg = ({ children }) => (
   </div>
 );
 
-export const Card = ({ children, style }) => (
-  <div style={{ margin: "0 16px 16px", background: "rgba(255,255,255,0.65)", backdropFilter: "blur(16px)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 2px 16px rgba(13,148,136,0.08)", overflow: "hidden", ...style }}>{children}</div>
+export const Card = ({ children, style, ...rest }) => (
+  <div style={{ margin: "0 16px 16px", background: "rgba(255,255,255,0.65)", backdropFilter: "blur(16px)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 2px 16px rgba(13,148,136,0.08)", overflow: "hidden", ...style }} {...rest}>{children}</div>
 );
 
 export const Btn = ({ children, onClick, disabled, style, type = "button" }) => (
