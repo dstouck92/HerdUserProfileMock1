@@ -10,6 +10,7 @@ export default function AuthScreen({ onAuth }) {
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   function fallbackProfile(authUser, displayName, username) {
@@ -47,6 +48,7 @@ export default function AuthScreen({ onAuth }) {
 
   const submit = async () => {
     setError("");
+    setMessage("");
     if (mode === "signup") {
       if (!email?.trim() || !username?.trim() || !displayName?.trim() || !password) return setError("All fields required.");
       if (!phone?.trim()) return setError("Phone number is required.");
@@ -58,6 +60,7 @@ export default function AuthScreen({ onAuth }) {
     if (supabase) {
       setLoading(true);
       setError("");
+      setMessage("");
       try {
         if (mode === "signup") {
           const { data, error: authError } = await supabase.auth.signUp({
@@ -96,6 +99,34 @@ export default function AuthScreen({ onAuth }) {
     else onAuth({ id: "mock", email, phone: "", username: email.split("@")[0], display_name: email.split("@")[0], avatar_id: 7 });
   };
 
+  const handleResetPassword = async () => {
+    if (!email?.trim()) {
+      setError("Enter your email above first.");
+      setMessage("");
+      return;
+    }
+    if (!supabase) {
+      setError("Password reset is unavailable because Supabase is not configured.");
+      setMessage("");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setMessage("");
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+      if (resetError) throw resetError;
+      setMessage("Check your email for a link to reset your password.");
+    } catch (err) {
+      if (err && typeof console !== "undefined") console.error("Password reset error:", err);
+      setError(err?.message || "Could not send reset email.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <GradientBg>
       <div style={{ padding: "60px 24px 40px", textAlign: "center" }}>
@@ -105,7 +136,30 @@ export default function AuthScreen({ onAuth }) {
         <Card style={{ margin: "0 0 20px", padding: "24px 20px" }}>
           <div style={{ display: "flex", marginBottom: 24, background: "rgba(13,148,136,0.08)", borderRadius: 10, padding: 3 }}>
             {["login", "signup"].map((m) => (
-              <button key={m} type="button" onClick={() => { setMode(m); setError(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: mode === m ? "#fff" : "transparent", boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: mode === m ? "#0f766e" : "rgba(55,48,107,0.4)", cursor: "pointer" }}>{m === "login" ? "Log In" : "Sign Up"}</button>
+              <button
+                key={m}
+                type="button"
+                onClick={() => {
+                  setMode(m);
+                  setError("");
+                  setMessage("");
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  borderRadius: 8,
+                  border: "none",
+                  background: mode === m ? "#fff" : "transparent",
+                  boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: mode === m ? "#0f766e" : "rgba(55,48,107,0.4)",
+                  cursor: "pointer",
+                }}
+              >
+                {m === "login" ? "Log In" : "Sign Up"}
+              </button>
             ))}
           </div>
           <form onSubmit={handleSubmit} noValidate>
@@ -117,9 +171,35 @@ export default function AuthScreen({ onAuth }) {
               </>
             )}
             <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" autoComplete="email" />
-            {mode === "login" && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(55,48,107,0.5)", marginTop: -8, marginBottom: 12 }}>Use the email you signed up with, not your display name.</div>}
+            {mode === "login" && (
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(55,48,107,0.5)", marginTop: -8, marginBottom: 12 }}>
+                Use the email you signed up with, not your display name.
+              </div>
+            )}
             <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" autoComplete={mode === "login" ? "current-password" : "new-password"} />
-            <div role="alert" style={{ minHeight: error ? "auto" : 0, marginBottom: 12, textAlign: "left" }}>
+            {mode === "login" && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, marginBottom: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  disabled={loading}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    padding: 0,
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 11,
+                    color: "#0f766e",
+                    textDecoration: "underline",
+                    cursor: loading ? "default" : "pointer",
+                    opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  Forgot your password?
+                </button>
+              </div>
+            )}
+            <div role="alert" style={{ minHeight: error || message ? "auto" : 0, marginBottom: 12, textAlign: "left" }}>
               {error && (
                 <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", padding: "10px 12px", background: "#fef2f2", borderRadius: 8 }}>
                   {error}
@@ -131,6 +211,21 @@ export default function AuthScreen({ onAuth }) {
                       3. <strong>Vercel</strong> — Project → Settings → Environment Variables: set <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_URL</code> and <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_ANON_KEY</code> from Supabase → Settings → API, then Redeploy.
                     </div>
                   )}
+                </div>
+              )}
+              {message && !error && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 13,
+                    color: "#166534",
+                    padding: "8px 10px",
+                    background: "#ecfdf3",
+                    borderRadius: 8,
+                  }}
+                >
+                  {message}
                 </div>
               )}
             </div>

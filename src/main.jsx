@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App.jsx';
 import PublicProfile from './PublicProfile.jsx';
+import UpdatePasswordScreen from './components/UpdatePasswordScreen.jsx';
 import './index.css';
 
 createRoot(document.getElementById('root')).render(
@@ -10,6 +11,7 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/update-password" element={<UpdatePasswordScreen />} />
         <Route path="/u/:username" element={<PublicProfile />} />
       </Routes>
     </BrowserRouter>
