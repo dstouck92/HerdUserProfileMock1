@@ -13,7 +13,16 @@ const demoHerds = [
   { id: 3, name: "Indie Night Owls", subtitle: "54 members" },
 ];
 
-export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile, onOpenHerd, recommendedArtists, recentActivity }) {
+export default function SearchPage({
+  recommendedFriends,
+  followingIds = [],
+  onToggleFollow,
+  onOpenProfile,
+  onOpenHerd,
+  onFollowSpotifyArtist,
+  recommendedArtists,
+  recentActivity,
+}) {
   const [query, setQuery] = useState("");
   const [spotifyResults, setSpotifyResults] = useState([]);
   const [spotifyLoading, setSpotifyLoading] = useState(false);
