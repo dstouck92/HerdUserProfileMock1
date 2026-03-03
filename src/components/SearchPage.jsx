@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, F, AvatarSprite } from "./ui";
+import { useDebounce } from "../hooks/useDebounce";
 
 const fallbackArtists = [
   { id: 1, name: "Flume", subtitle: "2 concerts attended" },
@@ -29,6 +30,7 @@ export default function SearchPage({
   const [spotifyResults, setSpotifyResults] = useState([]);
   const [spotifyLoading, setSpotifyLoading] = useState(false);
   const [spotifyError, setSpotifyError] = useState(null);
+  const [artistImages, setArtistImages] = useState({});
   const friendsFromDb = Array.isArray(recommendedFriends)
     ? recommendedFriends.map((f) => ({
         id: f.id,
@@ -70,6 +72,7 @@ export default function SearchPage({
     })),
   ];
   const trimmedQuery = query.trim().toLowerCase();
+  const debouncedQuery = useDebounce(trimmedQuery, 350);
   const searchResults = trimmedQuery
     ? searchIndex.filter((e) => e.name.toLowerCase().includes(trimmedQuery)).slice(0, 8)
     : [];
@@ -77,7 +80,35 @@ export default function SearchPage({
   const followedSpotifySet = new Set(followedSpotifyArtistIds || []);
 
   useEffect(() => {
-    if (!trimmedQuery) {
+    if (!Array.isArray(artists) || artists.length === 0) return;
+    let cancelled = false;
+
+    const loadImages = async () => {
+      for (const artist of artists) {
+        const name = (artist?.name || "").trim();
+        if (!name || artistImages[name]) continue;
+        try {
+          const res = await fetch(`/api/spotify/search-artists?q=${encodeURIComponent(name)}`);
+          if (!res.ok) continue;
+          const data = await res.json();
+          const match = Array.isArray(data?.artists) ? data.artists[0] : null;
+          const imageUrl = match?.imageUrl || null;
+          if (!imageUrl || cancelled) continue;
+          setArtistImages((prev) => (prev[name] ? prev : { ...prev, [name]: imageUrl }));
+        } catch {
+          // Ignore errors; fallback UI will show without images
+        }
+      }
+    };
+
+    loadImages();
+    return () => {
+      cancelled = true;
+    };
+  }, [artists, artistImages]);
+
+  useEffect(() => {
+    if (!debouncedQuery || debouncedQuery.length < 2) {
       setSpotifyResults([]);
       setSpotifyLoading(false);
       setSpotifyError(null);
@@ -86,7 +117,7 @@ export default function SearchPage({
     let cancelled = false;
     setSpotifyLoading(true);
     setSpotifyError(null);
-    fetch(`/api/spotify/search-artists?q=${encodeURIComponent(trimmedQuery)}`)
+    fetch(`/api/spotify/search-artists?q=${encodeURIComponent(debouncedQuery)}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -108,7 +139,7 @@ export default function SearchPage({
     return () => {
       cancelled = true;
     };
-  }, [trimmedQuery]);
+  }, [debouncedQuery]);
 
   const formatTimeAgo = (isoString) => {
     if (!isoString) return "";
@@ -430,6 +461,7 @@ export default function SearchPage({
               key={artist.id}
               title={artist.name}
               subtitle={artist.subtitle}
+              imageUrl={artistImages[artist.name]}
               primaryLabel="Follow +"
               onPrimaryClick={onFollowRecommendedArtist ? () => onFollowRecommendedArtist(artist.name) : undefined}
               onCardClick={onOpenHerd ? () => onOpenHerd(artist.name) : undefined}
@@ -616,6 +648,7 @@ function PersonCard({
   title,
   subtitle,
   primaryLabel,
+  imageUrl,
   avatarId,
   isFollowing,
   onToggleFollow,
@@ -633,11 +666,24 @@ function PersonCard({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background:
-            "radial-gradient(circle at 10% 0%, #f97316, #0ea5e9 60%, #1d4ed8)",
+          background: imageUrl
+            ? "transparent"
+            : "radial-gradient(circle at 10% 0%, #f97316, #0ea5e9 60%, #1d4ed8)",
         }}
       >
-        {typeof avatarId === "number" ? (
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              objectFit: "cover",
+              boxShadow: "0 6px 18px rgba(15,23,42,0.35)",
+            }}
+          />
+        ) : typeof avatarId === "number" ? (
           <AvatarSprite avatarId={avatarId} size={52} />
         ) : null}
       </div>
