@@ -68,17 +68,16 @@ export default function App() {
         if (cancelled) return;
         if (session?.user) {
           try {
-            const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id, profile_image_url").eq("id", session.user.id).single();
+            const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
             if (!cancelled) {
               setUser(
                 profile
-                  ? { ...profile, avatar_id: profile.avatar_id ?? 7, profile_image_url: profile.profile_image_url || null }
+                  ? { ...profile, avatar_id: profile.avatar_id ?? 7 }
                   : {
                       id: session.user.id,
                       display_name: session.user.email?.split("@", 1)[0] || "User",
                       username: session.user.email?.split("@", 1)[0] || "user",
                       avatar_id: 7,
-                      profile_image_url: null,
                     },
               );
             }
@@ -89,7 +88,6 @@ export default function App() {
                 display_name: session.user.email?.split("@", 1)[0] || "User",
                 username: session.user.email?.split("@", 1)[0] || "user",
                 avatar_id: 7,
-                profile_image_url: null,
               });
             }
           }
