@@ -36,6 +36,8 @@ const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseU
 const youtubeClientId = process.env.YOUTUBE_CLIENT_ID
 const youtubeClientSecret = process.env.YOUTUBE_CLIENT_SECRET
 const youtubeRedirectUri = process.env.YOUTUBE_REDIRECT_URI
+const spotifyClientId = process.env.SPOTIFY_CLIENT_ID
+const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET
 
 function mapSetlistsToConcerts(data, artist) {
   const setlists = data.setlist || []
@@ -58,6 +60,50 @@ function mapSetlistsToConcerts(data, artist) {
     }
   })
 }
+
+// API: get Spotify artist image URL (for herd/fan club avatar)
+app.get('/api/spotify/artist-image', async (req, res) => {
+  const artistId = (req.query.artist_id || req.query.artistId || '').trim()
+  if (!artistId) {
+    return res.status(400).json({ error: 'Missing artist_id query param' })
+  }
+  if (!spotifyClientId || !spotifyClientSecret) {
+    return res.status(503).json({
+      error: 'Spotify credentials not configured. Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to your .env file.',
+    })
+  }
+  try {
+    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString('base64')}`,
+      },
+      body: 'grant_type=client_credentials',
+    })
+    if (!tokenRes.ok) {
+      const text = await tokenRes.text()
+      return res.status(502).json({ error: 'Spotify token failed', details: text })
+    }
+    const tokenData = await tokenRes.json()
+    const accessToken = tokenData.access_token
+    if (!accessToken) return res.status(502).json({ error: 'No access token in Spotify response' })
+    const artistRes = await fetch(`https://api.spotify.com/v1/artists/${encodeURIComponent(artistId)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (artistRes.status === 404) return res.status(404).json({ error: 'Artist not found' })
+    if (!artistRes.ok) {
+      const text = await artistRes.text()
+      return res.status(502).json({ error: 'Spotify artist request failed', details: text })
+    }
+    const artist = await artistRes.json()
+    const imageUrl = artist.images?.[0]?.url || null
+    return res.json({ imageUrl })
+  } catch (err) {
+    console.error('Spotify artist-image error:', err)
+    return res.status(500).json({ error: err.message || 'Server error' })
+  }
+})
 
 // API: search concerts via Setlist.fm (with cache + timeout to avoid rate limits and "failed to fetch")
 app.get('/api/concerts/search', (req, res) => {

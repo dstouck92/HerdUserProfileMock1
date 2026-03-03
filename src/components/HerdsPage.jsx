@@ -34,6 +34,8 @@ export default function HerdsPage({
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [connectFollowers, setConnectFollowers] = useState([]);
   const [connectLoading, setConnectLoading] = useState(false);
+  const [herdSpotifyImageUrl, setHerdSpotifyImageUrl] = useState(null);
+  const [spotifyImageByArtistId, setSpotifyImageByArtistId] = useState({});
 
   const followingHerdIds = userHerds.map((h) => h.id);
   const isFollowingSelected =
@@ -215,6 +217,41 @@ export default function HerdsPage({
     return () => { cancelled = true; };
   }, [supabase, selectedHerdId, herdTab]);
 
+  useEffect(() => {
+    if (!herdDetails?.spotify_artist_id || herdDetails?.image_url) {
+      setHerdSpotifyImageUrl(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/spotify/artist-image?artist_id=${encodeURIComponent(herdDetails.spotify_artist_id)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data?.imageUrl) setHerdSpotifyImageUrl(data.imageUrl);
+      })
+      .catch(() => { if (!cancelled) setHerdSpotifyImageUrl(null); });
+    return () => { cancelled = true; };
+  }, [herdDetails?.id, herdDetails?.spotify_artist_id, herdDetails?.image_url]);
+
+  useEffect(() => {
+    const herds = [...(userHerds || []), ...(discoverHerds || [])];
+    const needFetch = herds.filter(
+      (h) => h.spotify_artist_id && !h.image_url && !spotifyImageByArtistId[h.spotify_artist_id]
+    );
+    if (needFetch.length === 0) return;
+    let cancelled = false;
+    needFetch.forEach((herd) => {
+      fetch(`/api/spotify/artist-image?artist_id=${encodeURIComponent(herd.spotify_artist_id)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!cancelled && data?.imageUrl) {
+            setSpotifyImageByArtistId((prev) => ({ ...prev, [herd.spotify_artist_id]: data.imageUrl }));
+          }
+        })
+        .catch(() => {});
+    });
+    return () => { cancelled = true; };
+  }, [userHerds, discoverHerds, spotifyImageByArtistId]);
+
   const handleCreatePost = async () => {
     if (!supabase || !user?.id || !selectedHerdId || !newPostTitle.trim()) return;
     const title = newPostTitle.trim();
@@ -329,9 +366,9 @@ export default function HerdsPage({
               justifyContent: "center",
             }}
           >
-            {herdDetails.image_url ? (
+            {(herdDetails.image_url || herdSpotifyImageUrl) ? (
               <img
-                src={herdDetails.image_url}
+                src={herdDetails.image_url || herdSpotifyImageUrl}
                 alt=""
                 style={{
                   width: 80,
@@ -826,9 +863,9 @@ export default function HerdsPage({
                   width: "100%",
                 }}
               >
-                {herd.image_url ? (
+                {(herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]) ? (
                   <img
-                    src={herd.image_url}
+                    src={herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]}
                     alt=""
                     style={{
                       width: 48,
@@ -915,9 +952,9 @@ export default function HerdsPage({
                   width: "100%",
                 }}
               >
-                {herd.image_url ? (
+                {(herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]) ? (
                   <img
-                    src={herd.image_url}
+                    src={herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]}
                     alt=""
                     style={{
                       width: 48,
