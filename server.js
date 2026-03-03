@@ -105,6 +105,58 @@ app.get('/api/spotify/artist-image', async (req, res) => {
   }
 })
 
+// API: search Spotify artists by name (for creating herds on demand)
+app.get('/api/spotify/search-artists', async (req, res) => {
+  const q = (req.query.q || req.query.query || '').trim()
+  if (!q) {
+    return res.status(400).json({ error: 'Missing q query param' })
+  }
+  if (!spotifyClientId || !spotifyClientSecret) {
+    return res.status(503).json({
+      error: 'Spotify credentials not configured. Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to your .env file.',
+    })
+  }
+  try {
+    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString('base64')}`,
+      },
+      body: 'grant_type=client_credentials',
+    })
+    if (!tokenRes.ok) {
+      const text = await tokenRes.text()
+      return res.status(502).json({ error: 'Spotify token failed', details: text })
+    }
+    const tokenData = await tokenRes.json()
+    const accessToken = tokenData.access_token
+    if (!accessToken) return res.status(502).json({ error: 'No access token in Spotify response' })
+
+    const searchRes = await fetch(
+      `https://api.spotify.com/v1/search?type=artist&limit=10&q=${encodeURIComponent(q)}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    )
+    if (!searchRes.ok) {
+      const text = await searchRes.text()
+      return res.status(502).json({ error: 'Spotify search failed', details: text })
+    }
+    const json = await searchRes.json()
+    const items = json?.artists?.items || []
+    const artists = items.map((a) => ({
+      id: a.id,
+      name: a.name,
+      imageUrl: (a.images && a.images[0] && a.images[0].url) || null,
+    }))
+    return res.json({ artists })
+  } catch (err) {
+    console.error('Spotify search-artists error:', err)
+    return res.status(500).json({ error: err.message || 'Server error' })
+  }
+})
+
 // API: search concerts via Setlist.fm (with cache + timeout to avoid rate limits and "failed to fetch")
 app.get('/api/concerts/search', (req, res) => {
   const artist = req.query.artist?.trim()

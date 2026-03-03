@@ -767,6 +767,32 @@ export default function App() {
     }
   };
 
+  const handleFollowSpotifyArtist = async (artist) => {
+    if (!supabase || !user?.id || !artist?.id || !artist?.name) return;
+    try {
+      // Ensure herd exists for this Spotify artist id
+      const { data: herdRow, error } = await supabase
+        .from("herds")
+        .upsert(
+          {
+            spotify_artist_id: artist.id,
+            name: artist.name,
+            image_url: artist.imageUrl || null,
+          },
+          { onConflict: "spotify_artist_id" },
+        )
+        .select("id, name, image_url, spotify_artist_id")
+        .single();
+      if (error || !herdRow) return;
+      // Follow the herd and navigate to it
+      await handleFollowHerd(herdRow.id, true);
+      setSelectedHerdId(herdRow.id);
+      setActivePage("Herds");
+    } catch {
+      // Fail silently for now; no crash
+    }
+  };
+
   const handleOpenHerdByArtistName = async (artistName) => {
     if (!supabase || !artistName?.trim()) return;
     const name = artistName.trim();
@@ -914,6 +940,7 @@ export default function App() {
           onToggleFollow={handleToggleFollowUser}
           onOpenProfile={handleViewOtherProfile}
           onOpenHerd={handleOpenHerdByArtistName}
+          onFollowSpotifyArtist={handleFollowSpotifyArtist}
           recommendedArtists={recommendedArtistsForSearch}
           recentActivity={recentActivity}
         />

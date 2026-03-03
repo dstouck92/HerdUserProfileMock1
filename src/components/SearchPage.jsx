@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, F, AvatarSprite } from "./ui";
 
 const fallbackArtists = [
@@ -15,6 +15,9 @@ const demoHerds = [
 
 export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile, onOpenHerd, recommendedArtists, recentActivity }) {
   const [query, setQuery] = useState("");
+  const [spotifyResults, setSpotifyResults] = useState([]);
+  const [spotifyLoading, setSpotifyLoading] = useState(false);
+  const [spotifyError, setSpotifyError] = useState(null);
   const friendsFromDb = Array.isArray(recommendedFriends)
     ? recommendedFriends.map((f) => ({
         id: f.id,
@@ -59,6 +62,41 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
   const searchResults = trimmedQuery
     ? searchIndex.filter((e) => e.name.toLowerCase().includes(trimmedQuery)).slice(0, 8)
     : [];
+  const localResults = searchResults.filter((e) => e.kind !== "Artist");
+
+  useEffect(() => {
+    if (!trimmedQuery) {
+      setSpotifyResults([]);
+      setSpotifyLoading(false);
+      setSpotifyError(null);
+      return;
+    }
+    let cancelled = false;
+    setSpotifyLoading(true);
+    setSpotifyError(null);
+    fetch(`/api/spotify/search-artists?q=${encodeURIComponent(trimmedQuery)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.artists && Array.isArray(data.artists)) {
+          setSpotifyResults(data.artists);
+        } else {
+          setSpotifyResults([]);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setSpotifyError(err?.message || "Spotify search failed");
+          setSpotifyResults([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSpotifyLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trimmedQuery]);
 
   const formatTimeAgo = (isoString) => {
     if (!isoString) return "";
@@ -110,108 +148,35 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
         </div>
       </div>
 
-      {/* Search dropdown (local demo only) */}
+      {/* Search dropdown: Spotify artists + local demo results */}
       {trimmedQuery && (
         <div style={{ padding: "0 20px 8px" }}>
           <Card style={{ margin: 0, padding: "8px 0" }}>
-            {searchResults.length > 0 ? (
-              searchResults.map((item) => {
-                const isUser = item.kind === "User" && item.userId;
-                const isFollowing = isUser && followingIds.includes(item.userId);
-                return (
-                <div
-                  key={item.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "8px 12px",
-                    borderBottom: "1px solid rgba(148,163,184,0.25)",
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontFamily: F,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#0f172a",
-                      }}
-                    >
-                      {item.name}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: F,
-                        fontSize: 11,
-                        color: "rgba(55,48,107,0.6)",
-                      }}
-                    >
-                      {item.subtitle}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    {isUser && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenProfile?.(item.username)}
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: 999,
-                          border: "1px solid rgba(148,163,184,0.6)",
-                          background: "rgba(255,255,255,0.9)",
-                          fontFamily: F,
-                          fontSize: 10,
-                          fontWeight: 600,
-                          color: "#0f172a",
-                          cursor: "pointer",
-                        }}
-                      >
-                        View
-                      </button>
-                    )}
-                    <span
-                      style={{
-                        fontFamily: F,
-                        fontSize: 10,
-                        textTransform: "uppercase",
-                        letterSpacing: 0.4,
-                        padding: "3px 8px",
-                        borderRadius: 999,
-                        background: "rgba(148,163,184,0.12)",
-                        color: "rgba(51,65,85,0.9)",
-                      }}
-                    >
-                      {item.kind}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={
-                        isUser && item.userId
-                          ? () => onToggleFollow?.(item.userId, !isFollowing)
-                          : undefined
-                      }
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: 999,
-                        border: "none",
-                        fontFamily: F,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        background: isUser && isFollowing
-                          ? "rgba(34,197,94,0.15)"
-                          : "linear-gradient(135deg, #0ea5e9, #6366f1)",
-                        color: isUser && isFollowing ? "#16a34a" : "#fff",
-                        cursor: isUser ? "pointer" : "default",
-                        boxShadow: "0 3px 10px rgba(37,99,235,0.4)",
-                      }}
-                    >
-                      {isUser ? (isFollowing ? "Following" : "Follow +") : `${item.action} +`}
-                    </button>
-                  </div>
-                </div>
-              );})
-            ) : (
+            {spotifyLoading && (
+              <div
+                style={{
+                  padding: "8px 12px",
+                  fontFamily: F,
+                  fontSize: 12,
+                  color: "rgba(55,48,107,0.7)",
+                }}
+              >
+                Searching Spotify…
+              </div>
+            )}
+            {spotifyError && (
+              <div
+                style={{
+                  padding: "8px 12px",
+                  fontFamily: F,
+                  fontSize: 12,
+                  color: "#b91c1c",
+                }}
+              >
+                {spotifyError}
+              </div>
+            )}
+            {!spotifyLoading && !spotifyError && spotifyResults.length === 0 && localResults.length === 0 && (
               <div
                 style={{
                   padding: "8px 12px",
@@ -222,6 +187,215 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
               >
                 No matches yet. Try another name.
               </div>
+            )}
+            {!spotifyLoading && !spotifyError && spotifyResults.length > 0 && (
+              <>
+                <div
+                  style={{
+                    padding: "4px 12px 6px",
+                    fontFamily: F,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.4,
+                    color: "rgba(55,48,107,0.7)",
+                  }}
+                >
+                  Spotify artists
+                </div>
+                {spotifyResults.map((artist) => (
+                  <div
+                    key={`spotify-${artist.id}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      borderBottom: "1px solid rgba(148,163,184,0.25)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {artist.imageUrl && (
+                        <img
+                          src={artist.imageUrl}
+                          alt=""
+                          style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }}
+                        />
+                      )}
+                      <div>
+                        <div
+                          style={{
+                            fontFamily: F,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "#0f172a",
+                          }}
+                        >
+                          {artist.name}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: F,
+                            fontSize: 11,
+                            color: "rgba(55,48,107,0.6)",
+                          }}
+                        >
+                          Spotify Artist
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span
+                        style={{
+                          fontFamily: F,
+                          fontSize: 10,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.4,
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          background: "rgba(148,163,184,0.12)",
+                          color: "rgba(51,65,85,0.9)",
+                        }}
+                      >
+                        Artist
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onFollowSpotifyArtist?.(artist)}
+                        disabled={!onFollowSpotifyArtist}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          border: "none",
+                          fontFamily: F,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          background: "linear-gradient(135deg, #0ea5e9, #6366f1)",
+                          color: "#fff",
+                          cursor: onFollowSpotifyArtist ? "pointer" : "default",
+                          boxShadow: "0 3px 10px rgba(37,99,235,0.4)",
+                        }}
+                      >
+                        Follow Fan Club
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+            {!spotifyLoading && localResults.length > 0 && (
+              <>
+                <div
+                  style={{
+                    padding: "6px 12px 6px",
+                    fontFamily: F,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.4,
+                    color: "rgba(55,48,107,0.7)",
+                  }}
+                >
+                  People & fan clubs
+                </div>
+                {localResults.map((item) => {
+                  const isUser = item.kind === "User" && item.userId;
+                  const isFollowing = isUser && followingIds.includes(item.userId);
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px",
+                        borderBottom: "1px solid rgba(148,163,184,0.25)",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontFamily: F,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "#0f172a",
+                          }}
+                        >
+                          {item.name}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: F,
+                            fontSize: 11,
+                            color: "rgba(55,48,107,0.6)",
+                          }}
+                        >
+                          {item.subtitle}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {isUser && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenProfile?.(item.username)}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 999,
+                              border: "1px solid rgba(148,163,184,0.6)",
+                              background: "rgba(255,255,255,0.9)",
+                              fontFamily: F,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: "#0f172a",
+                              cursor: "pointer",
+                            }}
+                          >
+                            View
+                          </button>
+                        )}
+                        <span
+                          style={{
+                            fontFamily: F,
+                            fontSize: 10,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.4,
+                            padding: "3px 8px",
+                            borderRadius: 999,
+                            background: "rgba(148,163,184,0.12)",
+                            color: "rgba(51,65,85,0.9)",
+                          }}
+                        >
+                          {item.kind}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={
+                            isUser && item.userId
+                              ? () => onToggleFollow?.(item.userId, !isFollowing)
+                              : undefined
+                          }
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 999,
+                            border: "none",
+                            fontFamily: F,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background: isUser && isFollowing
+                              ? "rgba(34,197,94,0.15)"
+                              : "linear-gradient(135deg, #0ea5e9, #6366f1)",
+                            color: isUser && isFollowing ? "#16a34a" : "#fff",
+                            cursor: isUser ? "pointer" : "default",
+                            boxShadow: "0 3px 10px rgba(37,99,235,0.4)",
+                          }}
+                        >
+                          {isUser ? (isFollowing ? "Following" : "Follow +") : `${item.action} +`}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
             )}
           </Card>
         </div>
