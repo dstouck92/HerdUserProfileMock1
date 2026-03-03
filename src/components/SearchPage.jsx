@@ -20,6 +20,7 @@ export default function SearchPage({
   onOpenProfile,
   onOpenHerd,
   onFollowSpotifyArtist,
+  onFollowRecommendedArtist,
   followedSpotifyArtistIds = [],
   recommendedArtists,
   recentActivity,
@@ -430,6 +431,7 @@ export default function SearchPage({
               title={artist.name}
               subtitle={artist.subtitle}
               primaryLabel="Follow +"
+              onPrimaryClick={onFollowRecommendedArtist ? () => onFollowRecommendedArtist(artist.name) : undefined}
               onCardClick={onOpenHerd ? () => onOpenHerd(artist.name) : undefined}
             />
           ))}
@@ -610,7 +612,19 @@ function HorizontalList({ children }) {
   );
 }
 
-function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onToggleFollow, onOpenProfile, onCardClick, userId, username }) {
+function PersonCard({
+  title,
+  subtitle,
+  primaryLabel,
+  avatarId,
+  isFollowing,
+  onToggleFollow,
+  onOpenProfile,
+  onCardClick,
+  userId,
+  username,
+  onPrimaryClick,
+}) {
   const cardContent = (
     <>
       <div
@@ -701,7 +715,11 @@ function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onTo
       <div style={{ padding: "0 12px 12px" }}>
         <button
           type="button"
-          onClick={userId ? () => onToggleFollow?.(userId, !isFollowing) : undefined}
+          onClick={
+            userId && onToggleFollow
+              ? () => onToggleFollow(userId, !isFollowing)
+              : onPrimaryClick
+          }
           style={{
             width: "100%",
             padding: "7px 0",
@@ -710,15 +728,15 @@ function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onTo
             fontFamily: F,
             fontSize: 12,
             fontWeight: 700,
-            background: isFollowing
+            background: userId && isFollowing
               ? "rgba(34,197,94,0.15)"
               : "linear-gradient(135deg, #38bdf8, #6366f1, #a855f7)",
-            color: isFollowing ? "#4ade80" : "#fff",
+            color: userId && isFollowing ? "#4ade80" : "#fff",
             boxShadow: "0 4px 14px rgba(59,130,246,0.6)",
-            cursor: userId ? "pointer" : "default",
+            cursor: userId || onPrimaryClick ? "pointer" : "default",
           }}
         >
-          {isFollowing ? "Following" : primaryLabel}
+          {userId && isFollowing ? "Following" : primaryLabel}
         </button>
       </div>
     </div>

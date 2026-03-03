@@ -739,6 +739,19 @@ export default function App() {
     .map((h) => h.spotify_artist_id)
     .filter((id) => typeof id === "string" && id.length > 0);
 
+  const handleFollowRecommendedArtist = async (artistName) => {
+    if (!supabase || !user?.id || !artistName?.trim()) return;
+    try {
+      const res = await fetch(`/api/spotify/search-artists?q=${encodeURIComponent(artistName.trim())}`);
+      const data = await res.json();
+      const match = data?.artists && data.artists[0];
+      if (!match) return;
+      await handleFollowSpotifyArtist(match);
+    } catch {
+      // Ignore errors here; user can try again
+    }
+  };
+
   useEffect(() => {
     if (!supabase || !selectedHerdId) {
       setHerdDetails(null);
@@ -945,6 +958,7 @@ export default function App() {
           onOpenProfile={handleViewOtherProfile}
           onOpenHerd={handleOpenHerdByArtistName}
           onFollowSpotifyArtist={handleFollowSpotifyArtist}
+          onFollowRecommendedArtist={handleFollowRecommendedArtist}
           followedSpotifyArtistIds={followedSpotifyArtistIds}
           recommendedArtists={recommendedArtistsForSearch}
           recentActivity={recentActivity}
