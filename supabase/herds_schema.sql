@@ -17,6 +17,9 @@ on public.herds for select to authenticated using (true);
 create policy "insert herds"
 on public.herds for insert to authenticated with check (true);
 
+create policy "update herds"
+on public.herds for update to authenticated using (true) with check (true);
+
 -- 2) Herd follows: which users follow which herds
 create table if not exists public.herd_follows (
   user_id uuid not null references auth.users(id) on delete cascade,

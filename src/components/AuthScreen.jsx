@@ -20,7 +20,6 @@ export default function AuthScreen({ onAuth }) {
   }
 
   async function getOrCreateProfile(authUser, displayName, username, phone) {
-    // Never block login on profile table; use best-effort background upsert.
     const profile = fallbackProfile(authUser, displayName, username);
     const payload = {
       id: authUser.id,
@@ -30,13 +29,12 @@ export default function AuthScreen({ onAuth }) {
       updated_at: new Date().toISOString(),
     };
     try {
-      // Fire-and-forget; ignore any errors so auth flow isn't affected.
-      supabase
+      // Await upsert so the profile row exists before viewing public profile.
+      await supabase
         .from("profiles")
-        .upsert(payload, { onConflict: "id" })
-        .catch(() => {});
+        .upsert(payload, { onConflict: "id" });
     } catch (_) {
-      // Ignore; fallback profile is already returned.
+      // Ignore; fallback profile is already returned and app can still load.
     }
     return profile;
   }

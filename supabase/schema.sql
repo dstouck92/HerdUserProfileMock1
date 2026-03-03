@@ -29,6 +29,12 @@ create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id);
 
+-- Allow anyone to read profile by username (for public profile page /u/:username)
+drop policy if exists "Public can read profiles" on public.profiles;
+create policy "Public can read profiles"
+  on public.profiles for select
+  using (true);
+
 -- Concerts
 create table if not exists public.concerts (
   id uuid primary key default gen_random_uuid(),
