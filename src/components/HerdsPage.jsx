@@ -32,6 +32,8 @@ export default function HerdsPage({
   const [topicsLoading, setTopicsLoading] = useState(false);
   const [leaderboardRows, setLeaderboardRows] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [connectFollowers, setConnectFollowers] = useState([]);
+  const [connectLoading, setConnectLoading] = useState(false);
 
   const followingHerdIds = userHerds.map((h) => h.id);
   const isFollowingSelected =
@@ -173,6 +175,45 @@ export default function HerdsPage({
     })();
     return () => { cancelled = true; };
   }, [supabase, selectedHerdId, herdDetails, herdTab]);
+
+  useEffect(() => {
+    if (!supabase || !selectedHerdId || herdTab !== "Connect") return;
+    let cancelled = false;
+    setConnectLoading(true);
+    (async () => {
+      try {
+        const { data: followRows, error: followErr } = await supabase
+          .from("herd_follows")
+          .select("user_id")
+          .eq("herd_id", selectedHerdId);
+        if (cancelled || followErr || !followRows?.length) {
+          setConnectFollowers([]);
+          return;
+        }
+        const userIds = [...new Set(followRows.map((r) => r.user_id))];
+        const { data: profiles, error: profErr } = await supabase
+          .from("profiles")
+          .select("id, display_name, username, avatar_id")
+          .in("id", userIds);
+        if (cancelled || profErr) {
+          setConnectFollowers([]);
+          return;
+        }
+        const list = (profiles || []).map((p) => ({
+          user_id: p.id,
+          display_name: p.display_name || p.username || "Fan",
+          username: p.username || "",
+          avatar_id: p.avatar_id ?? 7,
+        })).sort((a, b) => (a.display_name || "").localeCompare(b.display_name || ""));
+        if (!cancelled) setConnectFollowers(list);
+      } catch {
+        if (!cancelled) setConnectFollowers([]);
+      } finally {
+        if (!cancelled) setConnectLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [supabase, selectedHerdId, herdTab]);
 
   const handleCreatePost = async () => {
     if (!supabase || !user?.id || !selectedHerdId || !newPostTitle.trim()) return;
@@ -547,16 +588,53 @@ export default function HerdsPage({
             </div>
           )}
           {herdTab === "Connect" && (
-            <div
-              style={{
-                fontFamily: F,
-                fontSize: 14,
-                color: "rgba(55,48,107,0.7)",
-                textAlign: "center",
-                padding: "24px 0",
-              }}
-            >
-              Connect (fans who follow this herd) — coming soon.
+            <div>
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b", marginBottom: 12 }}>
+                Fans in this herd
+              </div>
+              {connectLoading ? (
+                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>Loading…</div>
+              ) : connectFollowers.length === 0 ? (
+                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>
+                  No followers yet. Be the first to follow this herd.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {connectFollowers.map((f) => (
+                    <button
+                      key={f.user_id}
+                      type="button"
+                      onClick={() => f.username && onOpenProfile?.(f.username)}
+                      disabled={!f.username}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "12px 14px",
+                        background: "rgba(255,255,255,0.6)",
+                        border: "1px solid rgba(13,148,136,0.1)",
+                        borderRadius: 12,
+                        cursor: f.username ? "pointer" : "default",
+                        textAlign: "left",
+                        width: "100%",
+                      }}
+                    >
+                      <AvatarSprite avatarId={f.avatar_id} size={40} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>
+                          {f.display_name}
+                          {user?.id === f.user_id && (
+                            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 500, color: "rgba(55,48,107,0.5)", marginLeft: 6 }}>(You)</span>
+                          )}
+                        </div>
+                        {f.username && (
+                          <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)" }}>@{f.username}</div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {herdTab === "About" && (
