@@ -903,7 +903,9 @@ export default function App() {
           onSelectHerd={(id) => setSelectedHerdId(id)}
           onBackToList={() => setSelectedHerdId(null)}
           onFollowHerd={handleFollowHerd}
+          onOpenProfile={handleViewOtherProfile}
           user={user}
+          supabase={supabase}
         />
       ) : activePage === "Search" ? (
         <SearchPage

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, F, AvatarSprite } from "./ui";
 
 const HERD_TABS = ["Topics", "Leaderboards", "Connect", "About"];
+const TOPIC_CATEGORIES = ["General", "New Music", "Fashion", "Gossip", "Tour", "Random", "Events"];
 
 export default function HerdsPage({
   userHerds = [],
@@ -13,12 +14,172 @@ export default function HerdsPage({
   onFollowHerd,
   onOpenProfile,
   user,
+  supabase,
 }) {
   const [herdTab, setHerdTab] = useState("Topics");
+  const [topicsPosts, setTopicsPosts] = useState([]);
+  const [topicsAuthors, setTopicsAuthors] = useState({});
+  const [topicsLikeCount, setTopicsLikeCount] = useState({});
+  const [topicsUserLiked, setTopicsUserLiked] = useState({});
+  const [topicsCommentCount, setTopicsCommentCount] = useState({});
+  const [topicsExpandedPostId, setTopicsExpandedPostId] = useState(null);
+  const [topicsComments, setTopicsComments] = useState({});
+  const [showNewPostForm, setShowNewPostForm] = useState(false);
+  const [newPostTitle, setNewPostTitle] = useState("");
+  const [newPostCategory, setNewPostCategory] = useState("General");
+  const [newPostImageUrl, setNewPostImageUrl] = useState("");
+  const [newPostCaption, setNewPostCaption] = useState("");
+  const [topicsLoading, setTopicsLoading] = useState(false);
 
   const followingHerdIds = userHerds.map((h) => h.id);
   const isFollowingSelected =
     selectedHerdId && followingHerdIds.includes(selectedHerdId);
+
+  useEffect(() => {
+    if (!supabase || !selectedHerdId || herdTab !== "Topics") return;
+    let cancelled = false;
+    setTopicsLoading(true);
+    (async () => {
+      try {
+        const { data: posts, error: postsErr } = await supabase
+          .from("herd_posts")
+          .select("id, herd_id, user_id, title, category, image_url, caption, created_at")
+          .eq("herd_id", selectedHerdId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (cancelled || postsErr || !posts) {
+          setTopicsPosts([]);
+          setTopicsAuthors({});
+          setTopicsLikeCount({});
+          setTopicsUserLiked({});
+          setTopicsCommentCount({});
+          return;
+        }
+        setTopicsPosts(posts);
+        const userIds = [...new Set(posts.map((p) => p.user_id))];
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, display_name, username")
+          .in("id", userIds);
+        const authorMap = {};
+        if (profiles) profiles.forEach((p) => { authorMap[p.id] = p.display_name || p.username || "Fan"; });
+        setTopicsAuthors(authorMap);
+        const postIds = posts.map((p) => p.id);
+        const { data: likes } = await supabase
+          .from("herd_post_likes")
+          .select("post_id, user_id")
+          .in("post_id", postIds);
+        const likeCount = {};
+        const userLiked = {};
+        if (likes) {
+          likes.forEach((l) => {
+            likeCount[l.post_id] = (likeCount[l.post_id] || 0) + 1;
+            if (user?.id && l.user_id === user.id) userLiked[l.post_id] = true;
+          });
+        }
+        postIds.forEach((id) => { if (!likeCount[id]) likeCount[id] = 0; });
+        setTopicsLikeCount(likeCount);
+        setTopicsUserLiked(userLiked);
+        const { data: commentRows } = await supabase
+          .from("herd_post_comments")
+          .select("post_id")
+          .in("post_id", postIds);
+        const commentCount = {};
+        if (commentRows) commentRows.forEach((r) => { commentCount[r.post_id] = (commentCount[r.post_id] || 0) + 1; });
+        postIds.forEach((id) => { if (!commentCount[id]) commentCount[id] = 0; });
+        setTopicsCommentCount(commentCount);
+      } finally {
+        if (!cancelled) setTopicsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [supabase, selectedHerdId, herdTab, user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !topicsExpandedPostId) return;
+    (async () => {
+      const { data: comments, error } = await supabase
+        .from("herd_post_comments")
+        .select("id, post_id, user_id, body, created_at")
+        .eq("post_id", topicsExpandedPostId)
+        .order("created_at", { ascending: true });
+      if (error) return;
+      const userIds = [...new Set((comments || []).map((c) => c.user_id))];
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username").in("id", userIds);
+      const nameMap = {};
+      if (profiles) profiles.forEach((p) => { nameMap[p.id] = p.display_name || p.username || "Fan"; });
+      setTopicsComments((prev) => ({
+        ...prev,
+        [topicsExpandedPostId]: (comments || []).map((c) => ({ ...c, author_name: nameMap[c.user_id] || "Fan" })),
+      }));
+    })();
+  }, [supabase, topicsExpandedPostId]);
+
+  const handleCreatePost = async () => {
+    if (!supabase || !user?.id || !selectedHerdId || !newPostTitle.trim()) return;
+    const title = newPostTitle.trim();
+    const { error } = await supabase.from("herd_posts").insert({
+      herd_id: selectedHerdId,
+      user_id: user.id,
+      title,
+      category: newPostCategory,
+      image_url: newPostImageUrl.trim() || null,
+      caption: newPostCaption.trim() || null,
+    });
+    if (!error) {
+      setNewPostTitle("");
+      setNewPostCategory("General");
+      setNewPostImageUrl("");
+      setNewPostCaption("");
+      setShowNewPostForm(false);
+      const { data: posts } = await supabase.from("herd_posts").select("id, herd_id, user_id, title, category, image_url, caption, created_at").eq("herd_id", selectedHerdId).order("created_at", { ascending: false }).limit(50);
+      if (posts) setTopicsPosts(posts);
+      const postIds = (posts || []).map((p) => p.id);
+      const { data: likes } = await supabase.from("herd_post_likes").select("post_id, user_id").in("post_id", postIds);
+      const likeCount = {};
+      const userLiked = {};
+      if (likes) likes.forEach((l) => { likeCount[l.post_id] = (likeCount[l.post_id] || 0) + 1; if (user?.id && l.user_id === user.id) userLiked[l.post_id] = true; });
+      postIds.forEach((id) => { if (!likeCount[id]) likeCount[id] = 0; });
+      setTopicsLikeCount(likeCount);
+      setTopicsUserLiked(userLiked);
+      const { data: commentRows } = await supabase.from("herd_post_comments").select("post_id").in("post_id", postIds);
+      const commentCount = {};
+      if (commentRows) commentRows.forEach((r) => { commentCount[r.post_id] = (commentCount[r.post_id] || 0) + 1; });
+      postIds.forEach((id) => { if (!commentCount[id]) commentCount[id] = 0; });
+      setTopicsCommentCount(commentCount);
+      const userIds = [...new Set((posts || []).map((p) => p.user_id))];
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username").in("id", userIds);
+      const authorMap = {};
+      if (profiles) profiles.forEach((p) => { authorMap[p.id] = p.display_name || p.username || "Fan"; });
+      setTopicsAuthors(authorMap);
+    }
+  };
+
+  const handleToggleLike = async (postId) => {
+    if (!supabase || !user?.id) return;
+    const liked = topicsUserLiked[postId];
+    if (liked) {
+      await supabase.from("herd_post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
+      setTopicsUserLiked((prev) => ({ ...prev, [postId]: false }));
+      setTopicsLikeCount((prev) => ({ ...prev, [postId]: Math.max(0, (prev[postId] || 0) - 1) }));
+    } else {
+      await supabase.from("herd_post_likes").insert({ post_id: postId, user_id: user.id });
+      setTopicsUserLiked((prev) => ({ ...prev, [postId]: true }));
+      setTopicsLikeCount((prev) => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
+    }
+  };
+
+  const handleAddComment = async (postId, body) => {
+    if (!supabase || !user?.id || !body?.trim()) return;
+    const { data: comment, error } = await supabase.from("herd_post_comments").insert({ post_id: postId, user_id: user.id, body: body.trim() }).select("id, post_id, user_id, body, created_at").single();
+    if (!error && comment) {
+      setTopicsComments((prev) => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), { ...comment, author_name: user.display_name || user.username || "You" }],
+      }));
+      setTopicsCommentCount((prev) => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
+    }
+  };
 
   if (selectedHerdId && herdDetails) {
     return (
@@ -179,16 +340,130 @@ export default function HerdsPage({
         </div>
         <div style={{ padding: "0 20px 24px" }}>
           {herdTab === "Topics" && (
-            <div
-              style={{
-                fontFamily: F,
-                fontSize: 14,
-                color: "rgba(55,48,107,0.7)",
-                textAlign: "center",
-                padding: "24px 0",
-              }}
-            >
-              Topics (posts, likes, comments) — coming in next step.
+            <div>
+              {user && (
+                <div style={{ marginBottom: 12 }}>
+                  {!showNewPostForm ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPostForm(true)}
+                      style={{
+                        padding: "10px 16px",
+                        borderRadius: 12,
+                        border: "1px solid rgba(13,148,136,0.4)",
+                        background: "rgba(13,148,136,0.1)",
+                        color: "#0d9488",
+                        fontFamily: F,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      + New post
+                    </button>
+                  ) : (
+                    <Card style={{ padding: 16 }}>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 10 }}>New post</div>
+                      <input
+                        type="text"
+                        value={newPostTitle}
+                        onChange={(e) => setNewPostTitle(e.target.value)}
+                        placeholder="Title"
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", marginBottom: 10, fontFamily: F, fontSize: 14, boxSizing: "border-box" }}
+                      />
+                      <select
+                        value={newPostCategory}
+                        onChange={(e) => setNewPostCategory(e.target.value)}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", marginBottom: 10, fontFamily: F, fontSize: 14, boxSizing: "border-box" }}
+                      >
+                        {TOPIC_CATEGORIES.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={newPostImageUrl}
+                        onChange={(e) => setNewPostImageUrl(e.target.value)}
+                        placeholder="Image URL (optional)"
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", marginBottom: 10, fontFamily: F, fontSize: 14, boxSizing: "border-box" }}
+                      />
+                      <textarea
+                        value={newPostCaption}
+                        onChange={(e) => setNewPostCaption(e.target.value)}
+                        placeholder="Caption (optional)"
+                        rows={3}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", marginBottom: 10, fontFamily: F, fontSize: 14, boxSizing: "border-box", resize: "vertical" }}
+                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button type="button" onClick={() => setShowNewPostForm(false)} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.3)", background: "#fff", fontFamily: F, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                        <button type="button" onClick={handleCreatePost} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post</button>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              )}
+              {topicsLoading ? (
+                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>Loading…</div>
+              ) : topicsPosts.length === 0 ? (
+                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>No posts yet. Be the first to post.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {topicsPosts.map((post) => (
+                    <Card key={post.id} style={{ padding: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div>
+                          <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{post.title}</div>
+                          <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>
+                            {topicsAuthors[post.user_id] || "Fan"} · {post.category}
+                          </div>
+                        </div>
+                        <span style={{ fontFamily: F, fontSize: 11, color: "rgba(148,163,184,0.9)" }}>
+                          {post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}
+                        </span>
+                      </div>
+                      {post.caption && <div style={{ fontFamily: F, fontSize: 13, color: "#374151", marginBottom: 8 }}>{post.caption}</div>}
+                      {post.image_url && (
+                        <img src={post.image_url} alt="" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 10, marginBottom: 10 }} onError={(e) => { e.target.style.display = "none"; }} />
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLike(post.id)}
+                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: F, fontSize: 13, color: topicsUserLiked[post.id] ? "#dc2626" : "rgba(55,48,107,0.7)" }}
+                        >
+                          ♡ {topicsLikeCount[post.id] || 0}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTopicsExpandedPostId(topicsExpandedPostId === post.id ? null : post.id)}
+                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)" }}
+                        >
+                          💬 {topicsCommentCount[post.id] || 0}
+                        </button>
+                      </div>
+                      {topicsExpandedPostId === post.id && (
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(13,148,136,0.15)" }}>
+                          {(topicsComments[post.id] || []).map((c) => (
+                            <div key={c.id} style={{ marginBottom: 8 }}>
+                              <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#1e1b4b" }}>{c.author_name}</span>
+                              <span style={{ fontFamily: F, fontSize: 12, color: "#374151", marginLeft: 6 }}>{c.body}</span>
+                            </div>
+                          ))}
+                          {user && (
+                            <form
+                              onSubmit={(e) => { e.preventDefault(); const input = e.target.querySelector('input'); if (input?.value) { handleAddComment(post.id, input.value); input.value = ""; } }}
+                              style={{ display: "flex", gap: 8, marginTop: 8 }}
+                            >
+                              <input type="text" placeholder="Add a comment…" style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13 }} />
+                              <button type="submit" style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "#0d9488", color: "#fff", fontFamily: F, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Post</button>
+                            </form>
+                          )}
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {herdTab === "Leaderboards" && (
