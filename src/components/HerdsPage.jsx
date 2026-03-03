@@ -30,6 +30,8 @@ export default function HerdsPage({
   const [newPostImageUrl, setNewPostImageUrl] = useState("");
   const [newPostCaption, setNewPostCaption] = useState("");
   const [topicsLoading, setTopicsLoading] = useState(false);
+  const [leaderboardRows, setLeaderboardRows] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   const followingHerdIds = userHerds.map((h) => h.id);
   const isFollowingSelected =
@@ -114,6 +116,63 @@ export default function HerdsPage({
       }));
     })();
   }, [supabase, topicsModalPostId]);
+
+  useEffect(() => {
+    if (!supabase || !selectedHerdId || !herdDetails || herdTab !== "Leaderboards") return;
+    const artistName = (herdDetails.name || "").trim().toLowerCase();
+    if (!artistName) {
+      setLeaderboardRows([]);
+      return;
+    }
+    let cancelled = false;
+    setLeaderboardLoading(true);
+    (async () => {
+      try {
+        const { data: statsRows, error: statsErr } = await supabase
+          .from("user_streaming_stats")
+          .select("user_id, top_artists");
+        if (cancelled || statsErr || !statsRows) {
+          setLeaderboardRows([]);
+          return;
+        }
+        const withMinutes = statsRows
+          .map((row) => {
+            const topArtists = row.top_artists || [];
+            const match = topArtists.find(
+              (a) => (a.name || "").trim().toLowerCase() === artistName
+            );
+            const minutes = match ? (match.hours || 0) * 60 : 0;
+            return { user_id: row.user_id, minutes };
+          })
+          .filter((r) => r.minutes > 0)
+          .sort((a, b) => b.minutes - a.minutes);
+        const userIds = [...new Set(withMinutes.map((r) => r.user_id))];
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, display_name, username, avatar_id")
+          .in("id", userIds);
+        const nameBy = {};
+        const avatarBy = {};
+        if (profiles) profiles.forEach((p) => {
+          nameBy[p.id] = p.display_name || p.username || "Fan";
+          avatarBy[p.id] = p.avatar_id ?? 7;
+        });
+        const rows = withMinutes.map((r, i) => ({
+          rank: i + 1,
+          user_id: r.user_id,
+          minutes: Math.round(r.minutes * 10) / 10,
+          display_name: nameBy[r.user_id] || "Fan",
+          avatar_id: avatarBy[r.user_id] ?? 7,
+        }));
+        if (!cancelled) setLeaderboardRows(rows);
+      } catch (_) {
+        if (!cancelled) setLeaderboardRows([]);
+      } finally {
+        if (!cancelled) setLeaderboardLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [supabase, selectedHerdId, herdDetails, herdTab]);
 
   const handleCreatePost = async () => {
     if (!supabase || !user?.id || !selectedHerdId || !newPostTitle.trim()) return;
@@ -448,16 +507,43 @@ export default function HerdsPage({
             </div>
           )}
           {herdTab === "Leaderboards" && (
-            <div
-              style={{
-                fontFamily: F,
-                fontSize: 14,
-                color: "rgba(55,48,107,0.7)",
-                textAlign: "center",
-                padding: "24px 0",
-              }}
-            >
-              Leaderboards (top listeners) — coming soon.
+            <div>
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b", marginBottom: 12 }}>
+                Top listeners
+              </div>
+              {leaderboardLoading ? (
+                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>Loading…</div>
+              ) : leaderboardRows.length === 0 ? (
+                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>
+                  No listening data yet. Upload Spotify history to appear here.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {leaderboardRows.map((row) => (
+                    <div
+                      key={row.user_id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "12px 14px",
+                        background: "rgba(255,255,255,0.6)",
+                        borderRadius: 12,
+                        border: "1px solid rgba(13,148,136,0.1)",
+                      }}
+                    >
+                      <span style={{ fontFamily: F, fontSize: 15, fontWeight: 800, color: "rgba(55,48,107,0.5)", minWidth: 28 }}>#{row.rank}</span>
+                      <AvatarSprite avatarId={row.avatar_id} size={36} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{row.display_name}</div>
+                        <div style={{ fontFamily: F, fontSize: 12, color: "#0d9488", fontWeight: 600 }}>
+                          {row.minutes >= 60 ? `${(row.minutes / 60).toFixed(1)} hrs` : `${row.minutes} min`} listened
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {herdTab === "Connect" && (
