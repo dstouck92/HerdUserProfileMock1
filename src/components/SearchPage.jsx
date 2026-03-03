@@ -20,6 +20,7 @@ export default function SearchPage({
   onOpenProfile,
   onOpenHerd,
   onFollowSpotifyArtist,
+  followedSpotifyArtistIds = [],
   recommendedArtists,
   recentActivity,
 }) {
@@ -72,6 +73,7 @@ export default function SearchPage({
     ? searchIndex.filter((e) => e.name.toLowerCase().includes(trimmedQuery)).slice(0, 8)
     : [];
   const localResults = searchResults.filter((e) => e.kind !== "Artist");
+  const followedSpotifySet = new Set(followedSpotifyArtistIds || []);
 
   useEffect(() => {
     if (!trimmedQuery) {
@@ -212,7 +214,9 @@ export default function SearchPage({
                 >
                   Spotify artists
                 </div>
-                {spotifyResults.map((artist) => (
+                {spotifyResults.map((artist) => {
+                  const isFollowingFanClub = followedSpotifySet.has(artist.id);
+                  return (
                   <div
                     key={`spotify-${artist.id}`}
                     style={{
@@ -270,8 +274,12 @@ export default function SearchPage({
                       </span>
                       <button
                         type="button"
-                        onClick={() => onFollowSpotifyArtist?.(artist)}
-                        disabled={!onFollowSpotifyArtist}
+                        onClick={
+                          !isFollowingFanClub && onFollowSpotifyArtist
+                            ? () => onFollowSpotifyArtist(artist)
+                            : undefined
+                        }
+                        disabled={!onFollowSpotifyArtist || isFollowingFanClub}
                         style={{
                           padding: "6px 10px",
                           borderRadius: 999,
@@ -279,17 +287,19 @@ export default function SearchPage({
                           fontFamily: F,
                           fontSize: 11,
                           fontWeight: 600,
-                          background: "linear-gradient(135deg, #0ea5e9, #6366f1)",
-                          color: "#fff",
-                          cursor: onFollowSpotifyArtist ? "pointer" : "default",
-                          boxShadow: "0 3px 10px rgba(37,99,235,0.4)",
+                          background: isFollowingFanClub
+                            ? "rgba(34,197,94,0.15)"
+                            : "linear-gradient(135deg, #0ea5e9, #6366f1)",
+                          color: isFollowingFanClub ? "#16a34a" : "#fff",
+                          cursor: onFollowSpotifyArtist && !isFollowingFanClub ? "pointer" : "default",
+                          boxShadow: isFollowingFanClub ? "none" : "0 3px 10px rgba(37,99,235,0.4)",
                         }}
                       >
-                        Follow Fan Club
+                        {isFollowingFanClub ? "Following Fan Club" : "Follow Fan Club"}
                       </button>
                     </div>
                   </div>
-                ))}
+                );})}
               </>
             )}
             {!spotifyLoading && localResults.length > 0 && (

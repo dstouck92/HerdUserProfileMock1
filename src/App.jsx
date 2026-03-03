@@ -735,6 +735,10 @@ export default function App() {
     loadHerds();
   }, [user?.id]);
 
+  const followedSpotifyArtistIds = (userHerds || [])
+    .map((h) => h.spotify_artist_id)
+    .filter((id) => typeof id === "string" && id.length > 0);
+
   useEffect(() => {
     if (!supabase || !selectedHerdId) {
       setHerdDetails(null);
@@ -941,6 +945,7 @@ export default function App() {
           onOpenProfile={handleViewOtherProfile}
           onOpenHerd={handleOpenHerdByArtistName}
           onFollowSpotifyArtist={handleFollowSpotifyArtist}
+          followedSpotifyArtistIds={followedSpotifyArtistIds}
           recommendedArtists={recommendedArtistsForSearch}
           recentActivity={recentActivity}
         />
