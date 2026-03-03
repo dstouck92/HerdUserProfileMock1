@@ -22,7 +22,7 @@ export default function HerdsPage({
   const [topicsLikeCount, setTopicsLikeCount] = useState({});
   const [topicsUserLiked, setTopicsUserLiked] = useState({});
   const [topicsCommentCount, setTopicsCommentCount] = useState({});
-  const [topicsExpandedPostId, setTopicsExpandedPostId] = useState(null);
+  const [topicsModalPostId, setTopicsModalPostId] = useState(null);
   const [topicsComments, setTopicsComments] = useState({});
   const [showNewPostForm, setShowNewPostForm] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState("");
@@ -96,12 +96,12 @@ export default function HerdsPage({
   }, [supabase, selectedHerdId, herdTab, user?.id]);
 
   useEffect(() => {
-    if (!supabase || !topicsExpandedPostId) return;
+    if (!supabase || !topicsModalPostId) return;
     (async () => {
       const { data: comments, error } = await supabase
         .from("herd_post_comments")
         .select("id, post_id, user_id, body, created_at")
-        .eq("post_id", topicsExpandedPostId)
+        .eq("post_id", topicsModalPostId)
         .order("created_at", { ascending: true });
       if (error) return;
       const userIds = [...new Set((comments || []).map((c) => c.user_id))];
@@ -110,10 +110,10 @@ export default function HerdsPage({
       if (profiles) profiles.forEach((p) => { nameMap[p.id] = p.display_name || p.username || "Fan"; });
       setTopicsComments((prev) => ({
         ...prev,
-        [topicsExpandedPostId]: (comments || []).map((c) => ({ ...c, author_name: nameMap[c.user_id] || "Fan" })),
+        [topicsModalPostId]: (comments || []).map((c) => ({ ...c, author_name: nameMap[c.user_id] || "Fan" })),
       }));
     })();
-  }, [supabase, topicsExpandedPostId]);
+  }, [supabase, topicsModalPostId]);
 
   const handleCreatePost = async () => {
     if (!supabase || !user?.id || !selectedHerdId || !newPostTitle.trim()) return;
@@ -409,7 +409,11 @@ export default function HerdsPage({
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {topicsPosts.map((post) => (
-                    <Card key={post.id} style={{ padding: 14 }}>
+                    <Card
+                      key={post.id}
+                      style={{ padding: 14, cursor: "pointer" }}
+                      onClick={() => setTopicsModalPostId(post.id)}
+                    >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                         <div>
                           <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{post.title}</div>
@@ -425,7 +429,7 @@ export default function HerdsPage({
                       {post.image_url && (
                         <img src={post.image_url} alt="" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 10, marginBottom: 10 }} onError={(e) => { e.target.style.display = "none"; }} />
                       )}
-                      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => handleToggleLike(post.id)}
@@ -433,33 +437,10 @@ export default function HerdsPage({
                         >
                           ♡ {topicsLikeCount[post.id] || 0}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setTopicsExpandedPostId(topicsExpandedPostId === post.id ? null : post.id)}
-                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)" }}
-                        >
+                        <span style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)" }}>
                           💬 {topicsCommentCount[post.id] || 0}
-                        </button>
+                        </span>
                       </div>
-                      {topicsExpandedPostId === post.id && (
-                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(13,148,136,0.15)" }}>
-                          {(topicsComments[post.id] || []).map((c) => (
-                            <div key={c.id} style={{ marginBottom: 8 }}>
-                              <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#1e1b4b" }}>{c.author_name}</span>
-                              <span style={{ fontFamily: F, fontSize: 12, color: "#374151", marginLeft: 6 }}>{c.body}</span>
-                            </div>
-                          ))}
-                          {user && (
-                            <form
-                              onSubmit={(e) => { e.preventDefault(); const input = e.target.querySelector('input'); if (input?.value) { handleAddComment(post.id, input.value); input.value = ""; } }}
-                              style={{ display: "flex", gap: 8, marginTop: 8 }}
-                            >
-                              <input type="text" placeholder="Add a comment…" style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13 }} />
-                              <button type="submit" style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "#0d9488", color: "#fff", fontFamily: F, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Post</button>
-                            </form>
-                          )}
-                        </div>
-                      )}
                     </Card>
                   ))}
                 </div>
@@ -506,6 +487,127 @@ export default function HerdsPage({
             </div>
           )}
         </div>
+      {topicsModalPostId && (() => {
+        const modalPost = topicsPosts.find((p) => p.id === topicsModalPostId);
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1000,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "center",
+              padding: "24px 16px",
+              overflow: "auto",
+            }}
+            onClick={() => setTopicsModalPostId(null)}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 16,
+                boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+                maxWidth: 480,
+                width: "100%",
+                maxHeight: "calc(100vh - 48px)",
+                overflow: "auto",
+                position: "relative",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setTopicsModalPostId(null)}
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "rgba(0,0,0,0.08)",
+                  fontFamily: F,
+                  fontSize: 18,
+                  cursor: "pointer",
+                  lineHeight: 1,
+                  zIndex: 1,
+                }}
+              >
+                ×
+              </button>
+              <div style={{ padding: 20, paddingTop: 44 }}>
+                {modalPost ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                      <div>
+                        <div style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: "#1e1b4b" }}>{modalPost.title}</div>
+                        <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)" }}>
+                          {topicsAuthors[modalPost.user_id] || "Fan"} · {modalPost.category}
+                        </div>
+                      </div>
+                      <span style={{ fontFamily: F, fontSize: 12, color: "rgba(148,163,184,0.9)" }}>
+                        {modalPost.created_at ? new Date(modalPost.created_at).toLocaleDateString() : ""}
+                      </span>
+                    </div>
+                    {modalPost.caption && <div style={{ fontFamily: F, fontSize: 14, color: "#374151", marginBottom: 12 }}>{modalPost.caption}</div>}
+                    {modalPost.image_url && (
+                      <img src={modalPost.image_url} alt="" style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 12, marginBottom: 16 }} onError={(e) => { e.target.style.display = "none"; }} />
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleLike(modalPost.id)}
+                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: F, fontSize: 14, color: topicsUserLiked[modalPost.id] ? "#dc2626" : "rgba(55,48,107,0.7)" }}
+                      >
+                        ♡ {topicsLikeCount[modalPost.id] || 0}
+                      </button>
+                      <span style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.7)" }}>💬 {topicsCommentCount[modalPost.id] || 0}</span>
+                    </div>
+                    <div style={{ borderTop: "1px solid rgba(13,148,136,0.15)", paddingTop: 16 }}>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 12 }}>Comments</div>
+                      <div style={{ maxHeight: 240, overflowY: "auto", marginBottom: 12 }}>
+                        {(topicsComments[topicsModalPostId] || []).map((c) => (
+                          <div key={c.id} style={{ marginBottom: 10 }}>
+                            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#1e1b4b" }}>{c.author_name}</span>
+                            <span style={{ fontFamily: F, fontSize: 12, color: "#374151", marginLeft: 6 }}>{c.body}</span>
+                          </div>
+                        ))}
+                        {(topicsComments[topicsModalPostId] || []).length === 0 && (
+                          <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.5)" }}>No comments yet.</div>
+                        )}
+                      </div>
+                      {user && (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const input = e.target.querySelector("input");
+                            if (input?.value) {
+                              handleAddComment(modalPost.id, input.value);
+                              input.value = "";
+                            }
+                          }}
+                          style={{ display: "flex", gap: 8 }}
+                        >
+                          <input type="text" placeholder="Add a comment…" style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13 }} />
+                          <button type="submit" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#0d9488", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post</button>
+                        </form>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)" }}>Post not found.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       </div>
     );
   }
