@@ -6,6 +6,7 @@ import SpotifyUploadModal from "./components/SpotifyUploadModal";
 import AddConcertModal from "./components/AddConcertModal";
 import EditConcertModal from "./components/EditConcertModal";
 import AddItemModal from "./components/AddItemModal";
+import MarketPage from "./components/MarketPage";
 import LiveTab from "./components/tabs/LiveTab";
 import DigitalTab from "./components/tabs/DigitalTab";
 import PhysicalTab from "./components/tabs/PhysicalTab";
@@ -42,6 +43,10 @@ export default function App() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showPublicProfilePreview, setShowPublicProfilePreview] = useState(false);
   const [previewUsername, setPreviewUsername] = useState(null);
+  const [showFollowList, setShowFollowList] = useState(false);
+  const [followListType, setFollowListType] = useState(null);
+  const [followListUsers, setFollowListUsers] = useState([]);
+  const [followListLoading, setFollowListLoading] = useState(false);
   const [youtubeData, setYoutubeData] = useState(null);
   const [youtubeTakeout, setYoutubeTakeout] = useState(null);
   const navigate = useNavigate();
@@ -334,6 +339,61 @@ export default function App() {
     if (!username) return;
     setPreviewUsername(username);
     setShowPublicProfilePreview(true);
+  };
+
+  const handleOpenFollowList = async (type) => {
+    if (!supabase || !user?.id) return;
+    const uid = user.id;
+    setFollowListType(type === "followers" ? "followers" : "following");
+    setShowFollowList(true);
+    setFollowListLoading(true);
+    setFollowListUsers([]);
+    try {
+      let ids = [];
+      if (type === "followers") {
+        const { data, error } = await supabase
+          .from("user_follows")
+          .select("follower_id")
+          .eq("followed_id", uid);
+        if (!error && data) {
+          ids = data.map((r) => r.follower_id).filter(Boolean);
+        }
+      } else {
+        const { data, error } = await supabase
+          .from("user_follows")
+          .select("followed_id")
+          .eq("follower_id", uid);
+        if (!error && data) {
+          ids = data.map((r) => r.followed_id).filter(Boolean);
+        }
+      }
+      const uniqueIds = Array.from(new Set(ids));
+      if (uniqueIds.length === 0) {
+        setFollowListUsers([]);
+        return;
+      }
+      const { data: profiles, error: profErr } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, avatar_id")
+        .in("id", uniqueIds);
+      if (!profErr && profiles) {
+        const items = profiles
+          .map((p) => ({
+            id: p.id,
+            name: p.display_name || p.username || "Fan",
+            username: p.username || "",
+            avatarId: p.avatar_id ?? 7,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setFollowListUsers(items);
+      } else {
+        setFollowListUsers([]);
+      }
+    } catch {
+      setFollowListUsers([]);
+    } finally {
+      setFollowListLoading(false);
+    }
   };
 
   const handleAddConcert = async (c) => {
@@ -674,51 +734,64 @@ export default function App() {
     const uid = user.id;
     const loadActivity = async () => {
       try {
-        const actorIds = [uid, ...followingIds];
-        const { data: rows, error } = await supabase
+        // 1) Always load your own activity
+        const { data: selfRows, error: selfErr } = await supabase
           .from("user_activity")
-          .select("id, type, description, created_at, actor_id, herd_id")
-          .in("actor_id", actorIds)
+          .select("id, type, description, created_at")
+          .eq("actor_id", uid)
           .order("created_at", { ascending: false })
-          .limit(50);
-        if (error || !rows) {
-          setRecentActivity([]);
-          return;
-        }
-        // Show all of your own activity, plus follow_herd events from people you follow
-        const filtered = rows.filter(
-          (r) => r.actor_id === uid || (r.actor_id !== uid && r.type === "follow_herd"),
-        );
-        if (filtered.length === 0) {
-          setRecentActivity([]);
-          return;
-        }
-        const actorIdSet = Array.from(new Set(filtered.map((r) => r.actor_id).filter(Boolean)));
-        const { data: profiles, error: profErr } = await supabase
-          .from("profiles")
-          .select("id, display_name, username, avatar_id")
-          .in("id", actorIdSet);
-        const profileById = {};
-        if (!profErr && profiles) {
-          profiles.forEach((p) => {
-            profileById[p.id] = p;
-          });
-        }
-        setRecentActivity(
-          filtered.map((r) => {
-            const isSelf = r.actor_id === uid;
-            const prof = profileById[r.actor_id];
-            return {
+          .limit(25);
+
+        const items = (selfRows && !selfErr)
+          ? selfRows.map((r) => ({
               id: r.id,
-              actorName: isSelf ? "You" : (prof?.display_name || prof?.username || "Fan"),
-              actorUsername: isSelf ? (user.username || "") : (prof?.username || ""),
-              actorAvatarId: isSelf ? (user.avatar_id ?? 7) : (prof?.avatar_id ?? 7),
+              actorName: "You",
+              actorUsername: user.username || "",
+              actorAvatarId: user.avatar_id ?? 7,
               description: r.description,
               createdAt: r.created_at,
               type: r.type,
-            };
-          }),
-        );
+            }))
+          : [];
+
+        // 2) Optionally load follow_herd events from people you follow
+        if (followingIds.length > 0) {
+          const { data: followerRows, error: followerErr } = await supabase
+            .from("user_activity")
+            .select("id, type, description, created_at, actor_id")
+            .in("actor_id", followingIds)
+            .eq("type", "follow_herd")
+            .order("created_at", { ascending: false })
+            .limit(50);
+
+          if (!followerErr && followerRows && followerRows.length) {
+            const actorIds = Array.from(new Set(followerRows.map((r) => r.actor_id).filter(Boolean)));
+            const { data: profiles, error: profErr } = await supabase
+              .from("profiles")
+              .select("id, display_name, username, avatar_id")
+              .in("id", actorIds);
+            const profileById = {};
+            if (!profErr && profiles) {
+              profiles.forEach((p) => {
+                profileById[p.id] = p;
+              });
+            }
+            followerRows.forEach((r) => {
+              const prof = profileById[r.actor_id];
+              items.push({
+                id: r.id,
+                actorName: prof?.display_name || prof?.username || "Fan",
+                actorUsername: prof?.username || "",
+                actorAvatarId: prof?.avatar_id ?? 7,
+                description: r.description,
+                createdAt: r.created_at,
+                type: r.type,
+              });
+            });
+          }
+        }
+
+        setRecentActivity(items);
       } catch {
         setRecentActivity([]);
       }
@@ -917,12 +990,36 @@ export default function App() {
                 color: "rgba(55,48,107,0.8)",
               }}
             >
-              <span>
+              <button
+                type="button"
+                onClick={() => handleOpenFollowList("followers")}
+                style={{
+                  border: "none",
+                  background: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  fontFamily: F,
+                  fontSize: 12,
+                  color: "rgba(55,48,107,0.8)",
+                }}
+              >
                 <strong style={{ color: "#0f766e" }}>{followersCount}</strong> Followers
-              </span>
-              <span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenFollowList("following")}
+                style={{
+                  border: "none",
+                  background: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  fontFamily: F,
+                  fontSize: 12,
+                  color: "rgba(55,48,107,0.8)",
+                }}
+              >
                 <strong style={{ color: "#0f766e" }}>{followingCount}</strong> Following
-              </span>
+              </button>
             </div>
           )}
           <div style={{ padding: "8px 20px 0" }}>
@@ -995,6 +1092,8 @@ export default function App() {
           recommendedArtists={recommendedArtistsForSearch}
           recentActivity={recentActivity}
         />
+      ) : activePage === "Market" ? (
+        <MarketPage userHerds={userHerds} />
       ) : (
         renderNonProfilePage()
       )}
@@ -1003,6 +1102,142 @@ export default function App() {
       {editingConcert && <EditConcertModal concert={editingConcert} onClose={() => setEditingConcert(null)} onSave={handleUpdateConcert} />}
       {showVinyl && <AddItemModal type="vinyl" onClose={() => setShowVinyl(false)} onAdd={handleAddVinyl} />}
       {showMerch && <AddItemModal type="merch" onClose={() => setShowMerch(false)} onAdd={handleAddMerch} />}
+      {showFollowList && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 105,
+            background: "rgba(15,23,42,0.55)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowFollowList(false);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 380,
+              maxHeight: "80vh",
+              background: "#f9fafb",
+              borderRadius: 18,
+              boxShadow: "0 18px 50px rgba(15,23,42,0.45)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 16px",
+                borderBottom: "1px solid rgba(148,163,184,0.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                {followListType === "followers" ? "Followers" : "Following"}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFollowList(false)}
+                style={{
+                  border: "none",
+                  background: "none",
+                  fontSize: 20,
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                }}
+                aria-label="Close followers list"
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ flex: 1, overflow: "auto" }}>
+              {followListLoading ? (
+                <div
+                  style={{
+                    padding: "16px 18px",
+                    fontFamily: F,
+                    fontSize: 13,
+                    color: "rgba(55,48,107,0.75)",
+                  }}
+                >
+                  Loading…
+                </div>
+              ) : followListUsers.length === 0 ? (
+                <div
+                  style={{
+                    padding: "16px 18px 20px",
+                    fontFamily: F,
+                    fontSize: 13,
+                    color: "rgba(55,48,107,0.7)",
+                  }}
+                >
+                  {followListType === "followers"
+                    ? "No followers yet."
+                    : "You're not following anyone yet."}
+                </div>
+              ) : (
+                followListUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => {
+                      setShowFollowList(false);
+                      if (u.username) {
+                        handleViewOtherProfile(u.username);
+                      }
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 16px",
+                      border: "none",
+                      borderBottom: "1px solid rgba(226,232,240,0.9)",
+                      background: "#f9fafb",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <AvatarSprite avatarId={u.avatarId} size={36} />
+                    <div style={{ flex: 1, textAlign: "left" }}>
+                      <div
+                        style={{
+                          fontFamily: F,
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: "#0f172a",
+                        }}
+                      >
+                        {u.name}
+                      </div>
+                      {u.username && (
+                        <div
+                          style={{
+                            fontFamily: F,
+                            fontSize: 12,
+                            color: "rgba(100,116,139,0.95)",
+                          }}
+                        >
+                          @{u.username}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {showPublicProfilePreview && previewUsername && (
         <div
           style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(30,27,75,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
