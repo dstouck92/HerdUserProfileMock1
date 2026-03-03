@@ -14,7 +14,7 @@ import CurateTab from "./components/tabs/CurateTab";
 import SearchPage from "./components/SearchPage";
 import HerdsPage from "./components/HerdsPage";
 import PublicProfile from "./PublicProfile";
-import { TabBar, ProfileHeader, BottomNav, F } from "./components/ui";
+import { TabBar, ProfileHeader, BottomNav, F, AvatarSprite } from "./components/ui";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function App() {
