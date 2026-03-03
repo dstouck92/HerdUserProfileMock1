@@ -13,7 +13,7 @@ const demoHerds = [
   { id: 3, name: "Indie Night Owls", subtitle: "54 members" },
 ];
 
-export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile, recommendedArtists, recentActivity }) {
+export default function SearchPage({ recommendedFriends, followingIds = [], onToggleFollow, onOpenProfile, onOpenHerd, recommendedArtists, recentActivity }) {
   const [query, setQuery] = useState("");
   const friendsFromDb = Array.isArray(recommendedFriends)
     ? recommendedFriends.map((f) => ({
@@ -237,6 +237,7 @@ export default function SearchPage({ recommendedFriends, followingIds = [], onTo
               title={artist.name}
               subtitle={artist.subtitle}
               primaryLabel="Follow +"
+              onCardClick={onOpenHerd ? () => onOpenHerd(artist.name) : undefined}
             />
           ))}
         </HorizontalList>
@@ -416,21 +417,9 @@ function HorizontalList({ children }) {
   );
 }
 
-function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onToggleFollow, onOpenProfile, userId, username }) {
-  return (
-    <div
-      style={{
-        minWidth: 150,
-        maxWidth: 180,
-        background:
-          "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,64,175,0.8))",
-        borderRadius: 16,
-        overflow: "hidden",
-        color: "#fff",
-        boxShadow: "0 10px 25px rgba(15,23,42,0.5)",
-        position: "relative",
-      }}
-    >
+function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onToggleFollow, onOpenProfile, onCardClick, userId, username }) {
+  const cardContent = (
+    <>
       <div
         style={{
           height: 90,
@@ -445,7 +434,7 @@ function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onTo
           <AvatarSprite avatarId={avatarId} size={52} />
         ) : null}
       </div>
-      <div style={{ padding: "10px 12px 12px" }}>
+      <div style={{ padding: "10px 12px 0" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
           <div
             style={{
@@ -459,7 +448,7 @@ function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onTo
           {username && (
             <button
               type="button"
-              onClick={() => onOpenProfile?.(username)}
+              onClick={(e) => { e.stopPropagation(); onOpenProfile?.(username); }}
               style={{
                 border: "none",
                 background: "none",
@@ -485,6 +474,38 @@ function PersonCard({ title, subtitle, primaryLabel, avatarId, isFollowing, onTo
         >
           {subtitle}
         </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div
+      style={{
+        minWidth: 150,
+        maxWidth: 180,
+        background:
+          "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,64,175,0.8))",
+        borderRadius: 16,
+        overflow: "hidden",
+        color: "#fff",
+        boxShadow: "0 10px 25px rgba(15,23,42,0.5)",
+        position: "relative",
+      }}
+    >
+      {onCardClick ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onCardClick}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onCardClick(); }}
+          style={{ cursor: "pointer" }}
+        >
+          {cardContent}
+        </div>
+      ) : (
+        cardContent
+      )}
+      <div style={{ padding: "0 12px 12px" }}>
         <button
           type="button"
           onClick={userId ? () => onToggleFollow?.(userId, !isFollowing) : undefined}

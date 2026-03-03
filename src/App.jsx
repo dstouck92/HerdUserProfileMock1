@@ -11,6 +11,7 @@ import DigitalTab from "./components/tabs/DigitalTab";
 import PhysicalTab from "./components/tabs/PhysicalTab";
 import CurateTab from "./components/tabs/CurateTab";
 import SearchPage from "./components/SearchPage";
+import HerdsPage from "./components/HerdsPage";
 import PublicProfile from "./PublicProfile";
 import { TabBar, ProfileHeader, BottomNav, F } from "./components/ui";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -29,6 +30,10 @@ export default function App() {
   const [followingCount, setFollowingCount] = useState(0);
   const [followingIds, setFollowingIds] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [userHerds, setUserHerds] = useState([]);
+  const [discoverHerds, setDiscoverHerds] = useState([]);
+  const [selectedHerdId, setSelectedHerdId] = useState(null);
+  const [herdDetails, setHerdDetails] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showConcert, setShowConcert] = useState(false);
   const [editingConcert, setEditingConcert] = useState(null);
@@ -697,6 +702,89 @@ export default function App() {
     loadActivity();
   }, [user?.id, user?.username, user?.avatar_id]);
 
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const uid = user.id;
+    const loadHerds = async () => {
+      try {
+        const { data: followRows, error: followErr } = await supabase
+          .from("herd_follows")
+          .select("herd_id, herds(id, name, image_url, spotify_artist_id)")
+          .eq("user_id", uid);
+        if (!followErr && followRows?.length) {
+          setUserHerds(
+            followRows
+              .map((r) => r.herds)
+              .filter(Boolean)
+              .map((h) => ({ id: h.id, name: h.name, image_url: h.image_url, spotify_artist_id: h.spotify_artist_id })),
+          );
+        } else {
+          setUserHerds([]);
+        }
+        const { data: herds, error: herdsErr } = await supabase
+          .from("herds")
+          .select("id, name, image_url, spotify_artist_id")
+          .limit(10);
+        if (!herdsErr && herds) setDiscoverHerds(herds);
+        else setDiscoverHerds([]);
+      } catch {
+        setUserHerds([]);
+        setDiscoverHerds([]);
+      }
+    };
+    loadHerds();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !selectedHerdId) {
+      setHerdDetails(null);
+      return;
+    }
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("herds")
+        .select("id, name, image_url, spotify_artist_id")
+        .eq("id", selectedHerdId)
+        .single();
+      if (!error && data) setHerdDetails(data);
+      else setHerdDetails(null);
+    };
+    load();
+  }, [selectedHerdId]);
+
+  const handleFollowHerd = async (herdId, shouldFollow) => {
+    if (!supabase || !user?.id || !herdId) return;
+    const uid = user.id;
+    if (shouldFollow) {
+      const { error } = await supabase.from("herd_follows").insert({ user_id: uid, herd_id: herdId });
+      if (!error) {
+        const { data: herd } = await supabase.from("herds").select("id, name, image_url, spotify_artist_id").eq("id", herdId).single();
+        if (herd) setUserHerds((prev) => (prev.some((h) => h.id === herd.id) ? prev : [...prev, herd]));
+      }
+    } else {
+      await supabase.from("herd_follows").delete().eq("user_id", uid).eq("herd_id", herdId);
+      setUserHerds((prev) => prev.filter((h) => h.id !== herdId));
+    }
+  };
+
+  const handleOpenHerdByArtistName = async (artistName) => {
+    if (!supabase || !artistName?.trim()) return;
+    const name = artistName.trim();
+    const { data: herds, error } = await supabase
+      .from("herds")
+      .select("id, name, image_url, spotify_artist_id")
+      .ilike("name", `%${name}%`)
+      .limit(5);
+    const match = !error && herds?.length ? herds[0] : null;
+    if (match) {
+      setSelectedHerdId(match.id);
+      setActivePage("Herds");
+    } else {
+      setSelectedHerdId(null);
+      setActivePage("Herds");
+    }
+  };
+
   const renderNonProfilePage = () => {
     const titles = {
       Feed: "Feed",
@@ -806,12 +894,24 @@ export default function App() {
             )}
           </div>
         </>
+      ) : activePage === "Herds" ? (
+        <HerdsPage
+          userHerds={userHerds}
+          discoverHerds={discoverHerds}
+          selectedHerdId={selectedHerdId}
+          herdDetails={herdDetails}
+          onSelectHerd={(id) => setSelectedHerdId(id)}
+          onBackToList={() => setSelectedHerdId(null)}
+          onFollowHerd={handleFollowHerd}
+          user={user}
+        />
       ) : activePage === "Search" ? (
         <SearchPage
           recommendedFriends={recommendedFriends}
           followingIds={followingIds}
           onToggleFollow={handleToggleFollowUser}
           onOpenProfile={handleViewOtherProfile}
+          onOpenHerd={handleOpenHerdByArtistName}
           recommendedArtists={recommendedArtistsForSearch}
           recentActivity={recentActivity}
         />
