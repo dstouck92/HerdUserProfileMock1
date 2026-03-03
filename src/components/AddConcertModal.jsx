@@ -77,7 +77,7 @@ export default function AddConcertModal({ onClose, onAdd }) {
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: "#94a3b8", cursor: "pointer" }}>✕</button>
         </div>
         <div style={{ display: "flex", marginBottom: 20, background: "rgba(13,148,136,0.08)", borderRadius: 10, padding: 3 }}>
-          {[["search", "Search Setlist.fm"], ["manual", "Manual Entry"]].map(([m, l]) => (
+          {[["search", "Search Database"], ["manual", "Manual Entry"]].map(([m, l]) => (
             <button key={m} onClick={() => { setMode(m); setSearchError(""); setSearchResults([]); setConcertDetailsFilter(""); setYearFilter(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: mode === m ? "#fff" : "transparent", boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", fontFamily: F, fontSize: 13, fontWeight: 600, color: mode === m ? "#0f766e" : "rgba(55,48,107,0.4)", cursor: "pointer" }}>{l}</button>
           ))}
         </div>
@@ -88,7 +88,7 @@ export default function AddConcertModal({ onClose, onAdd }) {
               <button onClick={search} disabled={searching} style={{ padding: "12px 20px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: searching ? "wait" : "pointer" }}>🔍</button>
             </div>
             {searchError && <div style={{ fontFamily: F, fontSize: 13, color: "#dc2626", marginBottom: 12 }}>{searchError}</div>}
-            {searching && <div style={{ textAlign: "center", padding: 24, fontFamily: F, fontSize: 13, color: "#0f766e" }}>Searching Setlist.fm…</div>}
+            {searching && <div style={{ textAlign: "center", padding: 24, fontFamily: F, fontSize: 13, color: "#0f766e" }}>Searching database…</div>}
             {!searching && searchResults.length > 0 && (
               <>
                 <div style={{ marginBottom: 12 }}>
@@ -113,7 +113,7 @@ export default function AddConcertModal({ onClose, onAdd }) {
                 </div>
               </>
             )}
-            {!searching && searchResults.length === 0 && !searchError && <div style={{ textAlign: "center", padding: 24, fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.4)", lineHeight: 1.6 }}>Search for an artist to find concerts.<br />Powered by Setlist.fm.</div>}
+            {!searching && searchResults.length === 0 && !searchError && <div style={{ textAlign: "center", padding: 24, fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.4)", lineHeight: 1.6 }}>Search for an artist to find concerts.<br />Powered by our concert database.</div>}
           </>
         ) : (
           <>
