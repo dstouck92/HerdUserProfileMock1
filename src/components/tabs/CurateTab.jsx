@@ -60,7 +60,7 @@ export default function CurateTab({
       <>
       <div style={{ margin: "0 20px 16px", padding: "14px 16px", background: "linear-gradient(135deg, rgba(13,148,136,0.1), rgba(52,211,153,0.06))", borderRadius: 14, border: "1px solid rgba(13,148,136,0.2)" }}>
         <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e", marginBottom: 4 }}>✨ Curate Your Public Profile</div>
-        <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", lineHeight: 1.5 }}>Select items from Digital, Physical, and Live tabs to feature publicly. Tap your avatar circle above to choose a different profile avatar.</div>
+        <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", lineHeight: 1.5 }}>Select items from Digital, Physical, and Live tabs to feature publicly. Tap your avatar circle above to choose a different profile avatar or upload your own profile picture.</div>
       </div>
       {data && data.topArtists.length > 0 && (
         <>
