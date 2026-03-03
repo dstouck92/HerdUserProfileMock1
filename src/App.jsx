@@ -117,7 +117,7 @@ export default function App() {
         supabase.from("user_streaming_stats").select("*").eq("user_id", uid).single(),
         supabase.from("user_youtube").select("user_id, youtube_channel_id, youtube_channel_title, herd_display_name, herd_email, herd_phone, subscription_count, playlist_count, liked_count, subscriptions_json, playlists_json, liked_videos_json, subscriptions_ranked_by_likes_json, featured_youtube_channels, last_fetched_at").eq("user_id", uid).maybeSingle(),
         supabase.from("user_youtube_takeout").select("user_id, watch_history_json, video_count, total_watch_minutes, imported_at, channel_rankings_json, video_rankings_json, watch_trend_json").eq("user_id", uid).maybeSingle(),
-        supabase.from("profiles").select("id, display_name, username, avatar_id, profile_image_url").neq("id", uid).order("display_name", { ascending: true }).limit(24),
+        supabase.from("profiles").select("id, display_name, username, avatar_id").neq("id", uid).order("display_name", { ascending: true }).limit(24),
         supabase
           .from("user_follows")
           .select("follower_id, followed_id")
@@ -176,7 +176,6 @@ export default function App() {
             displayName: p.display_name || p.username || "Friend",
             username: p.username || "user",
             avatarId: p.avatar_id ?? 7,
-            profileImageUrl: p.profile_image_url || null,
           })),
         );
       } else {
