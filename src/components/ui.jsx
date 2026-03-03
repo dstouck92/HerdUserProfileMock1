@@ -210,6 +210,7 @@ export const BottomNav = ({ active, onSelect }) => {
 export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supabase, showAvatarPicker, onCloseAvatarPicker, onOpenAvatarPicker, onProfileImageSelected }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const avatarId = user?.avatar_id ?? 7;
+  const profileImageUrl = user?.profile_image_url || null;
 
   useEffect(() => {
     if (showAvatarPicker) setPickerOpen(true);
@@ -233,7 +234,7 @@ export const ProfileHeader = ({ user, onViewPublicProfile, onAvatarChange, supab
         onClick={() => onOpenAvatarPicker ? onOpenAvatarPicker() : (onAvatarChange && setPickerOpen(true))}
         style={{ width: 72, height: 72, borderRadius: "50%", border: "none", padding: 0, cursor: (onAvatarChange || onOpenAvatarPicker) ? "pointer" : "default", flexShrink: 0, boxShadow: "0 4px 20px rgba(13,148,136,0.4)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #0d9488, #10b981, #34d399)", fontFamily: F, fontSize: 24, fontWeight: 700, color: "#fff" }}
       >
-        <AvatarSprite avatarId={avatarId} size={72} />
+        <AvatarSprite avatarId={avatarId} size={72} imageUrl={profileImageUrl} />
       </button>
       <div>
         <div style={{ fontFamily: F, fontSize: 22, fontWeight: 700, color: "#1e1b4b" }}>{user?.display_name}</div>

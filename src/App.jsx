@@ -68,7 +68,7 @@ export default function App() {
         if (cancelled) return;
         if (session?.user) {
           try {
-            const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
+            const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id, profile_image_url").eq("id", session.user.id).single();
             if (!cancelled) {
               setUser(
                 profile
@@ -688,13 +688,20 @@ export default function App() {
         if (typeof window !== "undefined") window.alert("Could not get public URL for image.");
         return;
       }
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ profile_image_url: publicUrl })
-        .eq("id", user.id);
-      if (updateError) {
-        if (typeof console !== "undefined") console.error("Profile image URL update error:", updateError);
-        if (typeof window !== "undefined") window.alert("Saving profile picture failed. Please try again.");
+      const { data: { session } } = await supabase.auth.getSession() || {};
+      if (!session?.access_token) {
+        if (typeof window !== "undefined") window.alert("Saving profile picture failed. Please sign in again.");
+        return;
+      }
+      const res = await fetch("/api/profile/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ profile_image_url: publicUrl }),
+      });
+      const errBody = !res.ok ? await res.json().catch(() => ({})) : null;
+      if (!res.ok) {
+        if (typeof console !== "undefined") console.error("Profile image URL update error:", res.status, errBody);
+        if (typeof window !== "undefined") window.alert(errBody?.error || "Saving profile picture failed. Please try again.");
         return;
       }
       setUser((prev) => (prev ? { ...prev, profile_image_url: publicUrl } : prev));

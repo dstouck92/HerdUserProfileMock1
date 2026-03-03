@@ -515,6 +515,32 @@ app.get('/api/market/concerts', async (req, res) => {
   }
 })
 
+// --- Profile image URL (service-role update so RLS cannot block) ---
+if (supabaseAdmin) {
+  app.post('/api/profile/image', async (req, res) => {
+    try {
+      const accessToken = req.body?.access_token || req.headers.authorization?.replace(/^Bearer\s+/i, '')
+      if (!accessToken) return res.status(401).json({ error: 'Missing access_token' })
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(accessToken)
+      if (error || !user?.id) return res.status(401).json({ error: 'Invalid token' })
+      const profileImageUrl = req.body?.profile_image_url
+      if (typeof profileImageUrl !== 'string' || !profileImageUrl.trim()) return res.status(400).json({ error: 'Missing profile_image_url' })
+      const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ profile_image_url: profileImageUrl.trim(), updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+      if (updateError) {
+        console.error('Profile image update error:', updateError)
+        return res.status(500).json({ error: 'Saving profile picture failed' })
+      }
+      return res.json({ ok: true })
+    } catch (e) {
+      console.error('Profile image API error:', e)
+      return res.status(500).json({ error: 'Saving profile picture failed' })
+    }
+  })
+}
+
 // --- YouTube OAuth & sync (optional; requires YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REDIRECT_URI, SUPABASE_SERVICE_ROLE_KEY) ---
 if (supabaseAdmin && youtubeClientId && youtubeClientSecret && youtubeRedirectUri) {
   const YOUTUBE_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly'
