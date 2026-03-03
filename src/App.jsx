@@ -888,12 +888,8 @@ export default function App() {
         } else {
           setUserHerds([]);
         }
-        const { data: herds, error: herdsErr } = await supabase
-          .from("herds")
-          .select("id, name, image_url, spotify_artist_id")
-          .limit(10);
-        if (!herdsErr && herds) setDiscoverHerds(herds);
-        else setDiscoverHerds([]);
+        // Discover herds are now loaded in a separate effect (see below) from herds
+        // that users you follow have followed, ranked by follower count.
       } catch {
         setUserHerds([]);
         setDiscoverHerds([]);
@@ -901,6 +897,68 @@ export default function App() {
     };
     loadHerds();
   }, [user?.id]);
+
+  // Discover: fan clubs that users you follow follow, ranked by follower count (excludes herds you already follow).
+  const DISCOVER_HERDS_LIMIT = 25;
+  useEffect(() => {
+    if (!supabase || !user?.id) {
+      setDiscoverHerds([]);
+      return;
+    }
+    const following = followingIds || [];
+    const myHerds = userHerds || [];
+    if (following.length === 0) {
+      setDiscoverHerds([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: followRows, error: followErr } = await supabase
+          .from("herd_follows")
+          .select("herd_id")
+          .in("user_id", following);
+        if (cancelled || followErr || !followRows?.length) {
+          if (!cancelled) setDiscoverHerds([]);
+          return;
+        }
+        const myHerdIds = new Set(myHerds.map((h) => h.id).filter(Boolean));
+        const discoveredIds = [...new Set(followRows.map((r) => r.herd_id).filter(Boolean))].filter(
+          (id) => !myHerdIds.has(id)
+        );
+        if (discoveredIds.length === 0) {
+          if (!cancelled) setDiscoverHerds([]);
+          return;
+        }
+        const { data: herds, error: herdsErr } = await supabase
+          .from("herds")
+          .select("id, name, image_url, spotify_artist_id")
+          .in("id", discoveredIds);
+        if (cancelled || herdsErr || !herds?.length) {
+          if (!cancelled) setDiscoverHerds([]);
+          return;
+        }
+        const { data: countRows, error: countErr } = await supabase
+          .from("herd_follows")
+          .select("herd_id")
+          .in("herd_id", discoveredIds);
+        const countByHerd = {};
+        discoveredIds.forEach((id) => { countByHerd[id] = 0; });
+        if (!countErr && countRows) {
+          countRows.forEach((r) => {
+            if (r.herd_id) countByHerd[r.herd_id] = (countByHerd[r.herd_id] || 0) + 1;
+          });
+        }
+        const sorted = [...herds].sort(
+          (a, b) => (countByHerd[b.id] || 0) - (countByHerd[a.id] || 0)
+        );
+        if (!cancelled) setDiscoverHerds(sorted.slice(0, DISCOVER_HERDS_LIMIT));
+      } catch {
+        if (!cancelled) setDiscoverHerds([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [supabase, user?.id, followingIds, userHerds]);
 
   const followedSpotifyArtistIds = (userHerds || [])
     .map((h) => h.spotify_artist_id)

@@ -882,6 +882,8 @@ export default function HerdsPage({
     );
   }
 
+  // Discover list: herds suggested for discovery (e.g. followed by people you follow).
+  // Exclude any the current user already follows so they don't appear twice.
   const discoverFiltered = discoverHerds.filter(
     (h) => !userHerds.some((u) => u.id === h.id)
   );
