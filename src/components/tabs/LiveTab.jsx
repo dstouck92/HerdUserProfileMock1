@@ -3,7 +3,7 @@ import { Card, Stats, Empty } from "../ui";
 const F = "'DM Sans', sans-serif";
 
 export default function LiveTab({ concerts, onAdd, onEdit }) {
-  if (!concerts.length) return <Empty icon="🎫" title="No Concerts Yet" desc="Search Setlist.fm or manually add concerts you've attended." btn="+ Add Concert" onAction={onAdd} />;
+  if (!concerts.length) return <Empty icon="🎫" title="No Concerts Yet" desc="Search database or manually add concerts you've attended." btn="+ Add Concert" onAction={onAdd} />;
   return (
     <div>
       <Stats stats={[{ value: concerts.length, label: "Concerts" }, { value: new Set(concerts.filter((c) => c.tour).map((c) => c.tour)).size, label: "Tours" }, { value: new Set(concerts.map((c) => c.artist)).size, label: "Artists" }]} />

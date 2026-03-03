@@ -21,6 +21,10 @@ export default function AddItemModal({ type, onClose, onAdd }) {
   const [vinylResults, setVinylResults] = useState([]);
   const [vinylSearchError, setVinylSearchError] = useState("");
 
+  const [merchSpotifySearching, setMerchSpotifySearching] = useState(false);
+  const [merchSpotifyError, setMerchSpotifyError] = useState("");
+  const [merchSpotifyResults, setMerchSpotifyResults] = useState([]);
+
   const searchVinyl = async () => {
     if (!vinylQuery.trim()) return;
     setVinylSearching(true);
@@ -50,6 +54,31 @@ export default function AddItemModal({ type, onClose, onAdd }) {
     onClose();
   };
 
+  const searchMerchArtistOnSpotify = async () => {
+    const q = artist.trim();
+    if (!q) return;
+    setMerchSpotifySearching(true);
+    setMerchSpotifyError("");
+    setMerchSpotifyResults([]);
+    try {
+      const res = await fetch(`/api/spotify/search-artists?q=${encodeURIComponent(q)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Spotify search failed");
+      }
+      const results = Array.isArray(data?.artists) ? data.artists : [];
+      setMerchSpotifyResults(results);
+      if (!results.length) {
+        setMerchSpotifyError("No matching artists found. Try a different name.");
+      }
+    } catch (err) {
+      setMerchSpotifyError(err?.message || "Could not search Spotify. Try again or enter manually.");
+      setMerchSpotifyResults([]);
+    } finally {
+      setMerchSpotifySearching(false);
+    }
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(30,27,75,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ width: "100%", maxWidth: 430, background: "#fff", borderRadius: 20, padding: "24px 20px 36px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", maxHeight: "85vh", overflowY: "auto" }}>
@@ -60,7 +89,7 @@ export default function AddItemModal({ type, onClose, onAdd }) {
         {type === "vinyl" ? (
           <>
             <div style={{ display: "flex", marginBottom: 20, background: "rgba(13,148,136,0.08)", borderRadius: 10, padding: 3 }}>
-              {[["search", "Search Discogs"], ["manual", "Manual Entry"]].map(([m, l]) => (
+              {[["search", "Search Database"], ["manual", "Manual Entry"]].map(([m, l]) => (
                 <button key={m} onClick={() => { setVinylMode(m); setVinylSearchError(""); setVinylResults([]); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: vinylMode === m ? "#fff" : "transparent", boxShadow: vinylMode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", fontFamily: F, fontSize: 13, fontWeight: 600, color: vinylMode === m ? "#0f766e" : "rgba(55,48,107,0.4)", cursor: "pointer" }}>{l}</button>
               ))}
             </div>
@@ -102,6 +131,121 @@ export default function AddItemModal({ type, onClose, onAdd }) {
         ) : (
           <>
             <Inp label="Artist *" value={artist} onChange={setArtist} placeholder="Fred Again" />
+            <div style={{ marginTop: -8, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)" }}>
+                Use Spotify to link this merch to a specific artist.
+              </div>
+              <button
+                type="button"
+                onClick={searchMerchArtistOnSpotify}
+                disabled={merchSpotifySearching || !artist.trim()}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: "none",
+                  fontFamily: F,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: merchSpotifySearching || !artist.trim()
+                    ? "rgba(148,163,184,0.4)"
+                    : "linear-gradient(135deg, #0ea5e9, #6366f1)",
+                  color: "#fff",
+                  cursor: merchSpotifySearching || !artist.trim() ? "default" : "pointer",
+                  boxShadow: merchSpotifySearching || !artist.trim() ? "none" : "0 3px 10px rgba(37,99,235,0.4)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {merchSpotifySearching ? "Searching…" : "Search Spotify"}
+              </button>
+            </div>
+            {merchSpotifyError && (
+              <div style={{ fontFamily: F, fontSize: 12, color: "#b91c1c", marginBottom: 8 }}>
+                {merchSpotifyError}
+              </div>
+            )}
+            {!merchSpotifySearching && merchSpotifyResults.length > 0 && (
+              <div
+                style={{
+                  maxHeight: 220,
+                  overflowY: "auto",
+                  marginBottom: 14,
+                  borderRadius: 12,
+                  border: "1px solid rgba(148,163,184,0.5)",
+                  background: "rgba(249,250,251,0.9)",
+                }}
+              >
+                {merchSpotifyResults.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => {
+                      setArtist(a.name || artist);
+                      setMerchSpotifyResults([]);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "8px 12px",
+                      border: "none",
+                      borderBottom: "1px solid rgba(226,232,240,0.8)",
+                      background: "none",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    {a.imageUrl && (
+                      <img
+                        src={a.imageUrl}
+                        alt=""
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontFamily: F,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#0f172a",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {a.name}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: F,
+                          fontSize: 11,
+                          color: "rgba(55,65,81,0.7)",
+                        }}
+                      >
+                        Spotify Artist
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontFamily: F,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#0d9488",
+                      }}
+                    >
+                      Select
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             <Inp label="Item Name *" value={itemName} onChange={setItemName} placeholder="Actual Life Tour Tee" />
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: "#0f766e", display: "block", marginBottom: 6 }}>Type</label>
