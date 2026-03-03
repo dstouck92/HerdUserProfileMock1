@@ -22,7 +22,6 @@ export default function CurateTab({
   const [artistSearch, setArtistSearch] = useState("");
   const [youtubeChannelSearch, setYoutubeChannelSearch] = useState("");
   const hasData = concerts.length > 0 || merch.length > 0 || vinyl.length > 0 || data || youtube || youtubeTakeout;
-  const avatarId = user?.avatar_id ?? 7;
   const featuredArtists = data?.featuredArtists ?? [];
   const topArtists = data?.topArtists ?? [];
   const searchTrim = artistSearch.trim().toLowerCase();
@@ -55,21 +54,6 @@ export default function CurateTab({
 
   return (
     <div>
-      {/* Profile avatar - always visible on Curate */}
-      <Sec icon="👤">Profile avatar</Sec>
-      <Card style={{ margin: "0 16px 16px", padding: "16px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <AvatarSprite avatarId={avatarId} size={56} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b" }}>Your profile picture</div>
-            <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", marginTop: 2 }}>Shown next to your name and on your public profile.</div>
-          </div>
-          {onOpenAvatarPicker && (
-            <button type="button" onClick={onOpenAvatarPicker} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.4)", background: "rgba(13,148,136,0.1)", color: "#0d9488", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Change</button>
-          )}
-        </div>
-      </Card>
-
       {!hasData ? (
         <Empty icon="✨" title="Nothing to Curate Yet" desc="Add concerts, merch, vinyl, or upload Spotify history first." />
       ) : (
