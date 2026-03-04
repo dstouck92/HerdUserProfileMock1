@@ -81,35 +81,8 @@ export default function SearchPage({
   const followedSpotifySet = new Set(followedSpotifyArtistIds || []);
 
   useEffect(() => {
-    if (!Array.isArray(artists) || artists.length === 0) return;
-    let cancelled = false;
-
-    const loadImages = async () => {
-      // Throttle: one request every 250ms to avoid Spotify rate limits
-      for (const artist of artists) {
-        if (cancelled) return;
-        const name = (artist?.name || "").trim();
-        if (!name || artistImages[name]) continue;
-        try {
-          const res = await fetch(`/api/spotify/search-artists?q=${encodeURIComponent(name)}`);
-          if (!res.ok) continue;
-          const data = await res.json();
-          const match = Array.isArray(data?.artists) ? data.artists[0] : null;
-          const imageUrl = match?.imageUrl || null;
-          if (!imageUrl || cancelled) continue;
-          setArtistImages((prev) => (prev[name] ? prev : { ...prev, [name]: imageUrl }));
-        } catch {
-          // Ignore errors; fallback UI will show without images
-        }
-        await new Promise((r) => setTimeout(r, 250));
-      }
-    };
-
-    const t = setTimeout(loadImages, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
+    // Temporarily disable automatic Spotify artist image lookups to reduce API usage.
+    // The UI will fall back to default avatars / letters for now.
   }, [artists]);
 
   useEffect(() => {

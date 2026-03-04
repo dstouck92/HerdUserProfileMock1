@@ -222,38 +222,18 @@ export default function HerdsPage({
   }, [supabase, selectedHerdId, herdTab]);
 
   useEffect(() => {
+    // Temporarily disable automatic Spotify artist-image fetch for the selected herd
+    // to reduce Spotify API usage and avoid rate limits. We continue to respect
+    // any existing `image_url` stored in the database.
     if (!herdDetails?.spotify_artist_id || herdDetails?.image_url) {
       setHerdSpotifyImageUrl(null);
-      return;
     }
-    let cancelled = false;
-    fetch(`/api/spotify/artist-image?artist_id=${encodeURIComponent(herdDetails.spotify_artist_id)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && data?.imageUrl) setHerdSpotifyImageUrl(data.imageUrl);
-      })
-      .catch(() => { if (!cancelled) setHerdSpotifyImageUrl(null); });
-    return () => { cancelled = true; };
   }, [herdDetails?.id, herdDetails?.spotify_artist_id, herdDetails?.image_url]);
 
   useEffect(() => {
-    const herds = [...(userHerds || []), ...(discoverHerds || [])];
-    const needFetch = herds.filter(
-      (h) => h.spotify_artist_id && !h.image_url && !spotifyImageByArtistId[h.spotify_artist_id]
-    );
-    if (needFetch.length === 0) return;
-    let cancelled = false;
-    needFetch.forEach((herd) => {
-      fetch(`/api/spotify/artist-image?artist_id=${encodeURIComponent(herd.spotify_artist_id)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (!cancelled && data?.imageUrl) {
-            setSpotifyImageByArtistId((prev) => ({ ...prev, [herd.spotify_artist_id]: data.imageUrl }));
-          }
-        })
-        .catch(() => {});
-    });
-    return () => { cancelled = true; };
+    // Temporarily disable background Spotify artist-image fetches for all herds
+    // to keep Spotify Web API usage low. Herd cards will fall back to existing
+    // `image_url` or letter avatars.
   }, [userHerds, discoverHerds, spotifyImageByArtistId]);
 
   useEffect(() => {
