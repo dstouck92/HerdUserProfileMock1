@@ -34,7 +34,7 @@ export default function PublicProfile({ username: usernameProp }) {
         // 1) Find profile by username
         const { data: prof, error: profError } = await supabase
           .from('profiles')
-          .select('id, display_name, username, avatar_id')
+          .select('id, display_name, username, avatar_id, age, gender, country, region, show_age_public, show_gender_public, show_location_public')
           .eq('username', username)
           .single();
         if (profError || !prof) {
@@ -125,6 +125,19 @@ export default function PublicProfile({ username: usernameProp }) {
 
   const hasAnyFeatured = streaming?.featuredArtists?.length || concerts.length || vinyl.length || merch.length;
 
+  const bioParts = [];
+  if (profile.show_age_public && profile.age != null) {
+    bioParts.push(`${profile.age}`);
+  }
+  if (profile.show_gender_public && profile.gender) {
+    bioParts.push(profile.gender);
+  }
+  if (profile.show_location_public && (profile.country || profile.region)) {
+    const loc = [profile.region, profile.country].filter(Boolean).join(', ');
+    if (loc) bioParts.push(loc);
+  }
+  const bioLine = bioParts.length ? bioParts.join(' · ') : '';
+
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const handleShareLink = async () => {
     setShareFeedback('');
@@ -182,6 +195,11 @@ export default function PublicProfile({ username: usernameProp }) {
           <div>
             <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: '#1e1b4b' }}>{profile.display_name}</div>
             <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)', marginTop: 2 }}>@{profile.username}</div>
+            {bioLine && (
+              <div style={{ fontFamily: F, fontSize: 12, color: 'rgba(55,48,107,0.75)', marginTop: 4 }}>
+                {bioLine}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 12, marginTop: 8, fontFamily: F, fontSize: 12, color: 'rgba(55,48,107,0.8)' }}>
               <span><strong style={{ color: '#0f766e' }}>{followersCount}</strong> followers</span>
               <span><strong style={{ color: '#0f766e' }}>{followingCount}</strong> following</span>

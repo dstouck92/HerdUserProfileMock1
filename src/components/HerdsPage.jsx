@@ -199,7 +199,7 @@ export default function HerdsPage({
         const userIds = [...new Set(followRows.map((r) => r.user_id))];
         const { data: profiles, error: profErr } = await supabase
           .from("profiles")
-          .select("id, display_name, username, avatar_id")
+          .select("id, display_name, username, avatar_id, age, gender, country, region, show_age_public, show_gender_public, show_location_public")
           .in("id", userIds);
         if (cancelled || profErr) {
           setConnectFollowers([]);
@@ -210,6 +210,13 @@ export default function HerdsPage({
           display_name: p.display_name || p.username || "Fan",
           username: p.username || "",
           avatar_id: p.avatar_id ?? 7,
+          age: p.age ?? null,
+          gender: p.gender || null,
+          country: p.country || null,
+          region: p.region || null,
+          show_age_public: !!p.show_age_public,
+          show_gender_public: !!p.show_gender_public,
+          show_location_public: !!p.show_location_public,
         })).sort((a, b) => (a.display_name || "").localeCompare(b.display_name || ""));
         if (!cancelled) setConnectFollowers(list);
       } catch {
@@ -708,14 +715,29 @@ export default function HerdsPage({
                       <AvatarSprite avatarId={f.avatar_id} size={40} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>
-                          {f.display_name}
-                          {user?.id === f.user_id && (
-                            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 500, color: "rgba(55,48,107,0.5)", marginLeft: 6 }}>(You)</span>
-                          )}
-                        </div>
-                        {f.username && (
-                          <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)" }}>@{f.username}</div>
+                        {f.display_name}
+                        {user?.id === f.user_id && (
+                          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 500, color: "rgba(55,48,107,0.5)", marginLeft: 6 }}>(You)</span>
                         )}
+                      </div>
+                      {f.username && (
+                        <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)" }}>@{f.username}</div>
+                      )}
+                      {(() => {
+                        const parts = [];
+                        if (f.show_age_public && f.age != null) parts.push(`${f.age}`);
+                        if (f.show_gender_public && f.gender) parts.push(f.gender);
+                        if (f.show_location_public && (f.country || f.region)) {
+                          const loc = [f.region, f.country].filter(Boolean).join(", ");
+                          if (loc) parts.push(loc);
+                        }
+                        if (!parts.length) return null;
+                        return (
+                          <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)", marginTop: 2 }}>
+                            {parts.join(" · ")}
+                          </div>
+                        );
+                      })()}
                       </div>
                     </button>
                   ))}
