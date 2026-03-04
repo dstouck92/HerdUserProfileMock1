@@ -10,6 +10,9 @@ create table if not exists public.profiles (
   gender text,
   country text,
   region text,
+  show_age_public boolean not null default false,
+  show_gender_public boolean not null default false,
+  show_location_public boolean not null default false,
   avatar_id integer not null default 7,
   profile_image_url text,
   created_at timestamptz default now(),
@@ -160,6 +163,15 @@ begin
   end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'region') then
     alter table public.profiles add column region text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'show_age_public') then
+    alter table public.profiles add column show_age_public boolean not null default false;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'show_gender_public') then
+    alter table public.profiles add column show_gender_public boolean not null default false;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'show_location_public') then
+    alter table public.profiles add column show_location_public boolean not null default false;
   end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_youtube' and column_name = 'featured_youtube_channels') then
     alter table public.user_youtube add column featured_youtube_channels jsonb not null default '[]';

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, Sec, Btn, Btn2, Empty, AvatarSprite } from "../ui";
 
 const F = "'DM Sans', sans-serif";
@@ -18,6 +18,7 @@ export default function CurateTab({
   onToggleYoutubeChannelFeatured,
   onPreviewProfile,
   onOpenAvatarPicker,
+  onSaveUserBio,
 }) {
   const [artistSearch, setArtistSearch] = useState("");
   const [youtubeChannelSearch, setYoutubeChannelSearch] = useState("");
@@ -52,6 +53,61 @@ export default function CurateTab({
     return channelMinutesMap[key] != null ? channelMinutesMap[key] : null;
   };
 
+  const [bioAge, setBioAge] = useState(user?.age != null ? String(user.age) : "");
+  const [bioGender, setBioGender] = useState(user?.gender || "");
+  const [bioCountry, setBioCountry] = useState(user?.country || "");
+  const [bioRegion, setBioRegion] = useState(user?.region || "");
+  const [showAge, setShowAge] = useState(!!user?.show_age_public);
+  const [showGender, setShowGender] = useState(!!user?.show_gender_public);
+  const [showLocation, setShowLocation] = useState(!!user?.show_location_public);
+  const [bioSaving, setBioSaving] = useState(false);
+  const [bioError, setBioError] = useState("");
+  const [bioMessage, setBioMessage] = useState("");
+
+  useEffect(() => {
+    setBioAge(user?.age != null ? String(user.age) : "");
+    setBioGender(user?.gender || "");
+    setBioCountry(user?.country || "");
+    setBioRegion(user?.region || "");
+    setShowAge(!!user?.show_age_public);
+    setShowGender(!!user?.show_gender_public);
+    setShowLocation(!!user?.show_location_public);
+  }, [user?.age, user?.gender, user?.country, user?.region, user?.show_age_public, user?.show_gender_public, user?.show_location_public]);
+
+  const handleSaveBio = async () => {
+    if (!onSaveUserBio) return;
+    setBioError("");
+    setBioMessage("");
+    const trimmedAge = (bioAge || "").trim();
+    let ageNumber = null;
+    if (trimmedAge) {
+      const parsed = parseInt(trimmedAge, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        setBioError("Please enter a valid age or leave it blank.");
+        return;
+      }
+      ageNumber = parsed;
+    }
+    setBioSaving(true);
+    try {
+      await onSaveUserBio({
+        age: ageNumber,
+        gender: bioGender.trim() || null,
+        country: bioCountry.trim() || null,
+        region: bioRegion.trim() || null,
+        showAge,
+        showGender,
+        showLocation,
+      });
+      setBioMessage("Saved");
+      setTimeout(() => setBioMessage(""), 2000);
+    } catch {
+      setBioError("Could not save bio. Please try again.");
+    } finally {
+      setBioSaving(false);
+    }
+  };
+
   return (
     <div>
       {!hasData ? (
@@ -62,6 +118,125 @@ export default function CurateTab({
         <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e", marginBottom: 4 }}>✨ Curate Your Public Profile</div>
         <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", lineHeight: 1.5 }}>Select items from Digital, Physical, and Live tabs to feature publicly. Tap your avatar circle above to choose a different profile avatar or upload your own profile picture.</div>
       </div>
+      <Sec icon="👤">User Bio</Sec>
+      <Card>
+        <div style={{ padding: "12px 20px 4px", borderBottom: "1px solid rgba(13,148,136,0.08)" }}>
+          <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 8 }}>
+            Add basic bio details and choose what appears on your public profile.
+          </div>
+        </div>
+        <div style={{ padding: "10px 20px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
+                Age
+              </label>
+              <input
+                type="number"
+                value={bioAge}
+                onChange={(e) => setBioAge(e.target.value)}
+                placeholder="25"
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }}
+              />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
+              <input
+                type="checkbox"
+                style={{ accentColor: "#0d9488" }}
+                checked={showAge}
+                onChange={(e) => setShowAge(e.target.checked)}
+              />
+              <span>Show on public profile</span>
+            </label>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
+                Gender
+              </label>
+              <input
+                type="text"
+                value={bioGender}
+                onChange={(e) => setBioGender(e.target.value)}
+                placeholder="Female, Male, Non-binary, etc."
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }}
+              />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
+              <input
+                type="checkbox"
+                style={{ accentColor: "#0d9488" }}
+                checked={showGender}
+                onChange={(e) => setShowGender(e.target.checked)}
+              />
+              <span>Show on public profile</span>
+            </label>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={bioCountry}
+                  onChange={(e) => setBioCountry(e.target.value)}
+                  placeholder="United States"
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
+                  Region / State
+                </label>
+                <input
+                  type="text"
+                  value={bioRegion}
+                  onChange={(e) => setBioRegion(e.target.value)}
+                  placeholder="California"
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }}
+                />
+              </div>
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
+              <input
+                type="checkbox"
+                style={{ accentColor: "#0d9488" }}
+                checked={showLocation}
+                onChange={(e) => setShowLocation(e.target.checked)}
+              />
+              <span>Show country & region on public profile</span>
+            </label>
+          </div>
+          {(bioError || bioMessage) && (
+            <div style={{ fontFamily: F, fontSize: 11, color: bioError ? "#b91c1c" : "#15803d" }}>
+              {bioError || bioMessage}
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={handleSaveBio}
+              disabled={bioSaving}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "none",
+                background: "linear-gradient(135deg, #0d9488, #10b981)",
+                color: "#fff",
+                fontFamily: F,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: bioSaving ? "default" : "pointer",
+                opacity: bioSaving ? 0.75 : 1,
+              }}
+            >
+              {bioSaving ? "Saving…" : "Save Bio"}
+            </button>
+          </div>
+        </div>
+      </Card>
       {data && data.topArtists.length > 0 && (
         <>
           <Sec icon="🎵">From Your Streaming</Sec>

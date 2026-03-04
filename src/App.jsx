@@ -55,23 +55,23 @@ export default function App() {
   const setUserFromSession = React.useCallback(async (session) => {
     if (!session?.user || !supabase) return;
     try {
-      let profile = null;
-      const { data: profileWithImage, error: errWith } = await supabase.from("profiles").select("id, display_name, username, avatar_id, profile_image_url").eq("id", session.user.id).single();
-      if (!errWith && profileWithImage) profile = profileWithImage;
-      else {
-        const { data: profileBasic } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
-        if (profileBasic) profile = profileBasic;
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select(
+          "id, display_name, username, avatar_id, profile_image_url, age, gender, country, region, show_age_public, show_gender_public, show_location_public",
+        )
+        .eq("id", session.user.id)
+        .maybeSingle();
+      if (!error && profile) {
+        setUser({ ...profile, avatar_id: profile.avatar_id ?? 7 });
+      } else {
+        setUser({
+          id: session.user.id,
+          display_name: session.user.email?.split("@", 1)[0] || "User",
+          username: session.user.email?.split("@", 1)[0] || "user",
+          avatar_id: 7,
+        });
       }
-      setUser(
-        profile
-          ? { ...profile, avatar_id: profile.avatar_id ?? 7 }
-          : {
-              id: session.user.id,
-              display_name: session.user.email?.split("@", 1)[0] || "User",
-              username: session.user.email?.split("@", 1)[0] || "user",
-              avatar_id: 7,
-            },
-      );
     } catch (_) {
       setUser({
         id: session.user.id,
@@ -753,6 +753,36 @@ export default function App() {
     }
   };
 
+  const handleSaveUserBio = async ({ age, gender, country, region, showAge, showGender, showLocation }) => {
+    // Update local state optimistically even if Supabase is not configured.
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            age: age ?? null,
+            gender: gender ?? null,
+            country: country ?? null,
+            region: region ?? null,
+            show_age_public: !!showAge,
+            show_gender_public: !!showGender,
+            show_location_public: !!showLocation,
+          }
+        : prev,
+    );
+    if (!supabase || !user?.id) return;
+    const updates = {
+      age: age ?? null,
+      gender: gender ?? null,
+      country: country ?? null,
+      region: region ?? null,
+      show_age_public: !!showAge,
+      show_gender_public: !!showGender,
+      show_location_public: !!showLocation,
+      updated_at: new Date().toISOString(),
+    };
+    await supabase.from("profiles").update(updates).eq("id", user.id);
+  };
+
   const handleToggleArtistFeatured = async (artistName, isFeatured) => {
     if (!streamingData) return;
     let nextFeatured = streamingData.featuredArtists || [];
@@ -1239,6 +1269,7 @@ export default function App() {
                 onToggleYoutubeChannelFeatured={handleToggleYoutubeChannelFeatured}
                 onPreviewProfile={handleViewPublicProfile}
                 onOpenAvatarPicker={() => setShowAvatarPicker(true)}
+                onSaveUserBio={handleSaveUserBio}
               />
             )}
           </div>
