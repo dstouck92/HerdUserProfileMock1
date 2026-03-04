@@ -1,6 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { GradientBg, Card, Btn, Btn2, Inp } from "./ui";
+
+function isBackendUnavailableError(msg) {
+  if (!msg || typeof msg !== "string") return false;
+  const s = msg.toLowerCase();
+  return (
+    s.includes("timed out") ||
+    s.includes("connection") ||
+    s.includes("fetch failed") ||
+    s.includes("failed to fetch") ||
+    s.includes("network") ||
+    s.includes("unhealthy") ||
+    s.includes("unreachable") ||
+    s.includes("econnrefused") ||
+    s.includes("econnreset")
+  );
+}
+
+const BACKEND_RECOVERY = (
+  <div style={{ marginTop: 10, fontSize: 12, color: "#b91c1c", lineHeight: 1.6 }}>
+    <strong>Fix the backend:</strong><br />
+    1. <strong>Supabase</strong> — Open your project at supabase.com. If it says &quot;Paused&quot;, click <strong>Restore project</strong>. If it says <strong>Unhealthy</strong>, go to Project Settings → General and try <strong>Restart database</strong>, then wait a few minutes.<br />
+    2. See <strong>docs/SUPABASE_UNHEALTHY.md</strong> in this repo for full steps.<br />
+    3. Then reload this page and try again.
+  </div>
+);
 
 export default function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("login");
@@ -12,6 +37,36 @@ export default function AuthScreen({ onAuth }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [backendUnavailable, setBackendUnavailable] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    let timeoutId = null;
+    const timeoutMs = 8000;
+    (async () => {
+      try {
+        await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, rej) => {
+            timeoutId = setTimeout(() => rej(new Error("Connection timed out")), timeoutMs);
+          }),
+        ]);
+      } catch (_) {
+        if (!cancelled) setBackendUnavailable(true);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
+    })();
+    return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
+  }, []);
+
+  const showBackendHelp = backendUnavailable || (error && isBackendUnavailableError(error));
+  const handleOpenDemoMode = () => {
+    setError("");
+    setMessage("");
+    onAuth({ id: "demo", display_name: "Demo", username: "demo", avatar_id: 7 });
+  };
 
   function fallbackProfile(authUser, displayName, username) {
     const name = displayName ?? authUser.user_metadata?.display_name ?? authUser.email?.split("@")[0] ?? "User";
@@ -88,7 +143,9 @@ export default function AuthScreen({ onAuth }) {
         }
       } catch (err) {
         if (err && typeof console !== "undefined") console.error("Auth error:", err);
-        setError(err?.message || "Something went wrong.");
+        const errMsg = err?.message || "Something went wrong.";
+        setError(errMsg);
+        if (isBackendUnavailableError(errMsg)) setBackendUnavailable(true);
       } finally {
         setLoading(false);
       }
@@ -130,6 +187,13 @@ export default function AuthScreen({ onAuth }) {
   return (
     <GradientBg>
       <div style={{ padding: "60px 24px 40px", textAlign: "center" }}>
+        {backendUnavailable && !error && (
+          <div style={{ marginBottom: 20, padding: "12px 16px", background: "rgba(254,243,199,0.95)", border: "1px solid rgba(202,138,4,0.4)", borderRadius: 12, textAlign: "left" }}>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 6 }}>Backend may be unavailable</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#b45309", lineHeight: 1.5, marginBottom: 10 }}>Supabase could be Paused or Unhealthy. Restore or restart it in the Supabase dashboard, or open the app in demo mode below.</div>
+            <button type="button" onClick={handleOpenDemoMode} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#0f766e", background: "rgba(15,118,110,0.15)", border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>Open in demo mode</button>
+          </div>
+        )}
         <img src="/goat-headphones.png" alt="Herd" style={{ width: 88, height: 88, objectFit: "contain", marginBottom: 8, mixBlendMode: "multiply" }} />
         <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 32, fontWeight: 800, color: "#1e1b4b" }}>Herd</div>
         <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "rgba(55,48,107,0.55)", marginTop: 4, marginBottom: 32 }}>Prove you&apos;re the Goat</div>
@@ -203,14 +267,7 @@ export default function AuthScreen({ onAuth }) {
               {error && (
                 <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", padding: "10px 12px", background: "#fef2f2", borderRadius: 8 }}>
                   {error}
-                  {(error.includes("Connection timed out") || error.includes("timed out")) && (
-                    <div style={{ marginTop: 10, fontSize: 12, color: "#b91c1c", lineHeight: 1.6 }}>
-                      <strong>Try this:</strong><br />
-                      1. <strong>Supabase</strong> — Open your project at supabase.com. If it says &quot;Paused&quot;, click <strong>Restore project</strong> (free tier sleeps after inactivity).<br />
-                      2. <strong>Normal browser</strong> — Clear this site’s data: browser Settings → Privacy → Cookies / Site data → find this site → Clear. Then reload and log in again.<br />
-                      3. <strong>Vercel</strong> — Project → Settings → Environment Variables: set <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_URL</code> and <code style={{ background: "#fee2e2", padding: "1px 4px", borderRadius: 4 }}>VITE_SUPABASE_ANON_KEY</code> from Supabase → Settings → API, then Redeploy.
-                    </div>
-                  )}
+                  {isBackendUnavailableError(error) && BACKEND_RECOVERY}
                 </div>
               )}
               {message && !error && (
@@ -230,6 +287,30 @@ export default function AuthScreen({ onAuth }) {
               )}
             </div>
             <Btn type="submit" disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
+            {showBackendHelp && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(13,148,136,0.2)", textAlign: "center" }}>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(55,48,107,0.7)", marginBottom: 10 }}>
+                  Backend unavailable? You can open the app in demo mode (no saved data).
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenDemoMode}
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#0f766e",
+                    background: "rgba(15,118,110,0.12)",
+                    border: "1px solid rgba(15,118,110,0.4)",
+                    borderRadius: 10,
+                    padding: "10px 20px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Open in demo mode
+                </button>
+              </div>
+            )}
           </form>
         </Card>
       </div>

@@ -85,7 +85,9 @@ export default function SearchPage({
     let cancelled = false;
 
     const loadImages = async () => {
+      // Throttle: one request every 250ms to avoid Spotify rate limits
       for (const artist of artists) {
+        if (cancelled) return;
         const name = (artist?.name || "").trim();
         if (!name || artistImages[name]) continue;
         try {
@@ -99,14 +101,16 @@ export default function SearchPage({
         } catch {
           // Ignore errors; fallback UI will show without images
         }
+        await new Promise((r) => setTimeout(r, 250));
       }
     };
 
-    loadImages();
+    const t = setTimeout(loadImages, 400);
     return () => {
       cancelled = true;
+      clearTimeout(t);
     };
-  }, [artists, artistImages]);
+  }, [artists]);
 
   useEffect(() => {
     if (!debouncedQuery || debouncedQuery.length < 2) {
@@ -119,18 +123,27 @@ export default function SearchPage({
     setSpotifyLoading(true);
     setSpotifyError(null);
     fetch(`/api/spotify/search-artists?q=${encodeURIComponent(debouncedQuery)}`)
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = [data?.error, data?.details].filter(Boolean).join(" — ") || res.statusText || "Spotify search failed";
+          throw new Error(msg);
+        }
+        return data;
+      })
       .then((data) => {
         if (cancelled) return;
         if (data?.artists && Array.isArray(data.artists)) {
           setSpotifyResults(data.artists);
+          setSpotifyError(null);
         } else {
           setSpotifyResults([]);
         }
       })
       .catch((err) => {
         if (!cancelled) {
-          setSpotifyError(err?.message || "Spotify search failed");
+          const message = err?.message || "Spotify search failed";
+          setSpotifyError(message);
           setSpotifyResults([]);
         }
       })

@@ -22,6 +22,8 @@ app.use(express.json())
 const searchCache = new Map()
 const vinylSearchCache = new Map()
 const ticketmasterCache = new Map()
+const spotifySearchCache = new Map()
+const SPOTIFY_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 // YouTube OAuth state (in-memory; expires in 10 min)
 const youtubeStateStore = new Map()
@@ -71,7 +73,15 @@ async function getSpotifyAccessToken() {
 
     if (!tokenRes.ok) {
       const text = await tokenRes.text().catch(() => '')
-      throw new Error(text || 'Spotify token failed')
+      let msg = 'Spotify token failed'
+      try {
+        const j = JSON.parse(text)
+        if (j && j.error_description) msg = j.error_description
+        else if (j && j.error) msg = j.error
+      } catch (_) {
+        if (text && text.length < 200) msg = text
+      }
+      throw new Error(msg)
     }
 
     const tokenData = await tokenRes.json()
@@ -189,6 +199,11 @@ app.get('/api/spotify/search-artists', async (req, res) => {
       error: 'Spotify credentials not configured. Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to your .env file.',
     })
   }
+  const cacheKey = q.toLowerCase()
+  const cached = spotifySearchCache.get(cacheKey)
+  if (cached && Date.now() - cached.at < SPOTIFY_SEARCH_CACHE_TTL_MS) {
+    return res.json({ artists: cached.artists })
+  }
   try {
     const accessToken = await getSpotifyAccessToken()
     if (!accessToken) {
@@ -201,9 +216,24 @@ app.get('/api/spotify/search-artists', async (req, res) => {
         headers: { Authorization: `Bearer ${accessToken}` },
       },
     )
+    if (searchRes.status === 429) {
+      const retryAfter = searchRes.headers.get('Retry-After') || '60'
+      return res.status(429).json({
+        error: `Spotify rate limit. Try again in ${retryAfter} seconds.`,
+        retryAfter: parseInt(retryAfter, 10) || 60,
+      })
+    }
     if (!searchRes.ok) {
       const text = await searchRes.text()
-      return res.status(502).json({ error: 'Spotify search failed', details: text })
+      let msg = 'Spotify search failed'
+      try {
+        const j = JSON.parse(text)
+        if (j && j.error && j.error.message) msg = j.error.message
+        else if (j && j.error) msg = j.error
+      } catch (_) {
+        if (text && text.length < 200) msg = text
+      }
+      return res.status(502).json({ error: msg, details: text })
     }
     const json = await searchRes.json()
     const items = json?.artists?.items || []
@@ -212,6 +242,7 @@ app.get('/api/spotify/search-artists', async (req, res) => {
       name: a.name,
       imageUrl: (a.images && a.images[0] && a.images[0].url) || null,
     }))
+    spotifySearchCache.set(cacheKey, { artists, at: Date.now() })
     return res.json({ artists })
   } catch (err) {
     console.error('Spotify search-artists error:', err)

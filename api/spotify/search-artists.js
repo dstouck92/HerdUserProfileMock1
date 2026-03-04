@@ -4,6 +4,9 @@
  * Requires SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in environment variables.
  */
 
+const SPOTIFY_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const spotifySearchCache = new Map();
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -21,6 +24,12 @@ export default async function handler(req, res) {
     });
   }
 
+  const cacheKey = q.toLowerCase();
+  const cached = spotifySearchCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < SPOTIFY_SEARCH_CACHE_TTL_MS) {
+    return res.status(200).json({ artists: cached.artists });
+  }
+
   try {
     const tokenRes = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
@@ -32,7 +41,15 @@ export default async function handler(req, res) {
     });
     if (!tokenRes.ok) {
       const text = await tokenRes.text();
-      return res.status(502).json({ error: "Spotify token failed", details: text });
+      let msg = "Spotify token failed.";
+      try {
+        const j = JSON.parse(text);
+        if (j && j.error_description) msg = `Spotify: ${j.error_description}`;
+        else if (j && j.error) msg = `Spotify: ${j.error}`;
+      } catch (_) {
+        if (text && text.length < 200) msg = `Spotify: ${text}`;
+      }
+      return res.status(502).json({ error: msg, details: text });
     }
     const tokenData = await tokenRes.json();
     const accessToken = tokenData.access_token;
@@ -46,9 +63,24 @@ export default async function handler(req, res) {
         headers: { Authorization: `Bearer ${accessToken}` },
       },
     );
+    if (searchRes.status === 429) {
+      const retryAfter = searchRes.headers.get("Retry-After") || "60";
+      return res.status(429).json({
+        error: `Spotify rate limit. Try again in ${retryAfter} seconds.`,
+        retryAfter: parseInt(retryAfter, 10) || 60,
+      });
+    }
     if (!searchRes.ok) {
       const text = await searchRes.text();
-      return res.status(502).json({ error: "Spotify search failed", details: text });
+      let msg = "Spotify search failed.";
+      try {
+        const j = JSON.parse(text);
+        if (j && j.error && j.error.message) msg = `Spotify: ${j.error.message}`;
+        else if (j && j.error) msg = `Spotify: ${j.error}`;
+      } catch (_) {
+        if (text && text.length < 200) msg = `Spotify: ${text}`;
+      }
+      return res.status(502).json({ error: msg, details: text });
     }
     const json = await searchRes.json();
     const items = json?.artists?.items || [];
@@ -57,6 +89,7 @@ export default async function handler(req, res) {
       name: a.name,
       imageUrl: (a.images && a.images[0] && a.images[0].url) || null,
     }));
+    spotifySearchCache.set(cacheKey, { artists, at: Date.now() });
     return res.status(200).json({ artists });
   } catch (err) {
     console.error("Spotify search-artists error:", err);
