@@ -84,11 +84,22 @@ export default function AuthScreen({ onAuth }) {
       id: authUser.id,
       display_name: profile.display_name,
       username: profile.username,
-      phone: phone ?? authUser.user_metadata?.phone ?? null,
-      age: age ?? authUser.user_metadata?.age ?? null,
-      gender: gender ?? authUser.user_metadata?.gender ?? null,
-      country: country ?? authUser.user_metadata?.country ?? null,
-      region: region ?? authUser.user_metadata?.region ?? null,
+      // Only update optional fields if we have a concrete value (from args or metadata).
+      ...(phone != null || authUser.user_metadata?.phone != null
+        ? { phone: phone ?? authUser.user_metadata?.phone }
+        : {}),
+      ...(age != null || authUser.user_metadata?.age != null
+        ? { age: age ?? authUser.user_metadata?.age }
+        : {}),
+      ...(gender != null || authUser.user_metadata?.gender != null
+        ? { gender: gender ?? authUser.user_metadata?.gender }
+        : {}),
+      ...(country != null || authUser.user_metadata?.country != null
+        ? { country: country ?? authUser.user_metadata?.country }
+        : {}),
+      ...(region != null || authUser.user_metadata?.region != null
+        ? { region: region ?? authUser.user_metadata?.region }
+        : {}),
       updated_at: new Date().toISOString(),
     };
     try {
