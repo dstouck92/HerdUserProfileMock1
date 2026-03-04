@@ -33,6 +33,10 @@ export default function AuthScreen({ onAuth }) {
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("");
+  const [country, setCountry] = useState("");
+  const [region, setRegion] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -74,13 +78,17 @@ export default function AuthScreen({ onAuth }) {
     return { id: authUser.id, display_name: name, username: uname, avatar_id: 7 };
   }
 
-  async function getOrCreateProfile(authUser, displayName, username, phone) {
+  async function getOrCreateProfile(authUser, displayName, username, phone, age, gender, country, region) {
     const profile = fallbackProfile(authUser, displayName, username);
     const payload = {
       id: authUser.id,
       display_name: profile.display_name,
       username: profile.username,
       phone: phone ?? authUser.user_metadata?.phone ?? null,
+      age: age ?? authUser.user_metadata?.age ?? null,
+      gender: gender ?? authUser.user_metadata?.gender ?? null,
+      country: country ?? authUser.user_metadata?.country ?? null,
+      region: region ?? authUser.user_metadata?.region ?? null,
       updated_at: new Date().toISOString(),
     };
     try {
@@ -103,8 +111,22 @@ export default function AuthScreen({ onAuth }) {
     setError("");
     setMessage("");
     if (mode === "signup") {
-      if (!email?.trim() || !username?.trim() || !displayName?.trim() || !password) return setError("All fields required.");
-      if (!phone?.trim()) return setError("Phone number is required.");
+      if (
+        !email?.trim() ||
+        !username?.trim() ||
+        !displayName?.trim() ||
+        !password ||
+        !phone?.trim() ||
+        !age?.trim() ||
+        !gender?.trim() ||
+        !country?.trim()
+      ) {
+        return setError("All signup fields marked * are required.");
+      }
+      const ageNumber = parseInt(age, 10);
+      if (!Number.isFinite(ageNumber) || ageNumber <= 0) {
+        return setError("Please enter a valid age.");
+      }
       if (password.length < 6) return setError("Password must be 6+ characters.");
     } else {
       if (!email || !password) return setError("Email and password required.");
@@ -116,15 +138,35 @@ export default function AuthScreen({ onAuth }) {
       setMessage("");
       try {
         if (mode === "signup") {
+          const ageNumber = parseInt(age, 10);
           const { data, error: authError } = await supabase.auth.signUp({
             email,
             password,
-            options: { data: { display_name: displayName, username, phone: phone.trim() || null } },
+            options: {
+              data: {
+                display_name: displayName,
+                username,
+                phone: phone.trim() || null,
+                age: Number.isFinite(ageNumber) ? ageNumber : null,
+                gender: gender.trim() || null,
+                country: country.trim() || null,
+                region: region.trim() || null,
+              },
+            },
           });
           if (authError) throw authError;
           const authUser = data?.user ?? data?.session?.user;
           if (authUser) {
-            const profile = await getOrCreateProfile(authUser, displayName, username, phone.trim());
+            const profile = await getOrCreateProfile(
+              authUser,
+              displayName,
+              username,
+              phone.trim(),
+              Number.isFinite(ageNumber) ? ageNumber : null,
+              gender.trim() || null,
+              country.trim() || null,
+              region.trim() || null
+            );
             onAuth(profile);
           } else {
             setError("Sign up succeeded but no user returned. Check your email to confirm, or try logging in.");
@@ -232,6 +274,10 @@ export default function AuthScreen({ onAuth }) {
                 <Inp label="Display Name" value={displayName} onChange={setDisplayName} placeholder="Jane Doe" />
                 <Inp label="Username" value={username} onChange={setUsername} placeholder="JaneDoe" />
                 <Inp label="Phone *" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" required />
+                <Inp label="Age *" type="number" value={age} onChange={setAge} placeholder="25" required />
+                <Inp label="Gender *" value={gender} onChange={setGender} placeholder="Female, Male, Non-binary, etc." required />
+                <Inp label="Country *" value={country} onChange={setCountry} placeholder="United States" required />
+                <Inp label="Region / State" value={region} onChange={setRegion} placeholder="California" />
               </>
             )}
             <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" autoComplete="email" />
