@@ -22,6 +22,51 @@ export default function PublicProfile({ username: usernameProp }) {
   const [followingCount, setFollowingCount] = useState(0);
   const [badges, setBadges] = useState([]);
 
+  const formatBadgeTitle = (b) => {
+    const meta = b.metadata || {};
+    const artistName = meta.artistName || meta.artist || null;
+    const trackName = meta.trackName || meta.songName || null;
+    const channelName = meta.channelName || null;
+    const videoTitle = meta.title || null;
+
+    switch (b.badge_key) {
+      case 'fan_superfan_all_users_top_10':
+        return artistName
+          ? `Superfan of ${artistName} (all users)`
+          : b.def.name;
+      case 'fan_superfan_fan_club_top_10':
+        return artistName
+          ? `Superfan of ${artistName} (fan club)`
+          : b.def.name;
+      case 'streams_most_streamed_artist':
+        return artistName
+          ? `${artistName} – Most Streamed Artist`
+          : b.def.name;
+      case 'streams_most_streamed_song':
+        return trackName
+          ? `${trackName} – Most Streamed Song`
+          : b.def.name;
+      case 'yt_most_viewed_channel':
+        return channelName
+          ? `${channelName} – Most Viewed Channel`
+          : b.def.name;
+      case 'yt_most_viewed_video':
+        return videoTitle
+          ? `${videoTitle} – Most Viewed Video`
+          : b.def.name;
+      case 'tickets_groupie':
+        return artistName
+          ? `Groupie for ${artistName}`
+          : b.def.name;
+      case 'merch_collector':
+        return artistName
+          ? `Collector of ${artistName}`
+          : b.def.name;
+      default:
+        return b.def.name;
+    }
+  };
+
   useEffect(() => {
     if (!supabase || !username) {
       setLoading(false);
@@ -274,7 +319,7 @@ export default function PublicProfile({ username: usernameProp }) {
                       color: '#065f46',
                     }}
                   >
-                    {b.def.name}
+                    {formatBadgeTitle(b)}
                   </span>
                 </div>
               ))}
@@ -341,7 +386,7 @@ export default function PublicProfile({ username: usernameProp }) {
                       color: '#1e1b4b',
                     }}
                   >
-                    {b.def.name}
+                    {formatBadgeTitle(b)}
                   </div>
                   <div
                     style={{

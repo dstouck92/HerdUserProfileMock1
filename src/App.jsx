@@ -57,6 +57,51 @@ export default function App() {
   const getBadgeDefinitionByKey = (key) =>
     badgeDefinitions.find((b) => b.key === key) || null;
 
+  const formatBadgeDisplayName = (badgeKey, def, metadata) => {
+    const meta = metadata || {};
+    const artistName = meta.artistName || meta.artist || null;
+    const trackName = meta.trackName || meta.songName || null;
+    const channelName = meta.channelName || null;
+    const videoTitle = meta.title || null;
+
+    switch (badgeKey) {
+      case "fan_superfan_all_users_top_10":
+        return artistName
+          ? `Superfan of ${artistName} (all users)`
+          : def?.name || "Superfan (all users)";
+      case "fan_superfan_fan_club_top_10":
+        return artistName
+          ? `Superfan of ${artistName} (fan club)`
+          : def?.name || "Superfan (fan club)";
+      case "streams_most_streamed_artist":
+        return artistName
+          ? `${artistName} – Most Streamed Artist`
+          : def?.name || "Most Streamed Artist";
+      case "streams_most_streamed_song":
+        return trackName
+          ? `${trackName} – Most Streamed Song`
+          : def?.name || "Most Streamed Song";
+      case "yt_most_viewed_channel":
+        return channelName
+          ? `${channelName} – Most Viewed Channel`
+          : def?.name || "Most Viewed Channel";
+      case "yt_most_viewed_video":
+        return videoTitle
+          ? `${videoTitle} – Most Viewed Video`
+          : def?.name || "Most Viewed Video";
+      case "tickets_groupie":
+        return artistName
+          ? `Groupie for ${artistName}`
+          : def?.name || "Groupie";
+      case "merch_collector":
+        return artistName
+          ? `Collector of ${artistName}`
+          : def?.name || "Collector";
+      default:
+        return def?.name || badgeKey;
+    }
+  };
+
   const maybeAwardBadge = async (badgeKey, metadata) => {
     if (!supabase || !user?.id || !badgeKey) return;
     const alreadyHas = userBadges.some((b) => b.badge_key === badgeKey);
@@ -71,9 +116,8 @@ export default function App() {
       metadata: metadata ?? null,
     };
     setUserBadges((prev) => [...prev, optimistic]);
-    const description = def
-      ? `Earned badge: ${def.name}`
-      : `Earned badge: ${badgeKey}`;
+    const displayName = formatBadgeDisplayName(badgeKey, def, metadata);
+    const description = `Earned badge: ${displayName}`;
     try {
       const { data, error } = await supabase
         .from("user_badges")
@@ -612,13 +656,16 @@ export default function App() {
               if (total >= 10) await maybeAwardBadge("tickets_10_concerts", { totalConcerts: total });
               const byArtist = {};
               next.forEach((r) => {
-                const key = (r.artist || "").trim().toLowerCase();
+                const name = (r.artist || "").trim();
+                const key = name.toLowerCase();
                 if (!key) return;
-                byArtist[key] = (byArtist[key] || 0) + 1;
+                const entry = byArtist[key] || { count: 0, name };
+                entry.count += 1;
+                byArtist[key] = entry;
               });
-              const hasGroupie = Object.values(byArtist).some((count) => count >= 3);
-              if (hasGroupie) {
-                await maybeAwardBadge("tickets_groupie", null);
+              const groupieEntry = Object.values(byArtist).find((entry) => entry.count >= 3);
+              if (groupieEntry) {
+                await maybeAwardBadge("tickets_groupie", { artistName: groupieEntry.name, count: groupieEntry.count });
               }
             } catch (_) {}
           })();
@@ -643,13 +690,16 @@ export default function App() {
           if (total >= 10) await maybeAwardBadge("tickets_10_concerts", { totalConcerts: total });
           const byArtist = {};
           next.forEach((r) => {
-            const key = (r.artist || "").trim().toLowerCase();
+            const name = (r.artist || "").trim();
+            const key = name.toLowerCase();
             if (!key) return;
-            byArtist[key] = (byArtist[key] || 0) + 1;
+            const entry = byArtist[key] || { count: 0, name };
+            entry.count += 1;
+            byArtist[key] = entry;
           });
-          const hasGroupie = Object.values(byArtist).some((count) => count >= 3);
-          if (hasGroupie) {
-            await maybeAwardBadge("tickets_groupie", null);
+          const groupieEntry = Object.values(byArtist).find((entry) => entry.count >= 3);
+          if (groupieEntry) {
+            await maybeAwardBadge("tickets_groupie", { artistName: groupieEntry.name, count: groupieEntry.count });
           }
         } catch (_) {}
       })();
@@ -762,13 +812,19 @@ export default function App() {
               if (total >= 10) await maybeAwardBadge("merch_10_items", { totalMerch: total });
               const byArtist = {};
               next.forEach((r) => {
-                const key = (r.artist_name || "").trim().toLowerCase();
+                const name = (r.artist_name || "").trim();
+                const key = name.toLowerCase();
                 if (!key) return;
-                byArtist[key] = (byArtist[key] || 0) + 1;
+                const entry = byArtist[key] || { count: 0, name };
+                entry.count += 1;
+                byArtist[key] = entry;
               });
-              const hasCollector = Object.values(byArtist).some((count) => count >= 3);
-              if (hasCollector) {
-                await maybeAwardBadge("merch_collector", null);
+              const collectorEntry = Object.values(byArtist).find((entry) => entry.count >= 3);
+              if (collectorEntry) {
+                await maybeAwardBadge("merch_collector", {
+                  artistName: collectorEntry.name,
+                  count: collectorEntry.count,
+                });
               }
             } catch (_) {}
           })();
@@ -793,13 +849,19 @@ export default function App() {
           if (total >= 10) await maybeAwardBadge("merch_10_items", { totalMerch: total });
           const byArtist = {};
           next.forEach((r) => {
-            const key = (r.artist_name || "").trim().toLowerCase();
+            const name = (r.artist_name || "").trim();
+            const key = name.toLowerCase();
             if (!key) return;
-            byArtist[key] = (byArtist[key] || 0) + 1;
+            const entry = byArtist[key] || { count: 0, name };
+            entry.count += 1;
+            byArtist[key] = entry;
           });
-          const hasCollector = Object.values(byArtist).some((count) => count >= 3);
-          if (hasCollector) {
-            await maybeAwardBadge("merch_collector", null);
+          const collectorEntry = Object.values(byArtist).find((entry) => entry.count >= 3);
+          if (collectorEntry) {
+            await maybeAwardBadge("merch_collector", {
+              artistName: collectorEntry.name,
+              count: collectorEntry.count,
+            });
           }
         } catch (_) {}
       })();
