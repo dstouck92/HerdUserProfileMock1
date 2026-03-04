@@ -754,22 +754,24 @@ export default function App() {
   };
 
   const handleSaveUserBio = async ({ age, gender, country, region, showAge, showGender, showLocation }) => {
-    // Update local state optimistically even if Supabase is not configured.
-    setUser((prev) =>
-      prev
-        ? {
-            ...prev,
-            age: age ?? null,
-            gender: gender ?? null,
-            country: country ?? null,
-            region: region ?? null,
-            show_age_public: !!showAge,
-            show_gender_public: !!showGender,
-            show_location_public: !!showLocation,
-          }
-        : prev,
-    );
-    if (!supabase || !user?.id) return;
+    // If Supabase isn't configured, keep this as a local-only change.
+    if (!supabase || !user?.id) {
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              age: age ?? null,
+              gender: gender ?? null,
+              country: country ?? null,
+              region: region ?? null,
+              show_age_public: !!showAge,
+              show_gender_public: !!showGender,
+              show_location_public: !!showLocation,
+            }
+          : prev,
+      );
+      return;
+    }
     const updates = {
       age: age ?? null,
       gender: gender ?? null,
@@ -780,7 +782,29 @@ export default function App() {
       show_location_public: !!showLocation,
       updated_at: new Date().toISOString(),
     };
-    await supabase.from("profiles").update(updates).eq("id", user.id);
+    const { error } = await supabase.from("profiles").update(updates).eq("id", user.id);
+    if (error) {
+      if (import.meta.env?.DEV && typeof console !== "undefined") {
+        console.error("Save user bio failed:", error);
+      }
+      // Surface error to caller so CurateTab can show a message.
+      throw error;
+    }
+    // Update local state once we know the DB write succeeded.
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            age: updates.age,
+            gender: updates.gender,
+            country: updates.country,
+            region: updates.region,
+            show_age_public: updates.show_age_public,
+            show_gender_public: updates.show_gender_public,
+            show_location_public: updates.show_location_public,
+          }
+        : prev,
+    );
   };
 
   const handleToggleArtistFeatured = async (artistName, isFeatured) => {
