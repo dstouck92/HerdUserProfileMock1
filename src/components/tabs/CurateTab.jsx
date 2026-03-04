@@ -37,6 +37,7 @@ export default function CurateTab({
   const [bioError, setBioError] = useState("");
   const [bioMessage, setBioMessage] = useState("");
   const [badgesModalOpen, setBadgesModalOpen] = useState(false);
+  const [bioModalOpen, setBioModalOpen] = useState(false);
 
   const themeOptions = [
     { id: "default", label: "Default", bg: "linear-gradient(135deg, #e0f2fe, #ccfbf1)", border: "rgba(13,148,136,0.4)" },
@@ -188,7 +189,7 @@ export default function CurateTab({
   const publicEarnedBadges = earnedBadges.filter((b) => b.is_public);
 
   const handleSaveBio = async () => {
-    if (!onSaveUserBio) return;
+    if (!onSaveUserBio) return false;
     setBioError("");
     setBioMessage("");
     const trimmedAge = (bioAge || "").trim();
@@ -197,7 +198,7 @@ export default function CurateTab({
       const parsed = parseInt(trimmedAge, 10);
       if (!Number.isFinite(parsed) || parsed <= 0) {
         setBioError("Please enter a valid age or leave it blank.");
-        return;
+        return false;
       }
       ageNumber = parsed;
     }
@@ -214,8 +215,10 @@ export default function CurateTab({
       });
       setBioMessage("Saved");
       setTimeout(() => setBioMessage(""), 2000);
+      return true;
     } catch {
       setBioError("Could not save bio. Please try again.");
+      return false;
     } finally {
       setBioSaving(false);
     }
@@ -291,55 +294,88 @@ export default function CurateTab({
       </Card>
 
       <Sec icon="👤">User Bio</Sec>
-      <Card>
-        <div style={{ padding: "12px 20px 4px", borderBottom: "1px solid rgba(13,148,136,0.08)" }}>
-          <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 8 }}>Add basic bio and choose what appears on your public profile.</div>
-        </div>
-        <div style={{ padding: "10px 20px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Age</label>
-              <input type="number" value={bioAge} onChange={(e) => setBioAge(e.target.value)} placeholder="25" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
+      <Card
+        style={{ cursor: "pointer" }}
+        onClick={() => setBioModalOpen(true)}
+      >
+        <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Age, gender, location & visibility</div>
+            <div style={{ fontFamily: F, fontSize: 13, color: "#1e1b4b" }}>
+              {[bioAge && `Age ${bioAge}`, bioGender, (bioCountry || bioRegion) && [bioRegion, bioCountry].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "Tap to add your bio"}
             </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
-              <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showAge} onChange={(e) => setShowAge(e.target.checked)} />
-              <span>Show on public profile</span>
-            </label>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Gender</label>
-              <input type="text" value={bioGender} onChange={(e) => setBioGender(e.target.value)} placeholder="Female, Male, Non-binary, etc." style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
-            </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
-              <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showGender} onChange={(e) => setShowGender(e.target.checked)} />
-              <span>Show on public profile</span>
-            </label>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Country</label>
-                <input type="text" value={bioCountry} onChange={(e) => setBioCountry(e.target.value)} placeholder="United States" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Region / State</label>
-                <input type="text" value={bioRegion} onChange={(e) => setBioRegion(e.target.value)} placeholder="California" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
-              </div>
-            </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
-              <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showLocation} onChange={(e) => setShowLocation(e.target.checked)} />
-              <span>Show country & region on public profile</span>
-            </label>
-          </div>
-          {(bioError || bioMessage) && <div style={{ fontFamily: F, fontSize: 11, color: bioError ? "#b91c1c" : "#15803d" }}>{bioError || bioMessage}</div>}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-            <button type="button" onClick={handleSaveBio} disabled={bioSaving} style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: bioSaving ? "default" : "pointer", opacity: bioSaving ? 0.75 : 1 }}>
-              {bioSaving ? "Saving…" : "Save Bio"}
-            </button>
-          </div>
+          <span style={{ fontFamily: F, fontSize: 12, color: "#0d9488", fontWeight: 600 }}>Edit</span>
         </div>
       </Card>
+      {bioModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={(e) => e.target === e.currentTarget && setBioModalOpen(false)}
+        >
+          <div
+            style={{ width: "100%", maxWidth: 400, maxHeight: "90vh", background: "#fff", borderRadius: 16, boxShadow: "0 20px 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>User Bio</span>
+              <button type="button" onClick={() => setBioModalOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
+            </div>
+            <div style={{ overflow: "auto", padding: "16px 18px" }}>
+              <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", marginBottom: 12 }}>Add basic bio and choose what appears on your public profile.</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Age</label>
+                    <input type="number" value={bioAge} onChange={(e) => setBioAge(e.target.value)} placeholder="25" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
+                    <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showAge} onChange={(e) => setShowAge(e.target.checked)} />
+                    <span>Show on public profile</span>
+                  </label>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Gender</label>
+                    <input type="text" value={bioGender} onChange={(e) => setBioGender(e.target.value)} placeholder="Female, Male, Non-binary, etc." style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
+                    <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showGender} onChange={(e) => setShowGender(e.target.checked)} />
+                    <span>Show on public profile</span>
+                  </label>
+                </div>
+                <div>
+                  <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Country</label>
+                  <input type="text" value={bioCountry} onChange={(e) => setBioCountry(e.target.value)} placeholder="United States" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box", marginBottom: 8 }} />
+                </div>
+                <div>
+                  <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Region / State</label>
+                  <input type="text" value={bioRegion} onChange={(e) => setBioRegion(e.target.value)} placeholder="California" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
+                  <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showLocation} onChange={(e) => setShowLocation(e.target.checked)} />
+                  <span>Show country & region on public profile</span>
+                </label>
+              </div>
+              {(bioError || bioMessage) && <div style={{ fontFamily: F, fontSize: 11, color: bioError ? "#b91c1c" : "#15803d", marginTop: 10 }}>{bioError || bioMessage}</div>}
+            </div>
+            <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 10 }}>
+              <button type="button" onClick={() => setBioModalOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.3)", background: "#fff", color: "#0d9488", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await handleSaveBio();
+                  if (ok) setBioModalOpen(false);
+                }}
+                disabled={bioSaving}
+                style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: bioSaving ? "default" : "pointer", opacity: bioSaving ? 0.75 : 1 }}
+              >
+                {bioSaving ? "Saving…" : "Save Bio"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Sec icon="🏅" right="Manage" onRightClick={() => setBadgesModalOpen(true)}>Badges</Sec>
       <Card>

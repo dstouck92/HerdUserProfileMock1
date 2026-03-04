@@ -42,6 +42,9 @@ export default function CurateCardEditor({
   const dataRefs = answer?.data_refs ?? [];
   const badges = answer?.badges ?? [];
   const artists = answer?.artists ?? [];
+  const [badgePopupOpen, setBadgePopupOpen] = useState(false);
+  const [artistPopupOpen, setArtistPopupOpen] = useState(false);
+  const [dataRefPopupOpen, setDataRefPopupOpen] = useState(false);
 
   const emitAnswer = useCallback(
     (update) => {
@@ -184,144 +187,166 @@ export default function CurateCardEditor({
                 <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 6 }}>
                   Attach from your profile
                 </div>
-                {dataSources.includes("concerts") && concerts?.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Concerts</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {concerts.slice(0, 10).map((c) => {
-                        const isSelected = dataRefs.some((r) => r.type === "concert" && r.id === c.id);
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "concert" && r.id === c.id)) : handleAddDataRef("concert", c.id, { artist: c.artist, date: c.date }))}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
-                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
-                              fontFamily: F,
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {c.artist} {c.date}
-                          </button>
-                        );
-                      })}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {dataSources.includes("streaming") && (streamingData?.topArtists?.length > 0) && (
+                    <button
+                      type="button"
+                      onClick={() => setArtistPopupOpen(true)}
+                      style={{
+                        padding: "8px 14px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(13,148,136,0.35)",
+                        background: "rgba(13,148,136,0.08)",
+                        fontFamily: F,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#0f766e",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Attach an artist?
+                      {dataRefs.some((r) => r.type === "streaming") && <span style={{ marginLeft: 6, background: "rgba(13,148,136,0.2)", padding: "2px 6px", borderRadius: 6, fontSize: 11 }}>{dataRefs.filter((r) => r.type === "streaming").length} selected</span>}
+                    </button>
+                  )}
+                  {(dataSources.includes("concerts") && concerts?.length > 0) || (dataSources.includes("vinyl") && vinyl?.length > 0) || (dataSources.includes("merch") && merch?.length > 0) || (dataSources.includes("youtube") && youtubeData?.featured_youtube_channels?.length > 0) ? (
+                    <button
+                      type="button"
+                      onClick={() => setDataRefPopupOpen(true)}
+                      style={{
+                        padding: "8px 14px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(13,148,136,0.35)",
+                        background: "rgba(13,148,136,0.08)",
+                        fontFamily: F,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#0f766e",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Attach from collection?
+                      {dataRefs.filter((r) => r.type !== "streaming").length > 0 && <span style={{ marginLeft: 6, background: "rgba(13,148,136,0.2)", padding: "2px 6px", borderRadius: 6, fontSize: 11 }}>{dataRefs.filter((r) => r.type !== "streaming").length} selected</span>}
+                    </button>
+                  ) : null}
+                </div>
+                {artistPopupOpen && dataSources.includes("streaming") && (
+                  <div
+                    style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+                    onClick={(e) => e.target === e.currentTarget && setArtistPopupOpen(false)}
+                  >
+                    <div style={{ width: "100%", maxWidth: 380, maxHeight: "80vh", background: "#fff", borderRadius: 16, boxShadow: "0 20px 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>Attach an artist?</span>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
+                      </div>
+                      <div style={{ overflow: "auto", padding: "12px 18px" }}>
+                        {(streamingData?.topArtists ?? []).slice(0, 20).map((a) => {
+                          const isSelected = dataRefs.some((r) => r.type === "streaming" && r.metadata?.name === a.name);
+                          return (
+                            <button
+                              key={a.name}
+                              type="button"
+                              onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "streaming" && r.metadata?.name === a.name)) : handleAddDataRef("streaming", null, { name: a.name, hours: a.hours }))}
+                              style={{
+                                width: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "12px 0",
+                                border: "none",
+                                borderBottom: "1px solid #f1f5f9",
+                                background: "none",
+                                cursor: "pointer",
+                                fontFamily: F,
+                                fontSize: 14,
+                                color: "#1e1b4b",
+                                textAlign: "left",
+                              }}
+                            >
+                              <span style={{ fontWeight: 600 }}>{a.name}</span>
+                              {isSelected ? <span style={{ color: "#0d9488", fontWeight: 600 }}>✓ Selected</span> : <span style={{ color: "#0d9488", fontWeight: 600 }}>+ Add</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb" }}>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+                      </div>
                     </div>
                   </div>
                 )}
-                {dataSources.includes("vinyl") && vinyl?.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Vinyl</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {vinyl.slice(0, 10).map((v) => {
-                        const isSelected = dataRefs.some((r) => r.type === "vinyl" && r.id === v.id);
-                        return (
-                          <button
-                            key={v.id}
-                            type="button"
-                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "vinyl" && r.id === v.id)) : handleAddDataRef("vinyl", v.id, { artist_name: v.artist_name, album_name: v.album_name }))}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
-                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
-                              fontFamily: F,
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {v.artist_name} – {v.album_name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                {dataSources.includes("merch") && merch?.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Merch</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {merch.slice(0, 10).map((m) => {
-                        const isSelected = dataRefs.some((r) => r.type === "merch" && r.id === m.id);
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "merch" && r.id === m.id)) : handleAddDataRef("merch", m.id, { artist_name: m.artist_name, item_name: m.item_name }))}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
-                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
-                              fontFamily: F,
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {m.artist_name} – {m.item_name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                {dataSources.includes("streaming") && streamingData?.topArtists?.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Top artists</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {(streamingData.topArtists ?? []).slice(0, 10).map((a) => {
-                        const isSelected = dataRefs.some((r) => r.type === "streaming" && r.metadata?.name === a.name);
-                        return (
-                          <button
-                            key={a.name}
-                            type="button"
-                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "streaming" && r.metadata?.name === a.name)) : handleAddDataRef("streaming", null, { name: a.name, hours: a.hours }))}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
-                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
-                              fontFamily: F,
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {a.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                {dataSources.includes("youtube") && youtubeData?.featured_youtube_channels?.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>YouTube channels</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {(youtubeData.featured_youtube_channels ?? []).slice(0, 8).map((ch) => {
-                        const key = ch.channelId || ch.channelTitle;
-                        const isSelected = dataRefs.some((r) => r.type === "youtube" && (r.metadata?.channelTitle === ch.channelTitle || r.metadata?.channelId === ch.channelId));
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "youtube" && (r.metadata?.channelTitle === ch.channelTitle || r.metadata?.channelId === ch.channelId))) : handleAddDataRef("youtube", ch.channelId, { channelTitle: ch.channelTitle, channelId: ch.channelId }))}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
-                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
-                              fontFamily: F,
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {ch.channelTitle || ch.channelId}
-                          </button>
-                        );
-                      })}
+                {dataRefPopupOpen && (
+                  <div
+                    style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+                    onClick={(e) => e.target === e.currentTarget && setDataRefPopupOpen(false)}
+                  >
+                    <div style={{ width: "100%", maxWidth: 380, maxHeight: "80vh", background: "#fff", borderRadius: 16, boxShadow: "0 20px 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>Attach from collection</span>
+                        <button type="button" onClick={() => setDataRefPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
+                      </div>
+                      <div style={{ overflow: "auto", padding: "12px 18px" }}>
+                        {dataSources.includes("concerts") && concerts?.length > 0 && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: "rgba(55,48,107,0.6)", marginBottom: 6, textTransform: "uppercase" }}>Concerts</div>
+                            {concerts.slice(0, 15).map((c) => {
+                              const isSelected = dataRefs.some((r) => r.type === "concert" && r.id === c.id);
+                              return (
+                                <button key={c.id} type="button" onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "concert" && r.id === c.id)) : handleAddDataRef("concert", c.id, { artist: c.artist, date: c.date }))} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", border: "none", borderBottom: "1px solid #f1f5f9", background: "none", cursor: "pointer", fontFamily: F, fontSize: 13, color: "#1e1b4b", textAlign: "left" }}>
+                                  <span>{c.artist} {c.date}</span>
+                                  {isSelected ? <span style={{ color: "#0d9488", fontWeight: 600 }}>✓</span> : <span style={{ color: "#0d9488" }}>+ Add</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {dataSources.includes("vinyl") && vinyl?.length > 0 && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: "rgba(55,48,107,0.6)", marginBottom: 6, textTransform: "uppercase" }}>Vinyl</div>
+                            {vinyl.slice(0, 15).map((v) => {
+                              const isSelected = dataRefs.some((r) => r.type === "vinyl" && r.id === v.id);
+                              return (
+                                <button key={v.id} type="button" onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "vinyl" && r.id === v.id)) : handleAddDataRef("vinyl", v.id, { artist_name: v.artist_name, album_name: v.album_name }))} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", border: "none", borderBottom: "1px solid #f1f5f9", background: "none", cursor: "pointer", fontFamily: F, fontSize: 13, color: "#1e1b4b", textAlign: "left" }}>
+                                  <span>{v.artist_name} – {v.album_name}</span>
+                                  {isSelected ? <span style={{ color: "#0d9488", fontWeight: 600 }}>✓</span> : <span style={{ color: "#0d9488" }}>+ Add</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {dataSources.includes("merch") && merch?.length > 0 && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: "rgba(55,48,107,0.6)", marginBottom: 6, textTransform: "uppercase" }}>Merch</div>
+                            {merch.slice(0, 15).map((m) => {
+                              const isSelected = dataRefs.some((r) => r.type === "merch" && r.id === m.id);
+                              return (
+                                <button key={m.id} type="button" onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "merch" && r.id === m.id)) : handleAddDataRef("merch", m.id, { artist_name: m.artist_name, item_name: m.item_name }))} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", border: "none", borderBottom: "1px solid #f1f5f9", background: "none", cursor: "pointer", fontFamily: F, fontSize: 13, color: "#1e1b4b", textAlign: "left" }}>
+                                  <span>{m.artist_name} – {m.item_name}</span>
+                                  {isSelected ? <span style={{ color: "#0d9488", fontWeight: 600 }}>✓</span> : <span style={{ color: "#0d9488" }}>+ Add</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {dataSources.includes("youtube") && youtubeData?.featured_youtube_channels?.length > 0 && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: "rgba(55,48,107,0.6)", marginBottom: 6, textTransform: "uppercase" }}>YouTube</div>
+                            {(youtubeData.featured_youtube_channels ?? []).slice(0, 10).map((ch) => {
+                              const key = ch.channelId || ch.channelTitle;
+                              const isSelected = dataRefs.some((r) => r.type === "youtube" && (r.metadata?.channelTitle === ch.channelTitle || r.metadata?.channelId === ch.channelId));
+                              return (
+                                <button key={key} type="button" onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "youtube" && (r.metadata?.channelTitle === ch.channelTitle || r.metadata?.channelId === ch.channelId))) : handleAddDataRef("youtube", ch.channelId, { channelTitle: ch.channelTitle, channelId: ch.channelId }))} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", border: "none", borderBottom: "1px solid #f1f5f9", background: "none", cursor: "pointer", fontFamily: F, fontSize: 13, color: "#1e1b4b", textAlign: "left" }}>
+                                  <span>{ch.channelTitle || ch.channelId}</span>
+                                  {isSelected ? <span style={{ color: "#0d9488", fontWeight: 600 }}>✓</span> : <span style={{ color: "#0d9488" }}>+ Add</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb" }}>
+                        <button type="button" onClick={() => setDataRefPopupOpen(false)} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -330,41 +355,91 @@ export default function CurateCardEditor({
 
             {allowed.includes("badges") && userBadges?.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setBadgePopupOpen(true)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(13,148,136,0.35)",
+                    background: "rgba(13,148,136,0.08)",
+                    fontFamily: F,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#0f766e",
+                    cursor: "pointer",
+                  }}
+                >
                   Attach badges
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {userBadges.map((ub) => {
-                    const def = badgeDefinitions.find((d) => d.key === ub.badge_key);
-                    const isSelected = badges.includes(ub.badge_key) || badges.includes(ub.id);
-                    return (
-                      <label
-                        key={ub.id}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          padding: "6px 10px",
-                          borderRadius: 999,
-                          border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
-                          background: isSelected ? "rgba(13,148,136,0.1)" : "rgba(255,255,255,0.8)",
-                          cursor: "pointer",
-                          fontFamily: F,
-                          fontSize: 12,
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleBadge(ub.badge_key)}
-                          style={{ accentColor: "#0d9488" }}
-                        />
-                        <span>{def?.icon ?? "🏅"}</span>
-                        <span>{def?.name ?? ub.badge_key}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                  {badges.length > 0 && <span style={{ background: "rgba(13,148,136,0.2)", padding: "2px 6px", borderRadius: 6, fontSize: 11 }}>{badges.length} selected</span>}
+                </button>
+                {badgePopupOpen && (
+                  <div
+                    style={{
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 120,
+                      background: "rgba(15,23,42,0.6)",
+                      backdropFilter: "blur(8px)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 16,
+                    }}
+                    onClick={(e) => e.target === e.currentTarget && setBadgePopupOpen(false)}
+                  >
+                    <div
+                      style={{
+                        width: "100%",
+                        maxWidth: 380,
+                        maxHeight: "80vh",
+                        background: "#fff",
+                        borderRadius: 16,
+                        boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>Attach badges to this card</span>
+                        <button type="button" onClick={() => setBadgePopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
+                      </div>
+                      <div style={{ overflow: "auto", padding: "12px 18px 20px" }}>
+                        {userBadges.map((ub) => {
+                          const def = badgeDefinitions.find((d) => d.key === ub.badge_key);
+                          const isSelected = badges.includes(ub.badge_key) || badges.includes(ub.id);
+                          return (
+                            <label
+                              key={ub.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                                padding: "10px 0",
+                                borderBottom: "1px solid #f1f5f9",
+                                cursor: "pointer",
+                                fontFamily: F,
+                                fontSize: 14,
+                              }}
+                            >
+                              <input type="checkbox" checked={!!isSelected} onChange={() => handleToggleBadge(ub.badge_key)} style={{ accentColor: "#0d9488" }} />
+                              <span style={{ fontSize: 18 }}>{def?.icon ?? "🏅"}</span>
+                              <span style={{ fontWeight: 600, color: "#1e1b4b" }}>{def?.name ?? ub.badge_key}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb" }}>
+                        <button type="button" onClick={() => setBadgePopupOpen(false)} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
