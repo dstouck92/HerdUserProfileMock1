@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase";
 import { GradientBg } from "./components/ui";
 import AuthScreen from "./components/AuthScreen";
@@ -52,6 +52,36 @@ export default function App() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const setUserFromSession = React.useCallback(async (session) => {
+    if (!session?.user || !supabase) return;
+    try {
+      let profile = null;
+      const { data: profileWithImage, error: errWith } = await supabase.from("profiles").select("id, display_name, username, avatar_id, profile_image_url").eq("id", session.user.id).single();
+      if (!errWith && profileWithImage) profile = profileWithImage;
+      else {
+        const { data: profileBasic } = await supabase.from("profiles").select("id, display_name, username, avatar_id").eq("id", session.user.id).single();
+        if (profileBasic) profile = profileBasic;
+      }
+      setUser(
+        profile
+          ? { ...profile, avatar_id: profile.avatar_id ?? 7 }
+          : {
+              id: session.user.id,
+              display_name: session.user.email?.split("@", 1)[0] || "User",
+              username: session.user.email?.split("@", 1)[0] || "user",
+              avatar_id: 7,
+            },
+      );
+    } catch (_) {
+      setUser({
+        id: session.user.id,
+        display_name: session.user.email?.split("@", 1)[0] || "User",
+        username: session.user.email?.split("@", 1)[0] || "user",
+        avatar_id: 7,
+      });
+    }
+  }, []);
+
   useEffect(() => {
     if (!supabase) {
       setAuthLoading(false);
@@ -67,30 +97,7 @@ export default function App() {
         const { data: { session } } = await supabase.auth.getSession();
         if (cancelled) return;
         if (session?.user) {
-          try {
-            const { data: profile } = await supabase.from("profiles").select("id, display_name, username, avatar_id, profile_image_url").eq("id", session.user.id).single();
-            if (!cancelled) {
-              setUser(
-                profile
-                  ? { ...profile, avatar_id: profile.avatar_id ?? 7 }
-                  : {
-                      id: session.user.id,
-                      display_name: session.user.email?.split("@", 1)[0] || "User",
-                      username: session.user.email?.split("@", 1)[0] || "user",
-                      avatar_id: 7,
-                    },
-              );
-            }
-          } catch (_) {
-            if (!cancelled) {
-              setUser({
-                id: session.user.id,
-                display_name: session.user.email?.split("@", 1)[0] || "User",
-                username: session.user.email?.split("@", 1)[0] || "user",
-                avatar_id: 7,
-              });
-            }
-          }
+          await setUserFromSession(session);
         }
       } catch (_) {
         // network error: user stays on login
@@ -98,17 +105,30 @@ export default function App() {
       if (!cancelled) setAuthLoading(false);
     };
     loadSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.user) {
+        setAuthLoading(false);
+        setUserFromSession(session);
+      }
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+      }
+    });
+
     return () => {
       cancelled = true;
       clearTimeout(showLoginTimer);
+      subscription?.unsubscribe?.();
     };
-  }, []);
+  }, [setUserFromSession]);
 
   useEffect(() => {
     if (!supabase || !user?.id) return;
     const uid = user.id;
     (async () => {
-      const [cRes, vRes, mRes, sRes, yRes, takeoutRes, friendsRes, followsRes] = await Promise.all([
+      const results = await Promise.allSettled([
         supabase.from("concerts").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("vinyl").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
         supabase.from("merch").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
@@ -121,6 +141,14 @@ export default function App() {
           .select("follower_id, followed_id")
           .or(`follower_id.eq.${uid},followed_id.eq.${uid}`),
       ]);
+      const cRes = results[0].status === "fulfilled" ? results[0].value : { data: null, error: results[0].reason };
+      const vRes = results[1].status === "fulfilled" ? results[1].value : { data: null, error: results[1].reason };
+      const mRes = results[2].status === "fulfilled" ? results[2].value : { data: null, error: results[2].reason };
+      const sRes = results[3].status === "fulfilled" ? results[3].value : { data: null, error: results[3].reason };
+      const yRes = results[4].status === "fulfilled" ? results[4].value : { data: null, error: results[4].reason };
+      const takeoutRes = results[5].status === "fulfilled" ? results[5].value : { data: null, error: results[5].reason };
+      const friendsRes = results[6].status === "fulfilled" ? results[6].value : { data: null, error: results[6].reason };
+      const followsRes = results[7].status === "fulfilled" ? results[7].value : { data: null, error: results[7].reason };
       if (cRes.data) {
         setConcerts(
           cRes.data.map((r) => ({
@@ -187,6 +215,9 @@ export default function App() {
         setFollowingCount(following.length);
         setFollowingIds(following.map((r) => r.followed_id));
       } else {
+        if (followsRes?.error && import.meta.env?.DEV) {
+          console.warn("Profile load: user_follows failed.", followsRes.error);
+        }
         setFollowersCount(0);
         setFollowingCount(0);
         setFollowingIds([]);
@@ -196,7 +227,9 @@ export default function App() {
         let featuredArtists = s.featured_artists ?? [];
         if (featuredArtists.length === 0 && (s.top_artists ?? []).length > 0) {
           featuredArtists = [s.top_artists[0]];
-          await supabase.from("user_streaming_stats").update({ featured_artists: featuredArtists }).eq("user_id", uid);
+          try {
+            await supabase.from("user_streaming_stats").update({ featured_artists: featuredArtists }).eq("user_id", uid);
+          } catch (_) {}
         }
         setStreamingData({
           totalHours: s.total_hours ?? 0,
@@ -212,6 +245,14 @@ export default function App() {
           artistMinutesByMonth: s.artist_minutes_by_month ?? {},
           trackMinutesByMonth: s.track_minutes_by_month ?? {},
         });
+      } else {
+        if (sRes?.error && import.meta.env?.DEV) {
+          console.warn("Profile load: user_streaming_stats failed.", sRes.error);
+        }
+        setStreamingData(null);
+      }
+      if (yRes?.error && import.meta.env?.DEV) {
+        console.warn("Profile load: user_youtube failed.", yRes.error);
       }
     })();
   }, [user?.id]);

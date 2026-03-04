@@ -67,8 +67,9 @@ export default function AuthScreen({ onAuth }) {
             options: { data: { display_name: displayName, username, phone: phone.trim() || null } },
           });
           if (authError) throw authError;
-          if (data?.user) {
-            const profile = await getOrCreateProfile(data.user, displayName, username, phone.trim());
+          const authUser = data?.user ?? data?.session?.user;
+          if (authUser) {
+            const profile = await getOrCreateProfile(authUser, displayName, username, phone.trim());
             onAuth(profile);
           } else {
             setError("Sign up succeeded but no user returned. Check your email to confirm, or try logging in.");
@@ -77,8 +78,9 @@ export default function AuthScreen({ onAuth }) {
           const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
           if (authError) throw authError;
           if (data && typeof console !== "undefined") console.log("signInWithPassword data:", data);
-          if (data?.user) {
-            const profile = await getOrCreateProfile(data.user);
+          const authUser = data?.user ?? data?.session?.user;
+          if (authUser) {
+            const profile = await getOrCreateProfile(authUser);
             onAuth(profile);
           } else {
             setError("Login succeeded but no session. Try again or check if email confirmation is required.");
