@@ -268,12 +268,12 @@ export default function CurateCardEditor({
                     onClick={(e) => e.target === e.currentTarget && setArtistPopupOpen(false)}
                   >
                     <div style={{ width: "100%", maxWidth: 380, maxHeight: "80vh", background: "#fff", borderRadius: 16, boxShadow: "0 20px 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ padding: "12px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 18, color: "#0d9488", fontWeight: 700, cursor: "pointer" }} aria-label="Back">← Back</button>
+                      <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 52 }}>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ padding: "8px 4px", minWidth: 80, background: "none", border: "none", fontSize: 16, color: "#0d9488", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", fontFamily: F }} aria-label="Back">← Back</button>
                         <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b", flex: 1, textAlign: "center" }}>Attach an artist?</span>
-                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer", padding: 0, lineHeight: 1 }} aria-label="Close">×</button>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ width: 40, height: 40, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(100,116,139,0.15)", border: "none", borderRadius: "50%", fontSize: 22, color: "#475569", cursor: "pointer", fontFamily: F }} aria-label="Close">×</button>
                       </div>
-                      <div style={{ overflow: "auto", padding: "12px 18px" }}>
+                      <div style={{ overflow: "auto", padding: "12px 18px", flex: 1 }}>
                         {(streamingData?.topArtists ?? []).slice(0, 20).map((a) => {
                           const isSelected = dataRefs.some((r) => r.type === "streaming" && r.metadata?.name === a.name);
                           return (
@@ -303,9 +303,9 @@ export default function CurateCardEditor({
                           );
                         })}
                       </div>
-                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
-                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid #94a3b8", background: "#fff", color: "#64748b", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Back</button>
-                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+                      <div style={{ padding: "14px 18px", borderTop: "1px solid #e5e7eb", background: "#f8fafc", display: "flex", gap: 10, flexShrink: 0 }}>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #94a3b8", background: "#fff", color: "#64748b", fontFamily: F, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>← Back</button>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Done</button>
                       </div>
                     </div>
                   </div>
