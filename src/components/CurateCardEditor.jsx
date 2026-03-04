@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Card, F } from "./ui";
 
 const inputStyle = {
@@ -29,6 +29,8 @@ export default function CurateCardEditor({
   badgeDefinitions,
   onSelectPrompt,
   onChangeAnswer,
+  userId,
+  supabase,
 }) {
   const [localTexts, setLocalTexts] = useState(() => answer?.texts ?? []);
   const config = selectedPrompt?.answer_config ?? {};
@@ -42,9 +44,12 @@ export default function CurateCardEditor({
   const dataRefs = answer?.data_refs ?? [];
   const badges = answer?.badges ?? [];
   const artists = answer?.artists ?? [];
+  const images = answer?.images ?? [];
   const [badgePopupOpen, setBadgePopupOpen] = useState(false);
   const [artistPopupOpen, setArtistPopupOpen] = useState(false);
   const [dataRefPopupOpen, setDataRefPopupOpen] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const imageInputRef = useRef(null);
 
   const emitAnswer = useCallback(
     (update) => {
@@ -91,6 +96,34 @@ export default function CurateCardEditor({
   };
   const handleRemoveArtist = (index) => {
     emitAnswer({ artists: artists.filter((_, i) => i !== index) });
+  };
+
+  const handleAddImage = useCallback(
+    async (file) => {
+      if (!supabase || !userId || !file?.type?.startsWith("image/")) return;
+      setImageUploading(true);
+      try {
+        const rawExt = (file.name.split(".").pop() || "").toLowerCase();
+        const ext = ["jpg", "jpeg", "png", "gif", "webp"].includes(rawExt) ? rawExt : "jpg";
+        const path = `${userId}/${cardIndex}_${Date.now()}.${ext}`;
+        const bucket = supabase.storage.from("curate-card-media");
+        const { error: uploadError } = await bucket.upload(path, file, { cacheControl: "3600", upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: publicData } = bucket.getPublicUrl(path);
+        const url = publicData?.publicUrl || null;
+        if (url) emitAnswer({ images: [...images, { storage_path: path, url }] });
+      } catch (err) {
+        if (import.meta.env?.DEV) console.error("Curate card image upload error:", err);
+      } finally {
+        setImageUploading(false);
+        if (imageInputRef.current) imageInputRef.current.value = "";
+      }
+    },
+    [supabase, userId, cardIndex, images, emitAnswer],
+  );
+
+  const handleRemoveImage = (index) => {
+    emitAnswer({ images: images.filter((_, i) => i !== index) });
   };
 
   return (
@@ -235,9 +268,10 @@ export default function CurateCardEditor({
                     onClick={(e) => e.target === e.currentTarget && setArtistPopupOpen(false)}
                   >
                     <div style={{ width: "100%", maxWidth: 380, maxHeight: "80vh", background: "#fff", borderRadius: 16, boxShadow: "0 20px 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>Attach an artist?</span>
-                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
+                      <div style={{ padding: "12px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 18, color: "#0d9488", fontWeight: 700, cursor: "pointer" }} aria-label="Back">← Back</button>
+                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b", flex: 1, textAlign: "center" }}>Attach an artist?</span>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer", padding: 0, lineHeight: 1 }} aria-label="Close">×</button>
                       </div>
                       <div style={{ overflow: "auto", padding: "12px 18px" }}>
                         {(streamingData?.topArtists ?? []).slice(0, 20).map((a) => {
@@ -269,8 +303,9 @@ export default function CurateCardEditor({
                           );
                         })}
                       </div>
-                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb" }}>
-                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid #94a3b8", background: "#fff", color: "#64748b", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Back</button>
+                        <button type="button" onClick={() => setArtistPopupOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
                       </div>
                     </div>
                   </div>
@@ -281,9 +316,10 @@ export default function CurateCardEditor({
                     onClick={(e) => e.target === e.currentTarget && setDataRefPopupOpen(false)}
                   >
                     <div style={{ width: "100%", maxWidth: 380, maxHeight: "80vh", background: "#fff", borderRadius: 16, boxShadow: "0 20px 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>Attach from collection</span>
-                        <button type="button" onClick={() => setDataRefPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
+                      <div style={{ padding: "12px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <button type="button" onClick={() => setDataRefPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 18, color: "#0d9488", fontWeight: 700, cursor: "pointer" }} aria-label="Back">← Back</button>
+                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b", flex: 1, textAlign: "center" }}>Attach from collection</span>
+                        <button type="button" onClick={() => setDataRefPopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer", padding: 0, lineHeight: 1 }} aria-label="Close">×</button>
                       </div>
                       <div style={{ overflow: "auto", padding: "12px 18px" }}>
                         {dataSources.includes("concerts") && concerts?.length > 0 && (
@@ -344,8 +380,9 @@ export default function CurateCardEditor({
                           </div>
                         )}
                       </div>
-                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb" }}>
-                        <button type="button" onClick={() => setDataRefPopupOpen(false)} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
+                        <button type="button" onClick={() => setDataRefPopupOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid #94a3b8", background: "#fff", color: "#64748b", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Back</button>
+                        <button type="button" onClick={() => setDataRefPopupOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
                       </div>
                     </div>
                   </div>
@@ -405,17 +442,24 @@ export default function CurateCardEditor({
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>Attach badges to this card</span>
-                        <button type="button" onClick={() => setBadgePopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
+                      <div style={{ padding: "12px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <button type="button" onClick={() => setBadgePopupOpen(false)} style={{ background: "none", border: "none", fontSize: 18, color: "#0d9488", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center" }} aria-label="Back">← Back</button>
+                        <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b", flex: 1, textAlign: "center" }}>Attach badges</span>
+                        <button type="button" onClick={() => setBadgePopupOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer", padding: 0, lineHeight: 1 }} aria-label="Close">×</button>
                       </div>
                       <div style={{ overflow: "auto", padding: "12px 18px 20px" }}>
-                        {userBadges.map((ub) => {
+                        {(() => {
+                          const seen = new Set();
+                          return (userBadges || []).filter((ub) => {
+                            if (seen.has(ub.badge_key)) return false;
+                            seen.add(ub.badge_key);
+                            return true;
+                          }).map((ub) => {
                           const def = badgeDefinitions.find((d) => d.key === ub.badge_key);
                           const isSelected = badges.includes(ub.badge_key) || badges.includes(ub.id);
                           return (
                             <label
-                              key={ub.id}
+                              key={ub.badge_key}
                               style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -432,10 +476,12 @@ export default function CurateCardEditor({
                               <span style={{ fontWeight: 600, color: "#1e1b4b" }}>{def?.name ?? ub.badge_key}</span>
                             </label>
                           );
-                        })}
+                        });
+                        })()}
                       </div>
-                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb" }}>
-                        <button type="button" onClick={() => setBadgePopupOpen(false)} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+                      <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
+                        <button type="button" onClick={() => setBadgePopupOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid #94a3b8", background: "#fff", color: "#64748b", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Back</button>
+                        <button type="button" onClick={() => setBadgePopupOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
                       </div>
                     </div>
                   </div>
@@ -463,9 +509,50 @@ export default function CurateCardEditor({
                 <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 6 }}>
                   Photos
                 </div>
-                <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>
-                  Photo upload will be available when you save this card.
-                </div>
+                {supabase && userId ? (
+                  <>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleAddImage(f);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={imageUploading}
+                      style={{
+                        padding: "8px 14px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(13,148,136,0.35)",
+                        background: imageUploading ? "rgba(13,148,136,0.2)" : "rgba(13,148,136,0.08)",
+                        fontFamily: F,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#0f766e",
+                        cursor: imageUploading ? "default" : "pointer",
+                      }}
+                    >
+                      {imageUploading ? "Uploading…" : "+ Add photo"}
+                    </button>
+                    {images.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                        {images.map((img, i) => (
+                          <div key={i} style={{ position: "relative" }}>
+                            <img src={img.url} alt="" style={{ width: 72, height: 72, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(13,148,136,0.3)" }} />
+                            <button type="button" onClick={() => handleRemoveImage(i)} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 14, cursor: "pointer", lineHeight: 1 }} aria-label="Remove">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>Sign in to upload photos.</div>
+                )}
               </div>
             )}
           </>

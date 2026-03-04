@@ -179,12 +179,18 @@ export default function CurateTab({
     }
   };
 
+  const badgeKeysSeen = new Set();
   const earnedBadges = (userBadges || [])
     .map((b) => {
       const def = badgeDefinitions.find((d) => d.key === b.badge_key);
       return def ? { ...b, def } : null;
     })
     .filter(Boolean)
+    .filter((b) => {
+      if (badgeKeysSeen.has(b.badge_key)) return false;
+      badgeKeysSeen.add(b.badge_key);
+      return true;
+    })
     .sort((a, b) => (a.def.sort_order ?? 0) - (b.def.sort_order ?? 0));
   const publicEarnedBadges = earnedBadges.filter((b) => b.is_public);
 
@@ -426,6 +432,8 @@ export default function CurateTab({
               badgeDefinitions={badgeDefinitions}
               onSelectPrompt={(promptId) => handleSelectPrompt(cardIndex, promptId)}
               onChangeAnswer={(update) => handleChangeAnswer(cardIndex, update)}
+              userId={user?.id}
+              supabase={supabase}
             />
           </div>
         );
@@ -459,9 +467,10 @@ export default function CurateTab({
       {badgesModalOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={(e) => { if (e.target === e.currentTarget) setBadgesModalOpen(false); }}>
           <div style={{ width: "100%", maxWidth: 420, maxHeight: "80vh", background: "#f9fafb", borderRadius: 18, boxShadow: "0 18px 50px rgba(15,23,42,0.5)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: "10px 18px", borderBottom: "1px solid rgba(148,163,184,0.4)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Manage Badges</div>
-              <button type="button" onClick={() => setBadgesModalOpen(false)} style={{ border: "none", background: "none", fontSize: 20, color: "#94a3b8", cursor: "pointer" }} aria-label="Close">✕</button>
+            <div style={{ padding: "12px 18px", borderBottom: "1px solid rgba(148,163,184,0.4)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <button type="button" onClick={() => setBadgesModalOpen(false)} style={{ border: "none", background: "none", fontSize: 18, color: "#0d9488", fontWeight: 700, cursor: "pointer" }} aria-label="Back">← Back</button>
+              <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#0f172a", flex: 1, textAlign: "center" }}>Manage Badges</span>
+              <button type="button" onClick={() => setBadgesModalOpen(false)} style={{ border: "none", background: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer", padding: 0, lineHeight: 1 }} aria-label="Close">×</button>
             </div>
             <div style={{ padding: "10px 18px 6px" }}>
               <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.7)", lineHeight: 1.5 }}>Toggle which earned badges are visible on your public profile.</div>
@@ -471,7 +480,7 @@ export default function CurateTab({
                 <div style={{ padding: "12px 0 16px", fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)" }}>No badges unlocked yet.</div>
               ) : (
                 earnedBadges.map((b) => (
-                  <div key={b.id} style={{ display: "flex", alignItems: "center", padding: "8px 0", borderBottom: "1px solid rgba(226,232,240,0.9)", gap: 10 }}>
+                  <div key={b.badge_key} style={{ display: "flex", alignItems: "center", padding: "8px 0", borderBottom: "1px solid rgba(226,232,240,0.9)", gap: 10 }}>
                     <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #0f766e, #22c55e)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <span style={{ fontSize: 18 }}>{b.def.icon || "🏅"}</span>
                     </div>
@@ -486,6 +495,10 @@ export default function CurateTab({
                   </div>
                 ))
               )}
+            </div>
+            <div style={{ padding: "12px 18px", borderTop: "1px solid rgba(148,163,184,0.4)", display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setBadgesModalOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid #94a3b8", background: "#fff", color: "#64748b", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Back</button>
+              <button type="button" onClick={() => setBadgesModalOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
             </div>
           </div>
         </div>

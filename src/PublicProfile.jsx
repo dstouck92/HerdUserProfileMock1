@@ -275,13 +275,21 @@ export default function PublicProfile({ username: usernameProp }) {
     const dataRefs = answer.data_refs || [];
     const badgeKeys = answer.badges || [];
     const artists = answer.artists || [];
+    const images = answer.images || [];
     const defByKey = (badgeDefs || []).reduce((acc, d) => { acc[d.key] = d; return acc; }, {});
 
     return (
       <div style={{ marginTop: 8 }}>
         {mainText && (
-          <div style={{ fontFamily: F, fontSize: 15, color: theme.text, lineHeight: 1.5, marginBottom: dataRefs.length || badgeKeys.length || artists.length ? 10 : 0 }}>
+          <div style={{ fontFamily: F, fontSize: 15, color: theme.text, lineHeight: 1.5, marginBottom: (dataRefs.length || badgeKeys.length || artists.length || images.length) ? 10 : 0 }}>
             {mainText}
+          </div>
+        )}
+        {images.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+            {images.map((img, i) => (
+              <img key={i} src={img.url} alt="" style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', border: `1px solid ${theme.accent}` }} />
+            ))}
           </div>
         )}
         {dataRefs.length > 0 && (
@@ -361,7 +369,7 @@ export default function PublicProfile({ username: usernameProp }) {
             ))}
           </div>
         )}
-        {!mainText && dataRefs.length === 0 && badgeKeys.length === 0 && artists.length === 0 && (
+        {!mainText && dataRefs.length === 0 && badgeKeys.length === 0 && artists.length === 0 && images.length === 0 && (
           <div style={{ fontFamily: F, fontSize: 13, color: theme.muted }}>No answer yet.</div>
         )}
       </div>
