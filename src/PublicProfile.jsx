@@ -20,6 +20,7 @@ export default function PublicProfile({ username: usernameProp }) {
   const [featuredYoutubeChannels, setFeaturedYoutubeChannels] = useState([]);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [badges, setBadges] = useState([]);
 
   useEffect(() => {
     if (!supabase || !username) {
@@ -45,7 +46,7 @@ export default function PublicProfile({ username: usernameProp }) {
 
         // 2) Load featured items
         const uid = prof.id;
-        const [cRes, vRes, mRes, sRes, yRes, followsRes] = await Promise.all([
+        const [cRes, vRes, mRes, sRes, yRes, followsRes, userBadgesRes, badgeDefsRes] = await Promise.all([
           supabase.from('concerts').select('*').eq('user_id', uid).eq('is_featured', true).order('date', { ascending: false }),
           supabase.from('vinyl').select('*').eq('user_id', uid).eq('is_featured', true).order('created_at', { ascending: false }),
           supabase.from('merch').select('*').eq('user_id', uid).eq('is_featured', true).order('created_at', { ascending: false }),
@@ -55,6 +56,8 @@ export default function PublicProfile({ username: usernameProp }) {
             .from('user_follows')
             .select('follower_id, followed_id')
             .or(`follower_id.eq.${uid},followed_id.eq.${uid}`),
+          supabase.from('user_badges_public').select('badge_key, earned_at, metadata').eq('user_id', uid),
+          supabase.from('badges').select('key, name, category, description, icon, sort_order').order('sort_order', { ascending: true }),
         ]);
         if (cancelled) return;
         if (cRes.data) setConcerts(cRes.data);
@@ -79,6 +82,28 @@ export default function PublicProfile({ username: usernameProp }) {
         } else {
           setFollowersCount(0);
           setFollowingCount(0);
+        }
+        if (userBadgesRes && !userBadgesRes.error && userBadgesRes.data && badgeDefsRes && !badgeDefsRes.error && badgeDefsRes.data) {
+          const defByKey = {};
+          badgeDefsRes.data.forEach((d) => {
+            defByKey[d.key] = d;
+          });
+          const mapped = userBadgesRes.data
+            .map((b) => {
+              const def = defByKey[b.badge_key];
+              if (!def) return null;
+              return { ...b, def };
+            })
+            .filter(Boolean)
+            .sort((a, b) => {
+              const sa = a.def.sort_order ?? 0;
+              const sb = b.def.sort_order ?? 0;
+              if (sa !== sb) return sa - sb;
+              return new Date(a.earned_at).getTime() - new Date(b.earned_at).getTime();
+            });
+          setBadges(mapped);
+        } else {
+          setBadges([]);
         }
       } catch (e) {
         if (!cancelled) setError(e.message || 'Could not load profile.');
@@ -123,7 +148,7 @@ export default function PublicProfile({ username: usernameProp }) {
     );
   }
 
-  const hasAnyFeatured = streaming?.featuredArtists?.length || concerts.length || vinyl.length || merch.length;
+  const hasAnyFeatured = streaming?.featuredArtists?.length || concerts.length || vinyl.length || merch.length || badges.length;
 
   const bioParts = [];
   if (profile.show_age_public && profile.age != null) {
@@ -225,6 +250,47 @@ export default function PublicProfile({ username: usernameProp }) {
             <span style={{ fontFamily: F, fontSize: 12, color: '#059669' }}>{shareFeedback}</span>
             <span style={{ fontFamily: F, fontSize: 12, color: '#059669' }}>{downloadFeedback}</span>
           </div>
+          {badges.length > 0 && (
+            <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {badges.slice(0, 6).map((b) => (
+                <div
+                  key={`${b.badge_key}-${b.earned_at}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 9px',
+                    borderRadius: 999,
+                    background: 'rgba(16,185,129,0.08)',
+                    border: '1px solid rgba(16,185,129,0.3)',
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>{b.def.icon || '🏅'}</span>
+                  <span
+                    style={{
+                      fontFamily: F,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: '#065f46',
+                    }}
+                  >
+                    {b.def.name}
+                  </span>
+                </div>
+              ))}
+              {badges.length > 6 && (
+                <span
+                  style={{
+                    fontFamily: F,
+                    fontSize: 11,
+                    color: 'rgba(55,48,107,0.7)',
+                  }}
+                >
+                  +{badges.length - 6} more
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
       {!hasAnyFeatured && (
@@ -235,6 +301,64 @@ export default function PublicProfile({ username: usernameProp }) {
             This fan hasn&apos;t curated their public profile yet.
           </div>
         </Card>
+      )}
+
+      {badges.length > 0 && (
+        <>
+          <Sec icon="🏅">Badges</Sec>
+          <Card>
+            {badges.map((b, i) => (
+              <div
+                key={`${b.badge_key}-${b.earned_at}-${i}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '10px 20px',
+                  gap: 10,
+                  borderBottom: i < badges.length - 1 ? '1px solid rgba(13,148,136,0.08)' : 'none',
+                }}
+              >
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #0f766e, #22c55e)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>{b.def.icon || '🏅'}</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontFamily: F,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: '#1e1b4b',
+                    }}
+                  >
+                    {b.def.name}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: F,
+                      fontSize: 11,
+                      color: 'rgba(55,48,107,0.6)',
+                      marginTop: 2,
+                    }}
+                  >
+                    {b.def.category}
+                    {b.def.description ? ` · ${b.def.description}` : ''}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </>
       )}
 
       {streaming && streaming.featuredArtists?.length > 0 && (

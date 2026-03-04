@@ -49,8 +49,69 @@ export default function App() {
   const [followListLoading, setFollowListLoading] = useState(false);
   const [youtubeData, setYoutubeData] = useState(null);
   const [youtubeTakeout, setYoutubeTakeout] = useState(null);
+  const [badgeDefinitions, setBadgeDefinitions] = useState([]);
+  const [userBadges, setUserBadges] = useState([]);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const getBadgeDefinitionByKey = (key) =>
+    badgeDefinitions.find((b) => b.key === key) || null;
+
+  const maybeAwardBadge = async (badgeKey, metadata) => {
+    if (!supabase || !user?.id || !badgeKey) return;
+    const alreadyHas = userBadges.some((b) => b.badge_key === badgeKey);
+    if (alreadyHas) return;
+    const def = getBadgeDefinitionByKey(badgeKey);
+    const now = new Date().toISOString();
+    const optimistic = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${badgeKey}-${now}`,
+      badge_key: badgeKey,
+      earned_at: now,
+      is_public: false,
+      metadata: metadata ?? null,
+    };
+    setUserBadges((prev) => [...prev, optimistic]);
+    const description = def
+      ? `Earned badge: ${def.name}`
+      : `Earned badge: ${badgeKey}`;
+    try {
+      const { data, error } = await supabase
+        .from("user_badges")
+        .insert({
+          user_id: user.id,
+          badge_key: badgeKey,
+          metadata: metadata ?? null,
+        })
+        .select()
+        .single();
+      if (!error && data) {
+        setUserBadges((prev) =>
+          prev.map((b) => (b.id === optimistic.id ? { ...b, id: data.id, earned_at: data.earned_at } : b)),
+        );
+      }
+      await supabase.from("user_activity").insert({
+        actor_id: user.id,
+        type: "badge_earned",
+        description,
+      });
+      setRecentActivity((prev) => [
+        {
+          id: optimistic.id,
+          actorName: "You",
+          actorUsername: user.username || "",
+          actorAvatarId: user.avatar_id ?? 7,
+          description,
+          createdAt: now,
+          type: "badge_earned",
+        },
+        ...prev,
+      ]);
+    } catch (e) {
+      if (import.meta.env?.DEV && typeof console !== "undefined") {
+        console.error("maybeAwardBadge error:", e);
+      }
+    }
+  };
 
   const setUserFromSession = React.useCallback(async (session) => {
     if (!session?.user || !supabase) return;
@@ -140,6 +201,8 @@ export default function App() {
           .from("user_follows")
           .select("follower_id, followed_id")
           .or(`follower_id.eq.${uid},followed_id.eq.${uid}`),
+        supabase.from("badges").select("key, name, category, description, icon, sort_order").order("sort_order", { ascending: true }),
+        supabase.from("user_badges").select("id, badge_key, earned_at, is_public, metadata").eq("user_id", uid),
       ]);
       const cRes = results[0].status === "fulfilled" ? results[0].value : { data: null, error: results[0].reason };
       const vRes = results[1].status === "fulfilled" ? results[1].value : { data: null, error: results[1].reason };
@@ -149,47 +212,46 @@ export default function App() {
       const takeoutRes = results[5].status === "fulfilled" ? results[5].value : { data: null, error: results[5].reason };
       const friendsRes = results[6].status === "fulfilled" ? results[6].value : { data: null, error: results[6].reason };
       const followsRes = results[7].status === "fulfilled" ? results[7].value : { data: null, error: results[7].reason };
+      const badgesRes = results[8].status === "fulfilled" ? results[8].value : { data: null, error: results[8].reason };
+      const userBadgesRes = results[9].status === "fulfilled" ? results[9].value : { data: null, error: results[9].reason };
       if (cRes.data) {
-        setConcerts(
-          cRes.data.map((r) => ({
-            id: r.id,
-            artist: r.artist,
-            tour: r.tour,
-            date: r.date,
-            venue: r.venue,
-            city: r.city,
-            ticket_type: r.ticket_type,
-            ticket_price: r.ticket_price,
-            source: r.source,
-            is_featured: r.is_featured ?? false,
-          })),
-        );
+        const mapped = cRes.data.map((r) => ({
+          id: r.id,
+          artist: r.artist,
+          tour: r.tour,
+          date: r.date,
+          venue: r.venue,
+          city: r.city,
+          ticket_type: r.ticket_type,
+          ticket_price: r.ticket_price,
+          source: r.source,
+          is_featured: r.is_featured ?? false,
+        }));
+        setConcerts(mapped);
       }
       if (vRes.data) {
-        setVinyl(
-          vRes.data.map((r) => ({
-            id: r.id,
-            artist_name: r.artist_name,
-            album_name: r.album_name,
-            is_limited_edition: r.is_limited_edition,
-            is_featured: r.is_featured ?? false,
-          })),
-        );
+        const mapped = vRes.data.map((r) => ({
+          id: r.id,
+          artist_name: r.artist_name,
+          album_name: r.album_name,
+          is_limited_edition: r.is_limited_edition,
+          is_featured: r.is_featured ?? false,
+        }));
+        setVinyl(mapped);
       }
       if (mRes.data) {
-        setMerch(
-          mRes.data.map((r) => ({
-            id: r.id,
-            artist_name: r.artist_name,
-            item_name: r.item_name,
-            merch_type: r.merch_type,
-            is_tour_merch: r.is_tour_merch,
-            tour_name: r.tour_name,
-            purchase_price: r.purchase_price,
-            purchase_location: r.purchase_location,
-            is_featured: r.is_featured ?? false,
-          })),
-        );
+        const mapped = mRes.data.map((r) => ({
+          id: r.id,
+          artist_name: r.artist_name,
+          item_name: r.item_name,
+          merch_type: r.merch_type,
+          is_tour_merch: r.is_tour_merch,
+          tour_name: r.tour_name,
+          purchase_price: r.purchase_price,
+          purchase_location: r.purchase_location,
+          is_featured: r.is_featured ?? false,
+        }));
+        setMerch(mapped);
       }
       if (yRes.data?.user_id) setYoutubeData(yRes.data);
       else setYoutubeData(null);
@@ -214,6 +276,15 @@ export default function App() {
         setFollowersCount(followers.length);
         setFollowingCount(following.length);
         setFollowingIds(following.map((r) => r.followed_id));
+        // Award follower-count-based social badges on load.
+        try {
+          const followerTotal = followers.length;
+          if (followerTotal >= 1) await maybeAwardBadge("social_first_friend", { followers: followerTotal });
+          if (followerTotal >= 10) await maybeAwardBadge("social_10_friends", { followers: followerTotal });
+          if (followerTotal >= 50) await maybeAwardBadge("social_50_friends", { followers: followerTotal });
+          if (followerTotal >= 100) await maybeAwardBadge("social_100_friends", { followers: followerTotal });
+          if (followerTotal >= 1000) await maybeAwardBadge("social_1000_friends", { followers: followerTotal });
+        } catch (_) {}
       } else {
         if (followsRes?.error && import.meta.env?.DEV) {
           console.warn("Profile load: user_follows failed.", followsRes.error);
@@ -221,6 +292,16 @@ export default function App() {
         setFollowersCount(0);
         setFollowingCount(0);
         setFollowingIds([]);
+      }
+      if (badgesRes.data) {
+        setBadgeDefinitions(badgesRes.data || []);
+      } else {
+        setBadgeDefinitions([]);
+      }
+      if (userBadgesRes.data) {
+        setUserBadges(userBadgesRes.data || []);
+      } else {
+        setUserBadges([]);
       }
       if (sRes.data?.user_id) {
         const s = sRes.data;
@@ -231,7 +312,7 @@ export default function App() {
             await supabase.from("user_streaming_stats").update({ featured_artists: featuredArtists }).eq("user_id", uid);
           } catch (_) {}
         }
-        setStreamingData({
+        const streamingPayload = {
           totalHours: s.total_hours ?? 0,
           totalRecords: s.total_records ?? 0,
           uniqueArtists: s.unique_artists ?? 0,
@@ -244,7 +325,25 @@ export default function App() {
           endDate: s.end_date ?? null,
           artistMinutesByMonth: s.artist_minutes_by_month ?? {},
           trackMinutesByMonth: s.track_minutes_by_month ?? {},
-        });
+        };
+        setStreamingData(streamingPayload);
+        // Award basic streaming badges based on latest stats.
+        try {
+          if (streamingPayload.totalHours >= 100) {
+            await maybeAwardBadge("streams_100_hours", { totalHours: streamingPayload.totalHours });
+          }
+          if (streamingPayload.totalHours >= 500) {
+            await maybeAwardBadge("streams_500_hours", { totalHours: streamingPayload.totalHours });
+          }
+          const topArtist = streamingPayload.topArtists[0];
+          if (topArtist?.name) {
+            await maybeAwardBadge("streams_most_streamed_artist", { artistName: topArtist.name });
+          }
+          const topTrack = streamingPayload.topTracks[0];
+          if (topTrack?.name) {
+            await maybeAwardBadge("streams_most_streamed_song", { trackName: topTrack.name });
+          }
+        } catch (_) {}
       } else {
         if (sRes?.error && import.meta.env?.DEV) {
           console.warn("Profile load: user_streaming_stats failed.", sRes.error);
@@ -375,6 +474,27 @@ export default function App() {
           type: "update_youtube_takeout",
           description: "Imported YouTube Takeout watch history",
         });
+        // Award YouTube-based badges.
+        try {
+          if (data.total_watch_minutes >= 1000) {
+            await maybeAwardBadge("yt_binge_watcher", { totalMinutes: data.total_watch_minutes });
+          }
+          const topChannel = (data.channel_rankings_json || [])[0];
+          if (topChannel?.channelName) {
+            await maybeAwardBadge("yt_most_viewed_channel", {
+              channelName: topChannel.channelName,
+              totalMinutes: topChannel.totalMinutes ?? null,
+            });
+          }
+          const topVideo = (data.video_rankings_json || [])[0];
+          if (topVideo?.title) {
+            await maybeAwardBadge("yt_most_viewed_video", {
+              title: topVideo.title,
+              channelName: topVideo.channelName ?? null,
+              totalMinutes: topVideo.totalMinutes ?? null,
+            });
+          }
+        } catch (_) {}
       }
     } catch (e) {
       console.error("Takeout import error (client-side):", e);
@@ -469,21 +589,41 @@ export default function App() {
         source: c.source || "manual",
       }).select().single();
       if (!error && data) {
-        setConcerts((prev) => [
-          {
-            id: data.id,
-            artist: data.artist,
-            tour: data.tour,
-            date: data.date,
-            venue: data.venue,
-            city: data.city,
-            ticket_type: data.ticket_type,
-            ticket_price: data.ticket_price,
-            source: data.source,
-            is_featured: data.is_featured ?? false,
-          },
-          ...prev,
-        ]);
+        const created = {
+          id: data.id,
+          artist: data.artist,
+          tour: data.tour,
+          date: data.date,
+          venue: data.venue,
+          city: data.city,
+          ticket_type: data.ticket_type,
+          ticket_price: data.ticket_price,
+          source: data.source,
+          is_featured: data.is_featured ?? false,
+        };
+        setConcerts((prev) => {
+          const next = [created, ...prev];
+          // Award ticket-related badges based on updated concerts.
+          (async () => {
+            try {
+              const total = next.length;
+              if (total >= 1) await maybeAwardBadge("tickets_first_concert", { totalConcerts: total });
+              if (total >= 5) await maybeAwardBadge("tickets_5_concerts", { totalConcerts: total });
+              if (total >= 10) await maybeAwardBadge("tickets_10_concerts", { totalConcerts: total });
+              const byArtist = {};
+              next.forEach((r) => {
+                const key = (r.artist || "").trim().toLowerCase();
+                if (!key) return;
+                byArtist[key] = (byArtist[key] || 0) + 1;
+              });
+              const hasGroupie = Object.values(byArtist).some((count) => count >= 3);
+              if (hasGroupie) {
+                await maybeAwardBadge("tickets_groupie", null);
+              }
+            } catch (_) {}
+          })();
+          return next;
+        });
         await supabase.from("user_activity").insert({
           actor_id: user.id,
           type: "add_concert",
@@ -492,8 +632,29 @@ export default function App() {
         return;
       }
     }
-    const localConcert = { ...c, id: c.id || crypto.randomUUID(), is_featured: false };
-    setConcerts((prev) => [localConcert, ...prev]);
+    const localConcert = { ...c, id: c.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), is_featured: false };
+    setConcerts((prev) => {
+      const next = [localConcert, ...prev];
+      (async () => {
+        try {
+          const total = next.length;
+          if (total >= 1) await maybeAwardBadge("tickets_first_concert", { totalConcerts: total });
+          if (total >= 5) await maybeAwardBadge("tickets_5_concerts", { totalConcerts: total });
+          if (total >= 10) await maybeAwardBadge("tickets_10_concerts", { totalConcerts: total });
+          const byArtist = {};
+          next.forEach((r) => {
+            const key = (r.artist || "").trim().toLowerCase();
+            if (!key) return;
+            byArtist[key] = (byArtist[key] || 0) + 1;
+          });
+          const hasGroupie = Object.values(byArtist).some((count) => count >= 3);
+          if (hasGroupie) {
+            await maybeAwardBadge("tickets_groupie", null);
+          }
+        } catch (_) {}
+      })();
+      return next;
+    });
     if (supabase && user?.id) {
       await supabase.from("user_activity").insert({
         actor_id: user.id,
@@ -580,20 +741,39 @@ export default function App() {
         purchase_location: m.purchase_location || null,
       }).select().single();
       if (!error && data) {
-        setMerch((prev) => [
-          {
-            id: data.id,
-            artist_name: data.artist_name,
-            item_name: data.item_name,
-            merch_type: data.merch_type,
-            is_tour_merch: data.is_tour_merch,
-            tour_name: data.tour_name,
-            purchase_price: data.purchase_price,
-            purchase_location: data.purchase_location,
-            is_featured: data.is_featured ?? false,
-          },
-          ...prev,
-        ]);
+        const created = {
+          id: data.id,
+          artist_name: data.artist_name,
+          item_name: data.item_name,
+          merch_type: data.merch_type,
+          is_tour_merch: data.is_tour_merch,
+          tour_name: data.tour_name,
+          purchase_price: data.purchase_price,
+          purchase_location: data.purchase_location,
+          is_featured: data.is_featured ?? false,
+        };
+        setMerch((prev) => {
+          const next = [created, ...prev];
+          (async () => {
+            try {
+              const total = next.length;
+              if (total >= 1) await maybeAwardBadge("merch_first_item", { totalMerch: total });
+              if (total >= 5) await maybeAwardBadge("merch_5_items", { totalMerch: total });
+              if (total >= 10) await maybeAwardBadge("merch_10_items", { totalMerch: total });
+              const byArtist = {};
+              next.forEach((r) => {
+                const key = (r.artist_name || "").trim().toLowerCase();
+                if (!key) return;
+                byArtist[key] = (byArtist[key] || 0) + 1;
+              });
+              const hasCollector = Object.values(byArtist).some((count) => count >= 3);
+              if (hasCollector) {
+                await maybeAwardBadge("merch_collector", null);
+              }
+            } catch (_) {}
+          })();
+          return next;
+        });
         await supabase.from("user_activity").insert({
           actor_id: user.id,
           type: "add_merch",
@@ -602,8 +782,29 @@ export default function App() {
         return;
       }
     }
-    const localMerch = { ...m, id: m.id || crypto.randomUUID(), is_featured: false };
-    setMerch((prev) => [localMerch, ...prev]);
+    const localMerch = { ...m, id: m.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), is_featured: false };
+    setMerch((prev) => {
+      const next = [localMerch, ...prev];
+      (async () => {
+        try {
+          const total = next.length;
+          if (total >= 1) await maybeAwardBadge("merch_first_item", { totalMerch: total });
+          if (total >= 5) await maybeAwardBadge("merch_5_items", { totalMerch: total });
+          if (total >= 10) await maybeAwardBadge("merch_10_items", { totalMerch: total });
+          const byArtist = {};
+          next.forEach((r) => {
+            const key = (r.artist_name || "").trim().toLowerCase();
+            if (!key) return;
+            byArtist[key] = (byArtist[key] || 0) + 1;
+          });
+          const hasCollector = Object.values(byArtist).some((count) => count >= 3);
+          if (hasCollector) {
+            await maybeAwardBadge("merch_collector", null);
+          }
+        } catch (_) {}
+      })();
+      return next;
+    });
     if (supabase && user?.id) {
       await supabase.from("user_activity").insert({
         actor_id: user.id,
@@ -646,6 +847,22 @@ export default function App() {
         }
       }
       setStreamingData(payload);
+      try {
+        if (payload.totalHours >= 100) {
+          await maybeAwardBadge("streams_100_hours", { totalHours: payload.totalHours });
+        }
+        if (payload.totalHours >= 500) {
+          await maybeAwardBadge("streams_500_hours", { totalHours: payload.totalHours });
+        }
+        const topArtist = payload.topArtists?.[0];
+        if (topArtist?.name) {
+          await maybeAwardBadge("streams_most_streamed_artist", { artistName: topArtist.name });
+        }
+        const topTrack = payload.topTracks?.[0];
+        if (topTrack?.name) {
+          await maybeAwardBadge("streams_most_streamed_song", { trackName: topTrack.name });
+        }
+      } catch (_) {}
     } catch (err) {
       if (typeof console !== "undefined") console.error("handleStreamingComplete error:", err);
       // Fall back to local-only state so the UI still updates even if Supabase is down.
@@ -1284,16 +1501,32 @@ export default function App() {
                 vinyl={vinyl}
                 data={streamingData}
                 user={user}
+                youtube={youtubeData}
+                youtubeTakeout={youtubeTakeout}
                 onToggleConcertFeatured={handleToggleConcertFeatured}
                 onToggleVinylFeatured={handleToggleVinylFeatured}
                 onToggleMerchFeatured={handleToggleMerchFeatured}
                 onToggleArtistFeatured={handleToggleArtistFeatured}
-                youtube={youtubeData}
-                youtubeTakeout={youtubeTakeout}
                 onToggleYoutubeChannelFeatured={handleToggleYoutubeChannelFeatured}
                 onPreviewProfile={handleViewPublicProfile}
                 onOpenAvatarPicker={() => setShowAvatarPicker(true)}
                 onSaveUserBio={handleSaveUserBio}
+                badgeDefinitions={badgeDefinitions}
+                userBadges={userBadges}
+                onToggleBadgePublic={async (badgeKey, isPublic) => {
+                  setUserBadges((prev) =>
+                    prev.map((b) =>
+                      b.badge_key === badgeKey ? { ...b, is_public: isPublic } : b,
+                    ),
+                  );
+                  if (supabase && user?.id) {
+                    await supabase
+                      .from("user_badges")
+                      .update({ is_public: isPublic })
+                      .eq("user_id", user.id)
+                      .eq("badge_key", badgeKey);
+                  }
+                }}
               />
             )}
           </div>

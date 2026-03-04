@@ -505,7 +505,9 @@ export default function SearchPage({
       {/* Recent Activity */}
       <SectionTitle>Your Recent Activity</SectionTitle>
       <Card style={{ padding: "12px 16px 8px", marginBottom: 12 }}>
-        {Array.isArray(recentActivity) && recentActivity.length > 0 ? recentActivity.map((item, idx) => (
+        {Array.isArray(recentActivity) && recentActivity.length > 0 ? recentActivity.map((item, idx) => {
+          const isBadge = item.type === "badge_earned";
+          return (
           <div
             key={item.id}
             style={{
@@ -524,11 +526,17 @@ export default function SearchPage({
                 width: 36,
                 height: 36,
                 borderRadius: "50%",
-                background:
-                  "radial-gradient(circle at 30% 0%, #fee2e2, #0ea5e9)",
+                background: isBadge
+                  ? "radial-gradient(circle at 30% 0%, #fef9c3, #22c55e)"
+                  : "radial-gradient(circle at 30% 0%, #fee2e2, #0ea5e9)",
                 flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
-            />
+            >
+              {isBadge ? <span style={{ fontSize: 18 }}>🏅</span> : null}
+            </div>
             <div style={{ flex: 1 }}>
               <div
                 style={{
@@ -581,7 +589,7 @@ export default function SearchPage({
               </div>
             </div>
           </div>
-        )) : (
+        );}) : (
           <div
             style={{
               padding: "8px 4px 4px",

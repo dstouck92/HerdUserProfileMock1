@@ -19,6 +19,9 @@ export default function CurateTab({
   onPreviewProfile,
   onOpenAvatarPicker,
   onSaveUserBio,
+  badgeDefinitions = [],
+  userBadges = [],
+  onToggleBadgePublic,
 }) {
   const [artistSearch, setArtistSearch] = useState("");
   const [youtubeChannelSearch, setYoutubeChannelSearch] = useState("");
@@ -63,6 +66,22 @@ export default function CurateTab({
   const [bioSaving, setBioSaving] = useState(false);
   const [bioError, setBioError] = useState("");
   const [bioMessage, setBioMessage] = useState("");
+
+  const [badgesModalOpen, setBadgesModalOpen] = useState(false);
+
+  const earnedBadges = (userBadges || [])
+    .map((b) => {
+      const def = badgeDefinitions.find((d) => d.key === b.badge_key);
+      return def ? { ...b, def } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      const sa = a.def.sort_order ?? 0;
+      const sb = b.def.sort_order ?? 0;
+      return sa - sb;
+    });
+
+  const publicEarnedBadges = earnedBadges.filter((b) => b.is_public);
 
   useEffect(() => {
     setBioAge(user?.age != null ? String(user.age) : "");
@@ -235,6 +254,113 @@ export default function CurateTab({
               {bioSaving ? "Saving…" : "Save Bio"}
             </button>
           </div>
+        </div>
+      </Card>
+      <Sec icon="🏅" right="Manage" onRightClick={() => setBadgesModalOpen(true)}>
+        Badges
+      </Sec>
+      <Card>
+        <div style={{ padding: "12px 20px 10px" }}>
+          <div
+            style={{
+              fontFamily: F,
+              fontSize: 12,
+              fontWeight: 600,
+              color: "rgba(55,48,107,0.6)",
+              marginBottom: 8,
+            }}
+          >
+            Choose which badges appear on your public profile. You can always change these later.
+          </div>
+          {earnedBadges.length === 0 ? (
+            <div
+              style={{
+                fontFamily: F,
+                fontSize: 13,
+                color: "rgba(55,48,107,0.55)",
+              }}
+            >
+              No badges yet. As you add concerts, merch, connect streaming, and grow your followers, badges will unlock here.
+            </div>
+          ) : publicEarnedBadges.length === 0 ? (
+            <div
+              style={{
+                fontFamily: F,
+                fontSize: 13,
+                color: "rgba(55,48,107,0.55)",
+              }}
+            >
+              You&apos;ve earned {earnedBadges.length} badge{earnedBadges.length > 1 ? "s" : ""}. Tap <span style={{ fontWeight: 600 }}>Manage</span> to pick which to show.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {publicEarnedBadges.slice(0, 6).map((b) => (
+                <div
+                  key={b.id}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    background: "rgba(16,185,129,0.08)",
+                    border: "1px solid rgba(16,185,129,0.35)",
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>{b.def.icon || "🏅"}</span>
+                  <span
+                    style={{
+                      fontFamily: F,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#065f46",
+                    }}
+                  >
+                    {b.def.name}
+                  </span>
+                </div>
+              ))}
+              {publicEarnedBadges.length > 6 && (
+                <span
+                  style={{
+                    fontFamily: F,
+                    fontSize: 12,
+                    color: "rgba(55,48,107,0.7)",
+                  }}
+                >
+                  +{publicEarnedBadges.length - 6} more
+                </span>
+              )}
+            </div>
+          )}
+          {earnedBadges.length > 0 && (
+            <div
+              style={{
+                marginTop: 10,
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setBadgesModalOpen(true)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: "linear-gradient(135deg, #0d9488, #10b981)",
+                  color: "#fff",
+                  fontFamily: F,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: "0 3px 10px rgba(13,148,136,0.3)",
+                }}
+              >
+                Manage Badges
+              </button>
+            </div>
+          )}
         </div>
       </Card>
       {data && data.topArtists.length > 0 && (
@@ -418,6 +544,177 @@ export default function CurateTab({
           Preview Profile
         </Btn>
       </div>
+      {badgesModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 110,
+            background: "rgba(15,23,42,0.6)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setBadgesModalOpen(false);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "80vh",
+              background: "#f9fafb",
+              borderRadius: 18,
+              boxShadow: "0 18px 50px rgba(15,23,42,0.5)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 18px",
+                borderBottom: "1px solid rgba(148,163,184,0.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: F,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              >
+                Manage Badges
+              </div>
+              <button
+                type="button"
+                onClick={() => setBadgesModalOpen(false)}
+                style={{
+                  border: "none",
+                  background: "none",
+                  fontSize: 20,
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                }}
+                aria-label="Close badges manager"
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: "10px 18px 6px" }}>
+              <div
+                style={{
+                  fontFamily: F,
+                  fontSize: 12,
+                  color: "rgba(55,48,107,0.7)",
+                  lineHeight: 1.5,
+                }}
+              >
+                Toggle which earned badges are visible on your public profile. Turning a badge off keeps it saved but hides it from others.
+              </div>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                padding: "0 18px 14px",
+              }}
+            >
+              {earnedBadges.length === 0 ? (
+                <div
+                  style={{
+                    padding: "12px 0 16px",
+                    fontFamily: F,
+                    fontSize: 13,
+                    color: "rgba(55,48,107,0.7)",
+                  }}
+                >
+                  No badges unlocked yet. Come back after you add concerts, merch, connect Spotify/YouTube, or gain followers.
+                </div>
+              ) : (
+                earnedBadges.map((b) => (
+                  <div
+                    key={b.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "8px 0",
+                      borderBottom: "1px solid rgba(226,232,240,0.9)",
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #0f766e, #22c55e)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>{b.def.icon || "🏅"}</span>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontFamily: F,
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: "#0f172a",
+                        }}
+                      >
+                        {b.def.name}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: F,
+                          fontSize: 11,
+                          color: "rgba(55,48,107,0.6)",
+                          marginTop: 2,
+                        }}
+                      >
+                        {b.def.category}
+                        {b.def.description ? ` · ${b.def.description}` : ""}
+                      </div>
+                    </div>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontFamily: F,
+                        fontSize: 11,
+                        color: "rgba(55,48,107,0.8)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        style={{ accentColor: "#0d9488" }}
+                        checked={!!b.is_public}
+                        onChange={(e) =>
+                          onToggleBadgePublic?.(b.badge_key, e.target.checked)
+                        }
+                      />
+                      Show
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       </>
       )}
     </div>
