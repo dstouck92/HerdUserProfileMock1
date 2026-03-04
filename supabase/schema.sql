@@ -10,6 +10,16 @@ create table if not exists public.profiles (
   gender text,
   country text,
   region text,
+  city text,
+  latitude numeric,
+  longitude numeric,
+  country_code text,
+  instagram_handle text,
+  instagram_followers integer,
+  tiktok_handle text,
+  tiktok_followers integer,
+  spotify_profile_id text,
+  spotify_fan_rank integer,
   show_age_public boolean not null default false,
   show_gender_public boolean not null default false,
   show_location_public boolean not null default false,
@@ -163,6 +173,36 @@ begin
   end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'region') then
     alter table public.profiles add column region text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'city') then
+    alter table public.profiles add column city text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'latitude') then
+    alter table public.profiles add column latitude numeric;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'longitude') then
+    alter table public.profiles add column longitude numeric;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'country_code') then
+    alter table public.profiles add column country_code text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'instagram_handle') then
+    alter table public.profiles add column instagram_handle text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'instagram_followers') then
+    alter table public.profiles add column instagram_followers integer;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'tiktok_handle') then
+    alter table public.profiles add column tiktok_handle text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'tiktok_followers') then
+    alter table public.profiles add column tiktok_followers integer;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'spotify_profile_id') then
+    alter table public.profiles add column spotify_profile_id text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'spotify_fan_rank') then
+    alter table public.profiles add column spotify_fan_rank integer;
   end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'show_age_public') then
     alter table public.profiles add column show_age_public boolean not null default false;
