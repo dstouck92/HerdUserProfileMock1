@@ -1,0 +1,550 @@
+import { useState, useCallback, useEffect } from "react";
+import { Card, F } from "./ui";
+
+const inputStyle = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "1px solid rgba(13,148,136,0.25)",
+  background: "rgba(255,255,255,0.9)",
+  fontFamily: F,
+  fontSize: 14,
+  color: "#1e1b4b",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+export default function CurateCardEditor({
+  cardIndex,
+  categories,
+  prompts,
+  selectedPrompt,
+  answer,
+  concerts,
+  vinyl,
+  merch,
+  streamingData,
+  youtubeData,
+  userBadges,
+  badgeDefinitions,
+  onSelectPrompt,
+  onChangeAnswer,
+}) {
+  const [localTexts, setLocalTexts] = useState(() => answer?.texts ?? []);
+  const config = selectedPrompt?.answer_config ?? {};
+  const allowed = config.allowed_answer_types ?? [];
+  const dataSources = config.data_sources ?? [];
+  const textCount = config.text_input_count ?? 1;
+  const labels = config.text_input_labels ?? [];
+  const maxChars = selectedPrompt?.max_characters ?? 200;
+
+  const texts = answer?.texts ?? [];
+  const dataRefs = answer?.data_refs ?? [];
+  const badges = answer?.badges ?? [];
+  const artists = answer?.artists ?? [];
+
+  const emitAnswer = useCallback(
+    (update) => {
+      onChangeAnswer({ ...(answer ?? {}), ...update });
+    },
+    [answer, onChangeAnswer],
+  );
+
+  const handleTextChange = (index, value) => {
+    const next = [...(texts.length ? texts : Array(textCount).fill(""))];
+    next[index] = value.slice(0, maxChars);
+    setLocalTexts(next);
+    emitAnswer({ texts: next });
+  };
+
+  const ensureTexts = () => {
+    const base = texts.length >= textCount ? texts : [...texts, ...Array(Math.max(0, textCount - texts.length)).fill("")];
+    return base.slice(0, textCount);
+  };
+  const currentTexts = ensureTexts();
+
+  const promptsInCategory = (categoryId) => prompts.filter((p) => p.category_id === categoryId);
+
+  const handleAddDataRef = (type, id, metadata) => {
+    const next = [...dataRefs, { type, id, metadata: metadata ?? null }];
+    emitAnswer({ data_refs: next });
+  };
+  const handleRemoveDataRef = (index) => {
+    const next = dataRefs.filter((_, i) => i !== index);
+    emitAnswer({ data_refs: next });
+  };
+
+  const handleToggleBadge = (badgeKey) => {
+    const next = badges.includes(badgeKey) ? badges.filter((b) => b !== badgeKey) : [...badges, badgeKey];
+    emitAnswer({ badges: next });
+  };
+
+  const handleAddArtist = (nameOrObj) => {
+    const entry = typeof nameOrObj === "object" && nameOrObj?.name
+      ? { name: nameOrObj.name.trim(), spotify_id: nameOrObj.spotify_id ?? null }
+      : { name: (nameOrObj || "").trim(), spotify_id: null };
+    if (!entry.name) return;
+    emitAnswer({ artists: [...artists, entry] });
+  };
+  const handleRemoveArtist = (index) => {
+    emitAnswer({ artists: artists.filter((_, i) => i !== index) });
+  };
+
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <div style={{ padding: "14px 18px" }}>
+        <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: "rgba(13,148,136,0.9)", marginBottom: 8, textTransform: "uppercase" }}>
+          Card {cardIndex}
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
+            Category
+          </label>
+          <select
+            value={selectedPrompt ? (selectedPrompt.category_id ?? categories.find((c) => promptsInCategory(c.id).some((p) => p.id === selectedPrompt.id))?.id) ?? "" : ""}
+            onChange={(e) => {
+              const catId = e.target.value;
+              if (!catId) {
+                onSelectPrompt(null);
+                return;
+              }
+              const first = promptsInCategory(catId)[0];
+              onSelectPrompt(first?.id ?? null);
+            }}
+            style={{ ...inputStyle, marginBottom: 8 }}
+          >
+            <option value="">Choose category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {selectedPrompt && (
+            <>
+              <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
+                Question
+              </label>
+              <select
+                value={selectedPrompt.id}
+                onChange={(e) => onSelectPrompt(e.target.value)}
+                style={{ ...inputStyle, marginBottom: 12 }}
+              >
+                {promptsInCategory(selectedPrompt.category_id).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.prompt_text.length > 50 ? p.prompt_text.slice(0, 50) + "…" : p.prompt_text}
+                  </option>
+                ))}
+              </select>
+              <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b", marginBottom: 12, lineHeight: 1.4 }}>
+                {selectedPrompt.prompt_text}
+              </div>
+            </>
+          )}
+        </div>
+
+        {selectedPrompt && (
+          <>
+            {allowed.includes("text") && (
+              <div style={{ marginBottom: 12 }}>
+                {textCount === 1 ? (
+                  <textarea
+                    value={currentTexts[0] ?? ""}
+                    onChange={(e) => handleTextChange(0, e.target.value)}
+                    placeholder="Your answer…"
+                    maxLength={maxChars}
+                    rows={3}
+                    style={{ ...inputStyle, resize: "vertical", minHeight: 72 }}
+                  />
+                ) : (
+                  Array.from({ length: textCount }, (_, i) => (
+                    <div key={i} style={{ marginBottom: 8 }}>
+                      <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
+                        {labels[i] ?? `Part ${i + 1}`}
+                      </label>
+                      <input
+                        type="text"
+                        value={currentTexts[i] ?? ""}
+                        onChange={(e) => handleTextChange(i, e.target.value)}
+                        placeholder=""
+                        maxLength={maxChars}
+                        style={inputStyle}
+                      />
+                    </div>
+                  ))
+                )}
+                <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.5)", marginTop: 4 }}>
+                  {currentTexts.join("").length} / {maxChars} characters
+                </div>
+              </div>
+            )}
+
+            {allowed.includes("data_ref") && dataSources.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 6 }}>
+                  Attach from your profile
+                </div>
+                {dataSources.includes("concerts") && concerts?.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Concerts</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {concerts.slice(0, 10).map((c) => {
+                        const isSelected = dataRefs.some((r) => r.type === "concert" && r.id === c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "concert" && r.id === c.id)) : handleAddDataRef("concert", c.id, { artist: c.artist, date: c.date }))}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
+                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
+                              fontFamily: F,
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {c.artist} {c.date}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {dataSources.includes("vinyl") && vinyl?.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Vinyl</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {vinyl.slice(0, 10).map((v) => {
+                        const isSelected = dataRefs.some((r) => r.type === "vinyl" && r.id === v.id);
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "vinyl" && r.id === v.id)) : handleAddDataRef("vinyl", v.id, { artist_name: v.artist_name, album_name: v.album_name }))}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
+                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
+                              fontFamily: F,
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {v.artist_name} – {v.album_name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {dataSources.includes("merch") && merch?.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Merch</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {merch.slice(0, 10).map((m) => {
+                        const isSelected = dataRefs.some((r) => r.type === "merch" && r.id === m.id);
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "merch" && r.id === m.id)) : handleAddDataRef("merch", m.id, { artist_name: m.artist_name, item_name: m.item_name }))}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
+                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
+                              fontFamily: F,
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {m.artist_name} – {m.item_name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {dataSources.includes("streaming") && streamingData?.topArtists?.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Top artists</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {(streamingData.topArtists ?? []).slice(0, 10).map((a) => {
+                        const isSelected = dataRefs.some((r) => r.type === "streaming" && r.metadata?.name === a.name);
+                        return (
+                          <button
+                            key={a.name}
+                            type="button"
+                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "streaming" && r.metadata?.name === a.name)) : handleAddDataRef("streaming", null, { name: a.name, hours: a.hours }))}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
+                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
+                              fontFamily: F,
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {a.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {dataSources.includes("youtube") && youtubeData?.featured_youtube_channels?.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>YouTube channels</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {(youtubeData.featured_youtube_channels ?? []).slice(0, 8).map((ch) => {
+                        const key = ch.channelId || ch.channelTitle;
+                        const isSelected = dataRefs.some((r) => r.type === "youtube" && (r.metadata?.channelTitle === ch.channelTitle || r.metadata?.channelId === ch.channelId));
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => (isSelected ? handleRemoveDataRef(dataRefs.findIndex((r) => r.type === "youtube" && (r.metadata?.channelTitle === ch.channelTitle || r.metadata?.channelId === ch.channelId))) : handleAddDataRef("youtube", ch.channelId, { channelTitle: ch.channelTitle, channelId: ch.channelId }))}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
+                              background: isSelected ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.8)",
+                              fontFamily: F,
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {ch.channelTitle || ch.channelId}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {allowed.includes("badges") && userBadges?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 6 }}>
+                  Attach badges
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {userBadges.map((ub) => {
+                    const def = badgeDefinitions.find((d) => d.key === ub.badge_key);
+                    const isSelected = badges.includes(ub.badge_key) || badges.includes(ub.id);
+                    return (
+                      <label
+                        key={ub.id}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          border: isSelected ? "2px solid #0d9488" : "1px solid rgba(13,148,136,0.3)",
+                          background: isSelected ? "rgba(13,148,136,0.1)" : "rgba(255,255,255,0.8)",
+                          cursor: "pointer",
+                          fontFamily: F,
+                          fontSize: 12,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleBadge(ub.badge_key)}
+                          style={{ accentColor: "#0d9488" }}
+                        />
+                        <span>{def?.icon ?? "🏅"}</span>
+                        <span>{def?.name ?? ub.badge_key}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {allowed.includes("artist") && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 6 }}>
+                  Artist(s)
+                </div>
+                <ArtistInput
+                  onAdd={handleAddArtist}
+                  artists={artists}
+                  onRemove={handleRemoveArtist}
+                  supportsSpotifySearch={!!config.supports_spotify_search}
+                  supportsManualEntry={config.supports_manual_artist_entry !== false}
+                />
+              </div>
+            )}
+
+            {allowed.includes("images") && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 6 }}>
+                  Photos
+                </div>
+                <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>
+                  Photo upload will be available when you save this card.
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function ArtistInput({ onAdd, artists, onRemove, supportsSpotifySearch, supportsManualEntry }) {
+  const [input, setInput] = useState("");
+  const [spotifyResults, setSpotifyResults] = useState([]);
+  const [spotifyLoading, setSpotifyLoading] = useState(false);
+  const [spotifyError, setSpotifyError] = useState(null);
+
+  const searchSpotify = useCallback(async (q) => {
+    if (!q.trim() || !supportsSpotifySearch) return;
+    setSpotifyLoading(true);
+    setSpotifyError(null);
+    setSpotifyResults([]);
+    try {
+      const res = await fetch(`/api/spotify/search-artists?q=${encodeURIComponent(q.trim())}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || data?.details || res.statusText);
+      setSpotifyResults(data.artists ?? []);
+    } catch (err) {
+      setSpotifyError(err.message || "Search failed");
+      setSpotifyResults([]);
+    } finally {
+      setSpotifyLoading(false);
+    }
+  }, [supportsSpotifySearch]);
+
+  useEffect(() => {
+    if (!supportsSpotifySearch || input.trim().length < 2) {
+      setSpotifyResults([]);
+      setSpotifyError(null);
+      return;
+    }
+    const t = setTimeout(() => searchSpotify(input), 350);
+    return () => clearTimeout(t);
+  }, [input, supportsSpotifySearch, searchSpotify]);
+
+  const handleAddFromSpotify = (artist) => {
+    onAdd({ name: artist.name, spotify_id: artist.id });
+    setInput("");
+    setSpotifyResults([]);
+    setSpotifyError(null);
+  };
+
+  const handleAddManual = () => {
+    const trimmed = (input || "").trim();
+    if (!trimmed) return;
+    onAdd({ name: trimmed, spotify_id: null });
+    setInput("");
+    setSpotifyResults([]);
+    setSpotifyError(null);
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (spotifyResults.length === 1) handleAddFromSpotify(spotifyResults[0]);
+              else if (supportsManualEntry) handleAddManual();
+            }
+          }}
+          placeholder={supportsSpotifySearch ? "Search artist or type name" : "Type artist name"}
+          style={inputStyle}
+        />
+        {supportsManualEntry && (
+          <button
+            type="button"
+            onClick={handleAddManual}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "none",
+              background: "linear-gradient(135deg, #0d9488, #10b981)",
+              color: "#fff",
+              fontFamily: F,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Add
+          </button>
+        )}
+      </div>
+      {supportsSpotifySearch && (
+        <>
+          {spotifyLoading && <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Searching Spotify…</div>}
+          {spotifyError && <div style={{ fontFamily: F, fontSize: 11, color: "#b91c1c", marginBottom: 4 }}>{spotifyError}</div>}
+          {!spotifyLoading && spotifyResults.length > 0 && (
+            <div style={{ marginBottom: 8, maxHeight: 160, overflow: "auto", border: "1px solid rgba(13,148,136,0.2)", borderRadius: 10, padding: 6 }}>
+              {spotifyResults.slice(0, 8).map((artist) => (
+                <button
+                  key={artist.id}
+                  type="button"
+                  onClick={() => handleAddFromSpotify(artist)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 10px",
+                    border: "none",
+                    borderBottom: "1px solid rgba(0,0,0,0.06)",
+                    background: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: F,
+                    fontSize: 13,
+                    color: "#1e1b4b",
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>{artist.name}</span>
+                  <span style={{ fontSize: 11, color: "#0d9488", fontWeight: 600 }}>+ Add</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {artists?.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {artists.map((a, i) => (
+            <span
+              key={i}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 10px",
+                borderRadius: 8,
+                background: "rgba(13,148,136,0.1)",
+                border: "1px solid rgba(13,148,136,0.3)",
+                fontFamily: F,
+                fontSize: 12,
+              }}
+            >
+              {typeof a === "object" ? a.name : a}
+              <button type="button" onClick={() => onRemove(i)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 14, color: "#0d9488" }} aria-label="Remove">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

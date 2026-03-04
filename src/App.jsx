@@ -163,7 +163,7 @@ export default function App() {
       const { data: profile, error } = await supabase
         .from("profiles")
         .select(
-          "id, display_name, username, avatar_id, profile_image_url, age, gender, country, region, show_age_public, show_gender_public, show_location_public",
+          "id, display_name, username, avatar_id, profile_image_url, age, gender, country, region, show_age_public, show_gender_public, show_location_public, public_profile_theme",
         )
         .eq("id", session.user.id)
         .maybeSingle();
@@ -1086,6 +1086,12 @@ export default function App() {
     );
   };
 
+  const handleSaveProfileTheme = async (theme) => {
+    if (!supabase || !user?.id) return;
+    const { error } = await supabase.from("profiles").update({ public_profile_theme: theme }).eq("id", user.id);
+    if (!error) setUser((prev) => (prev ? { ...prev, public_profile_theme: theme } : prev));
+  };
+
   const handleToggleArtistFeatured = async (artistName, isFeatured) => {
     if (!streamingData) return;
     let nextFeatured = streamingData.featuredArtists || [];
@@ -1565,11 +1571,6 @@ export default function App() {
                 user={user}
                 youtube={youtubeData}
                 youtubeTakeout={youtubeTakeout}
-                onToggleConcertFeatured={handleToggleConcertFeatured}
-                onToggleVinylFeatured={handleToggleVinylFeatured}
-                onToggleMerchFeatured={handleToggleMerchFeatured}
-                onToggleArtistFeatured={handleToggleArtistFeatured}
-                onToggleYoutubeChannelFeatured={handleToggleYoutubeChannelFeatured}
                 onPreviewProfile={handleViewPublicProfile}
                 onOpenAvatarPicker={() => setShowAvatarPicker(true)}
                 onSaveUserBio={handleSaveUserBio}
@@ -1589,6 +1590,8 @@ export default function App() {
                       .eq("badge_key", badgeKey);
                   }
                 }}
+                publicProfileTheme={user?.public_profile_theme}
+                onSaveProfileTheme={handleSaveProfileTheme}
               />
             )}
           </div>
