@@ -24,7 +24,7 @@ export default function CurateTab({
   const [prompts, setPrompts] = useState([]);
   const [userCards, setUserCards] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState({}); // cardIndex -> 'saving' | 'saved' | 'error'
+  const [curateSaveStatus, setCurateSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
 
   const [bioAge, setBioAge] = useState(user?.age != null ? String(user.age) : "");
   const [bioGender, setBioGender] = useState(user?.gender || "");
@@ -97,63 +97,58 @@ export default function CurateTab({
     [userCards, prompts],
   );
 
-  const saveCard = useCallback(
-    async (cardIndex, promptId, answer) => {
-      if (!supabase || !user?.id) return;
-      setSaveStatus((s) => ({ ...s, [cardIndex]: "saving" }));
-      const payload = {
-        user_id: user.id,
-        card_index: cardIndex,
-        prompt_id: promptId || null,
-        answer: answer && Object.keys(answer).length ? answer : {},
-        updated_at: new Date().toISOString(),
-      };
-      const { data: existing } = await supabase.from("user_curate_cards").select("id").eq("user_id", user.id).eq("card_index", cardIndex).maybeSingle();
-      const { error } = existing
-        ? await supabase.from("user_curate_cards").update({ prompt_id: payload.prompt_id, answer: payload.answer, updated_at: payload.updated_at }).eq("user_id", user.id).eq("card_index", cardIndex)
-        : await supabase.from("user_curate_cards").insert(payload);
-      setSaveStatus((s) => ({ ...s, [cardIndex]: error ? "error" : "saved" }));
-      if (!error) {
-        setUserCards((prev) => ({
-          ...prev,
-          [cardIndex]: { ...(prev[cardIndex] ?? {}), prompt_id: promptId, answer: payload.answer, updated_at: payload.updated_at },
-        }));
+  const handleSelectPrompt = useCallback((cardIndex, promptId) => {
+    setUserCards((prev) => {
+      const next = { ...prev };
+      const existing = next[cardIndex];
+      next[cardIndex] = { ...existing, prompt_id: promptId, answer: existing?.answer ?? {} };
+      return next;
+    });
+  }, []);
+
+  const handleChangeAnswer = useCallback((cardIndex, answerUpdate) => {
+    setUserCards((prev) => {
+      const next = { ...prev };
+      const existing = next[cardIndex];
+      const currentAnswer = existing?.answer ?? {};
+      const newAnswer = { ...currentAnswer, ...answerUpdate };
+      next[cardIndex] = { ...existing, answer: newAnswer };
+      return next;
+    });
+  }, []);
+
+  const handleSaveAllCurate = useCallback(async () => {
+    if (!supabase || !user?.id) return;
+    setCurateSaveStatus("saving");
+    let hadError = false;
+    try {
+      for (let cardIndex = 1; cardIndex <= 5; cardIndex++) {
+        const row = userCards[cardIndex];
+        const promptId = row?.prompt_id ?? null;
+        const answer = row?.answer ?? {};
+        const payload = {
+          user_id: user.id,
+          card_index: cardIndex,
+          prompt_id: promptId || null,
+          answer: answer && Object.keys(answer).length ? answer : {},
+          updated_at: new Date().toISOString(),
+        };
+        const { data: existing } = await supabase.from("user_curate_cards").select("id").eq("user_id", user.id).eq("card_index", cardIndex).maybeSingle();
+        const { error } = existing
+          ? await supabase.from("user_curate_cards").update({ prompt_id: payload.prompt_id, answer: payload.answer, updated_at: payload.updated_at }).eq("user_id", user.id).eq("card_index", cardIndex)
+          : await supabase.from("user_curate_cards").insert(payload);
+        if (error) {
+          hadError = true;
+          if (import.meta.env?.DEV) console.error("Curate card save error:", error);
+        }
       }
-      if (error && import.meta.env?.DEV) console.error("Curate card save error:", error);
-      setTimeout(() => setSaveStatus((s) => ({ ...s, [cardIndex]: undefined })), 2000);
-    },
-    [user?.id],
-  );
-
-  const handleSelectPrompt = useCallback(
-    (cardIndex, promptId) => {
-      setUserCards((prev) => {
-        const next = { ...prev };
-        const existing = next[cardIndex];
-        next[cardIndex] = { ...existing, prompt_id: promptId, answer: existing?.answer ?? {} };
-        return next;
-      });
-      const prompt = prompts.find((p) => p.id === promptId);
-      const answer = getCardState(cardIndex).answer;
-      saveCard(cardIndex, promptId, answer);
-    },
-    [prompts, getCardState, saveCard],
-  );
-
-  const handleChangeAnswer = useCallback(
-    (cardIndex, answerUpdate) => {
-      const current = getCardState(cardIndex);
-      const newAnswer = { ...(current.answer ?? {}), ...answerUpdate };
-      setUserCards((prev) => {
-        const next = { ...prev };
-        const existing = next[cardIndex];
-        next[cardIndex] = { ...existing, answer: newAnswer };
-        return next;
-      });
-      saveCard(cardIndex, current.promptId, newAnswer);
-    },
-    [getCardState, saveCard],
-  );
+      setCurateSaveStatus(hadError ? "error" : "saved");
+    } catch (e) {
+      setCurateSaveStatus("error");
+      if (import.meta.env?.DEV) console.error("Curate save error:", e);
+    }
+    setTimeout(() => setCurateSaveStatus(null), 2500);
+  }, [user?.id, userCards]);
 
   const formatBadgeTitle = (b) => {
     const meta = b.metadata || {};
@@ -240,6 +235,29 @@ export default function CurateTab({
         <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e", marginBottom: 4 }}>✨ Curate Your Public Profile</div>
         <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", lineHeight: 1.5 }}>
           Pick 5 prompts and answer them with text, photos, your digital/physical/live data, and badges. Tap your avatar above to change profile picture.
+        </div>
+        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={handleSaveAllCurate}
+            disabled={curateSaveStatus === "saving"}
+            style={{
+              padding: "10px 18px",
+              borderRadius: 12,
+              border: "none",
+              background: curateSaveStatus === "saving" ? "rgba(13,148,136,0.5)" : "linear-gradient(135deg, #0d9488, #10b981)",
+              color: "#fff",
+              fontFamily: F,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: curateSaveStatus === "saving" ? "default" : "pointer",
+              boxShadow: curateSaveStatus === "saving" ? "none" : "0 3px 12px rgba(13,148,136,0.35)",
+            }}
+          >
+            {curateSaveStatus === "saving" ? "Saving…" : "Save Changes"}
+          </button>
+          {curateSaveStatus === "saved" && <span style={{ fontFamily: F, fontSize: 13, color: "#15803d", fontWeight: 600 }}>Saved</span>}
+          {curateSaveStatus === "error" && <span style={{ fontFamily: F, fontSize: 13, color: "#b91c1c", fontWeight: 600 }}>Save failed. Try again.</span>}
         </div>
       </div>
 
@@ -355,9 +373,8 @@ export default function CurateTab({
       <Sec icon="📝">Your 5 profile cards</Sec>
       {[1, 2, 3, 4, 5].map((cardIndex) => {
         const { promptId, prompt, answer } = getCardState(cardIndex);
-        const status = saveStatus[cardIndex];
         return (
-          <div key={cardIndex} style={{ position: "relative" }}>
+          <div key={cardIndex}>
             <CurateCardEditor
               cardIndex={cardIndex}
               categories={categories}
@@ -374,16 +391,32 @@ export default function CurateTab({
               onSelectPrompt={(promptId) => handleSelectPrompt(cardIndex, promptId)}
               onChangeAnswer={(update) => handleChangeAnswer(cardIndex, update)}
             />
-            {status && (
-              <div style={{ position: "absolute", top: 14, right: 18, fontFamily: F, fontSize: 11, color: status === "saved" ? "#15803d" : status === "error" ? "#b91c1c" : "rgba(55,48,107,0.6)" }}>
-                {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "Error saving"}
-              </div>
-            )}
           </div>
         );
       })}
 
-      <div style={{ margin: "8px 20px 20px", display: "flex", gap: 10 }}>
+      <div style={{ margin: "8px 20px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <button
+          type="button"
+          onClick={handleSaveAllCurate}
+          disabled={curateSaveStatus === "saving"}
+          style={{
+            padding: "14px",
+            borderRadius: 14,
+            border: "none",
+            background: curateSaveStatus === "saving" ? "rgba(13,148,136,0.5)" : "linear-gradient(135deg, #0d9488, #10b981)",
+            color: "#fff",
+            fontFamily: F,
+            fontSize: 15,
+            fontWeight: 700,
+            cursor: curateSaveStatus === "saving" ? "default" : "pointer",
+            boxShadow: curateSaveStatus === "saving" ? "none" : "0 4px 16px rgba(13,148,136,0.35)",
+          }}
+        >
+          {curateSaveStatus === "saving" ? "Saving…" : "Save Changes"}
+        </button>
+        {curateSaveStatus === "saved" && <span style={{ fontFamily: F, fontSize: 13, color: "#15803d", fontWeight: 600, textAlign: "center" }}>Your curate section and public profile have been updated.</span>}
+        {curateSaveStatus === "error" && <span style={{ fontFamily: F, fontSize: 13, color: "#b91c1c", fontWeight: 600, textAlign: "center" }}>Save failed. Try again.</span>}
         <Btn style={{ flex: 1 }} onClick={onPreviewProfile}>Preview Profile</Btn>
       </div>
 
