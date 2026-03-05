@@ -42,6 +42,7 @@ export default function CurateTab({
   const [curateMode, setCurateMode] = useState("edit"); // 'edit' | 'view'
   const touchStartXRef = useRef(null);
   const [openCardIndex, setOpenCardIndex] = useState(null);
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
 
   const themeOptions = [
     { id: "default", label: "Default", bg: "linear-gradient(135deg, #e0f2fe, #ccfbf1)", border: "rgba(13,148,136,0.4)" },
@@ -316,33 +317,133 @@ export default function CurateTab({
         <>
 
       <Sec icon="🎨">Profile theme</Sec>
-      <Card>
-        <div style={{ padding: "12px 20px" }}>
-          <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 10 }}>Choose how your public profile looks</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {themeOptions.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onSaveProfileTheme?.(t.id)}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  border: (publicProfileTheme || "default") === t.id ? `2px solid ${t.border}` : "1px solid rgba(13,148,136,0.2)",
-                  background: t.bg,
-                  fontFamily: F,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  color: t.id === "black_purple" ? "#e9d5ff" : "#1e1b4b",
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
+      <Card
+        style={{ cursor: "pointer" }}
+        onClick={() => setThemeModalOpen(true)}
+      >
+        <div style={{ padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: currentTheme.bg,
+                border: `1px solid ${currentTheme.border}`,
+              }}
+            />
+            <div>
+              <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 2 }}>
+                Current theme
+              </div>
+              <div style={{ fontFamily: F, fontSize: 13, color: "#1e1b4b", fontWeight: 600 }}>
+                {currentTheme.label}
+              </div>
+            </div>
           </div>
+          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0d9488" }}>Change</span>
         </div>
       </Card>
+
+      {themeModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 115, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setThemeModalOpen(false);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "80vh",
+              background: "#f9fafb",
+              borderRadius: 18,
+              boxShadow: "0 20px 60px rgba(15,23,42,0.5)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "12px 18px",
+                borderBottom: "1px solid rgba(148,163,184,0.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Choose profile theme</span>
+              <button
+                type="button"
+                onClick={() => setThemeModalOpen(false)}
+                style={{ border: "none", background: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ padding: "12px 18px 16px", overflow: "auto" }}>
+              <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.7)", marginBottom: 10 }}>
+                Pick a color story for your public profile cards.
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {themeOptions.map((t) => {
+                  const isActive = (publicProfileTheme || "default") === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => onSaveProfileTheme?.(t.id)}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        borderRadius: 14,
+                        padding: "10px 12px",
+                        border: isActive ? `2px solid ${t.border}` : "1px solid rgba(148,163,184,0.6)",
+                        background: t.bg,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 999,
+                            border: "1px solid rgba(255,255,255,0.8)",
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: F,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: t.id === "black_purple" ? "#e9d5ff" : "#1e1b4b",
+                          }}
+                        >
+                          {t.label}
+                        </span>
+                      </div>
+                      {isActive && (
+                        <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "#0f766e" }}>
+                          Selected
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Sec icon="👤">User Bio</Sec>
       <Card

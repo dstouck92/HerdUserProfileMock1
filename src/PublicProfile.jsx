@@ -149,11 +149,11 @@ export default function PublicProfile({ username: usernameProp, embedded = false
 
   if (!supabase) {
     if (embedded) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: F, fontSize: 14, color: '#0f766e' }}>
-          Public profiles require Supabase to be configured.
-        </div>
-      );
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: F, fontSize: 14, color: '#0f766e' }}>
+        Public profiles require Supabase to be configured.
+      </div>
+    );
     }
     return (
       <GradientBg>
@@ -166,11 +166,11 @@ export default function PublicProfile({ username: usernameProp, embedded = false
 
   if (loading) {
     if (embedded) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: F, fontSize: 14, color: '#0f766e' }}>
-          Loading profile…
-        </div>
-      );
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: F, fontSize: 14, color: '#0f766e' }}>
+        Loading profile…
+      </div>
+    );
     }
     return (
       <GradientBg>
@@ -183,12 +183,12 @@ export default function PublicProfile({ username: usernameProp, embedded = false
 
   if (error || !profile) {
     if (embedded) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <div style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: '#1e1b4b', marginBottom: 6 }}>Profile not found</div>
-          <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)' }}>{error || 'This profile does not exist.'}</div>
-        </div>
-      );
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+        <div style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: '#1e1b4b', marginBottom: 6 }}>Profile not found</div>
+        <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)' }}>{error || 'This profile does not exist.'}</div>
+      </div>
+    );
     }
     return (
       <GradientBg>
@@ -315,16 +315,16 @@ export default function PublicProfile({ username: usernameProp, embedded = false
     const defByKey = (badgeDefs || []).reduce((acc, d) => { acc[d.key] = d; return acc; }, {});
 
     return (
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 12 }}>
         {mainText && (
-          <div style={{ fontFamily: F, fontSize: 15, color: theme.text, lineHeight: 1.5, marginBottom: (dataRefs.length || badgeKeys.length || artists.length || images.length) ? 10 : 0 }}>
+          <div style={{ fontFamily: F, fontSize: 17, fontWeight: 600, color: theme.text, lineHeight: 1.6, marginBottom: (dataRefs.length || badgeKeys.length || artists.length || images.length) ? 12 : 0 }}>
             {mainText}
           </div>
         )}
         {images.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
             {images.map((img, i) => (
-              <img key={i} src={img.url} alt="" style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', border: `1px solid ${theme.accent}` }} />
+              <img key={i} src={img.url} alt="" style={{ width: 96, height: 96, borderRadius: 12, objectFit: 'cover', border: `1px solid ${theme.accent}` }} />
             ))}
           </div>
         )}
@@ -493,15 +493,16 @@ export default function PublicProfile({ username: usernameProp, embedded = false
             key={card.id}
             style={{
               margin: '0 16px 16px',
-              padding: '16px 18px',
+              padding: '20px 20px',
               background: theme.cardBg,
-              backdropFilter: 'blur(16px)',
-              borderRadius: 16,
+              backdropFilter: 'blur(18px)',
+              borderRadius: 20,
               border: `1px solid ${theme.cardBorder}`,
-              boxShadow: `0 2px 16px ${theme.accent}20`,
+              boxShadow: `0 6px 22px ${theme.accent}26`,
+              minHeight: 140,
             }}
           >
-            <div style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: theme.muted, marginBottom: 6 }}>
+            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, letterSpacing: 0.2, color: theme.muted, marginBottom: 4 }}>
               {card.prompt.prompt_text}
             </div>
             {renderCardAnswer(card)}
