@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, F, AvatarSprite } from "./ui";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme, themes } from "../context/ThemeContext";
 import { useDebounce } from "../hooks/useDebounce";
 
 const fallbackArtists = [
@@ -27,7 +27,8 @@ export default function SearchPage({
   recommendedArtists,
   recentActivity,
 }) {
-  const { theme } = useTheme();
+  const { theme: themeFromContext } = useTheme();
+  const theme = themeFromContext ?? themes.dark;
   const [query, setQuery] = useState("");
   const [spotifyResults, setSpotifyResults] = useState([]);
   const [spotifyLoading, setSpotifyLoading] = useState(false);
@@ -156,7 +157,7 @@ export default function SearchPage({
           alignItems: "flex-start",
           gap: 10,
           paddingBottom: isLast ? 4 : 12,
-          borderBottom: isLast ? "none" : "1px solid rgba(148,163,184,0.3)",
+          borderBottom: isLast ? "none" : theme.cardBorder,
         }}
       >
         <div
@@ -192,7 +193,7 @@ export default function SearchPage({
             style={{
               fontFamily: F,
               fontSize: 11,
-              color: "rgba(55,48,107,0.6)",
+              color: theme.textMuted,
               marginBottom: 4,
             }}
           >
@@ -202,7 +203,7 @@ export default function SearchPage({
             style={{
               fontFamily: F,
               fontSize: 11,
-              color: "rgba(148,163,184,0.9)",
+              color: theme.textMuted,
               marginBottom: 6,
             }}
           >
@@ -215,7 +216,7 @@ export default function SearchPage({
               justifyContent: "space-between",
               fontFamily: F,
               fontSize: 11,
-              color: "rgba(148,163,184,0.9)",
+              color: theme.textMuted,
             }}
           >
             <div style={{ display: "flex", gap: 12 }}>
@@ -241,12 +242,12 @@ export default function SearchPage({
             gap: 8,
             padding: "10px 14px",
             borderRadius: 999,
-            background: "rgba(255,255,255,0.9)",
-            boxShadow: "0 4px 16px rgba(15,23,42,0.08)",
-            border: "1px solid rgba(148,163,184,0.3)",
+            background: theme.cardBg,
+            boxShadow: theme.cardShadow,
+            border: theme.cardBorder,
           }}
         >
-          <span style={{ fontSize: 18, color: "rgba(15,23,42,0.4)" }}>🔍</span>
+          <span style={{ fontSize: 18, color: theme.textMuted }}>🔍</span>
           <input
             type="text"
             value={query}
@@ -275,7 +276,7 @@ export default function SearchPage({
                   padding: "8px 12px",
                   fontFamily: F,
                   fontSize: 12,
-                  color: "rgba(55,48,107,0.7)",
+                  color: theme.textMuted,
                 }}
               >
                 Searching Spotify…
@@ -287,7 +288,7 @@ export default function SearchPage({
                   padding: "8px 12px",
                   fontFamily: F,
                   fontSize: 12,
-                  color: "#b91c1c",
+                  color: theme.accent,
                 }}
               >
                 {spotifyError}
@@ -299,7 +300,7 @@ export default function SearchPage({
                   padding: "8px 12px",
                   fontFamily: F,
                   fontSize: 12,
-                  color: "rgba(55,48,107,0.7)",
+                  color: theme.textMuted,
                 }}
               >
                 No matches yet. Try another name.
@@ -315,7 +316,7 @@ export default function SearchPage({
                     fontWeight: 600,
                     textTransform: "uppercase",
                     letterSpacing: 0.4,
-                    color: "rgba(55,48,107,0.7)",
+                    color: theme.textMuted,
                   }}
                 >
                   Spotify artists
@@ -330,7 +331,7 @@ export default function SearchPage({
                       alignItems: "center",
                       justifyContent: "space-between",
                       padding: "8px 12px",
-                      borderBottom: "1px solid rgba(148,163,184,0.25)",
+                      borderBottom: theme.cardBorder,
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -347,7 +348,7 @@ export default function SearchPage({
                             fontFamily: F,
                             fontSize: 13,
                             fontWeight: 600,
-                            color: "#0f172a",
+                            color: theme.text,
                           }}
                         >
                           {artist.name}
@@ -356,7 +357,7 @@ export default function SearchPage({
                           style={{
                             fontFamily: F,
                             fontSize: 11,
-                            color: "rgba(55,48,107,0.6)",
+                            color: theme.textMuted,
                           }}
                         >
                           Spotify Artist
@@ -418,7 +419,7 @@ export default function SearchPage({
                     fontWeight: 600,
                     textTransform: "uppercase",
                     letterSpacing: 0.4,
-                    color: "rgba(55,48,107,0.7)",
+                    color: theme.textMuted,
                   }}
                 >
                   People & fan clubs
@@ -434,7 +435,7 @@ export default function SearchPage({
                         alignItems: "center",
                         justifyContent: "space-between",
                         padding: "8px 12px",
-                        borderBottom: "1px solid rgba(148,163,184,0.25)",
+                        borderBottom: theme.cardBorder,
                       }}
                     >
                       <div>
@@ -443,7 +444,7 @@ export default function SearchPage({
                             fontFamily: F,
                             fontSize: 13,
                             fontWeight: 600,
-                            color: "#0f172a",
+                            color: theme.text,
                           }}
                         >
                           {item.name}
@@ -452,7 +453,7 @@ export default function SearchPage({
                           style={{
                             fontFamily: F,
                             fontSize: 11,
-                            color: "rgba(55,48,107,0.6)",
+                            color: theme.textMuted,
                           }}
                         >
                           {item.subtitle}
@@ -471,7 +472,7 @@ export default function SearchPage({
                               fontFamily: F,
                               fontSize: 10,
                               fontWeight: 600,
-                              color: "#0f172a",
+                              color: theme.text,
                               cursor: "pointer",
                             }}
                           >
@@ -547,7 +548,7 @@ export default function SearchPage({
             padding: "0 16px 4px",
             fontFamily: F,
             fontSize: 11,
-            color: "rgba(55,48,107,0.6)",
+            color: theme.textMuted,
           }}
         >
           Tap Follow to add artists to track.
@@ -581,7 +582,7 @@ export default function SearchPage({
               padding: "8px 16px 10px",
               fontFamily: F,
               fontSize: 12,
-              color: "rgba(55,48,107,0.7)",
+              color: theme.textMuted,
             }}
           >
             No friends to recommend yet. Invite others to join Herd to see them here.
@@ -639,7 +640,7 @@ export default function SearchPage({
               padding: "8px 4px 4px",
               fontFamily: F,
               fontSize: 12,
-              color: "rgba(55,48,107,0.7)",
+              color: theme.textMuted,
             }}
           >
             No recent activity yet. As you add concerts, merch, and follow fans, updates will appear here.
@@ -653,7 +654,7 @@ export default function SearchPage({
             position: "fixed",
             inset: 0,
             zIndex: 100,
-            background: "rgba(15,23,42,0.5)",
+            background: theme.modalOverlay,
             backdropFilter: "blur(8px)",
             display: "flex",
             alignItems: "center",
@@ -669,9 +670,10 @@ export default function SearchPage({
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
-              background: "#fff",
+              background: theme.modalBg,
               borderRadius: 20,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+              boxShadow: theme.cardShadow,
+              border: theme.modalBorder,
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -684,7 +686,7 @@ export default function SearchPage({
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "12px 16px",
-                borderBottom: "1px solid rgba(13,148,136,0.12)",
+                borderBottom: theme.cardBorder,
               }}
             >
               <span
@@ -704,7 +706,7 @@ export default function SearchPage({
                   border: "none",
                   background: "none",
                   fontSize: 22,
-                  color: "#94a3b8",
+                  color: theme.textMuted,
                   cursor: "pointer",
                   padding: 4,
                 }}
@@ -730,7 +732,7 @@ export default function SearchPage({
                     padding: "8px 4px 4px",
                     fontFamily: F,
                     fontSize: 12,
-                    color: "rgba(55,48,107,0.7)",
+                    color: theme.textMuted,
                   }}
                 >
                   No recent activity yet. As you add concerts, merch, and follow fans, updates will appear here.

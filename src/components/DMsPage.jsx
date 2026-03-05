@@ -323,7 +323,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
 
   if (!me) {
     return (
-      <div style={{ padding: 24, fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.7)" }}>
+      <div style={{ padding: 24, fontFamily: F, fontSize: 14, color: theme.textMuted }}>
         Sign in to use DMs.
       </div>
     );
@@ -341,14 +341,16 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
             width: "100%",
             padding: "10px 14px",
             borderRadius: 12,
-            border: "1px solid rgba(13,148,136,0.25)",
+            border: theme.inputBorder,
+            background: theme.inputBg,
+            color: theme.inputText,
             fontFamily: F,
             fontSize: 14,
             boxSizing: "border-box",
           }}
         />
         {searching && (
-          <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", marginTop: 6 }}>Searching…</div>
+          <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted, marginTop: 6 }}>Searching…</div>
         )}
         {debouncedQ.trim() && searchResults.length > 0 && (
           <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -364,9 +366,9 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: "8px 12px",
-                    background: "rgba(255,255,255,0.6)",
+                    background: theme.cardBg,
                     borderRadius: 12,
-                    border: "1px solid rgba(13,148,136,0.12)",
+                    border: theme.cardBorder,
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -376,7 +378,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                         {displayName(p)}
                       </div>
                       {p.username && (
-                        <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>@{p.username}</div>
+                        <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted }}>@{p.username}</div>
                       )}
                     </div>
                   </div>
@@ -393,8 +395,8 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                         padding: "6px 12px",
                         borderRadius: 999,
                         border: "none",
-                        background: "linear-gradient(135deg, #0d9488, #10b981)",
-                        color: "#fff",
+                        background: theme.btnPrimaryBg,
+                        color: theme.btnPrimaryText,
                         fontFamily: F,
                         fontSize: 12,
                         fontWeight: 600,
@@ -406,7 +408,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   ) : fromThem ? (
                     <span style={{ fontFamily: F, fontSize: 12, color: theme.accent }}>Accept in requests below</span>
                   ) : fromMe ? (
-                    <span style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>Request sent</span>
+                    <span style={{ fontFamily: F, fontSize: 12, color: theme.textMuted }}>Request sent</span>
                   ) : (
                     <button
                       type="button"
@@ -414,8 +416,8 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                       style={{
                         padding: "6px 12px",
                         borderRadius: 999,
-                        border: "1px solid rgba(13,148,136,0.5)",
-                        background: "rgba(16,185,129,0.12)",
+                        border: theme.btnSecondaryBorder,
+                        background: theme.accentLight,
                         color: theme.accent,
                         fontFamily: F,
                         fontSize: 12,
@@ -450,7 +452,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                       <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text }}>
                         {displayName(p)}
                       </div>
-                      <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>
+                      <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted }}>
                         wants to start a conversation
                       </div>
                     </div>
@@ -463,12 +465,12 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                       style={{
                         padding: "6px 12px",
                         borderRadius: 999,
-                        border: "1px solid rgba(148,163,184,0.6)",
-                        background: "#fff",
+                        border: theme.inputBorder,
+                        background: theme.modalBg,
                         fontFamily: F,
                         fontSize: 12,
                         fontWeight: 600,
-                        color: "#64748b",
+                        color: theme.textMuted,
                         cursor: decliningId === r.id ? "default" : "pointer",
                       }}
                     >
@@ -482,8 +484,8 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                         padding: "6px 12px",
                         borderRadius: 999,
                         border: "none",
-                        background: "linear-gradient(135deg, #0d9488, #10b981)",
-                        color: "#fff",
+                        background: theme.btnPrimaryBg,
+                        color: theme.btnPrimaryText,
                         fontFamily: F,
                         fontSize: 12,
                         fontWeight: 600,
@@ -505,11 +507,11 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
           Conversations
         </div>
         {loadingConvs ? (
-          <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", padding: "16px 0" }}>
+          <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted, padding: "16px 0" }}>
             Loading…
           </div>
         ) : unifiedList.length === 0 ? (
-          <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", padding: "16px 0" }}>
+          <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted, padding: "16px 0" }}>
             No conversations yet. Search for a user and request a conversation.
           </div>
         ) : (
@@ -524,7 +526,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                     style={{
                       padding: 12,
                       cursor: "pointer",
-                      border: "1px solid rgba(13,148,136,0.15)",
+                      borderBottom: theme.cardBorder,
                     }}
                     onClick={() => p && handleOpenConversation(item.conv, p)}
                   >
@@ -538,7 +540,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                           style={{
                             fontFamily: F,
                             fontSize: 12,
-                            color: "rgba(55,48,107,0.65)",
+                            color: theme.textMuted,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -559,8 +561,8 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   style={{
                     padding: 12,
                     cursor: "pointer",
-                    border: "1px solid rgba(13,148,136,0.2)",
-                    background: "rgba(16,185,129,0.06)",
+                    border: theme.cardBorder,
+                    background: theme.accentLight,
                   }}
                   onClick={() => handleOpenPendingRequest(item.request, p)}
                 >
@@ -574,7 +576,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                         style={{
                           fontFamily: F,
                           fontSize: 12,
-                          color: "rgba(55,48,107,0.65)",
+                          color: theme.textMuted,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -597,7 +599,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
             position: "fixed",
             inset: 0,
             zIndex: 100,
-            background: "rgba(15,23,42,0.5)",
+            background: theme.modalOverlay,
             backdropFilter: "blur(8px)",
             display: "flex",
             alignItems: "center",
@@ -613,9 +615,9 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
-              background: "#fff",
+              background: theme.modalBg,
               borderRadius: 20,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+              boxShadow: theme.cardShadow,
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -628,7 +630,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "12px 16px",
-                borderBottom: "1px solid rgba(13,148,136,0.12)",
+                borderBottom: theme.cardBorder,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -644,7 +646,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   border: "none",
                   background: "none",
                   fontSize: 22,
-                  color: "#94a3b8",
+                  color: theme.textMuted,
                   cursor: "pointer",
                   padding: 4,
                 }}
@@ -665,7 +667,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
               }}
             >
               {messagesLoading ? (
-                <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>
+                <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted, textAlign: "center", padding: 24 }}>
                   Loading…
                 </div>
               ) : (
@@ -677,8 +679,8 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                       maxWidth: "80%",
                       padding: "8px 12px",
                       borderRadius: 14,
-                      background: m.sender_id === me ? "linear-gradient(135deg, #0d9488, #10b981)" : "rgba(226,232,240,0.8)",
-                      color: m.sender_id === me ? "#fff" : "#1e1b4b",
+                      background: m.sender_id === me ? theme.btnPrimaryBg : theme.cardBg,
+                      color: m.sender_id === me ? theme.btnPrimaryText : theme.text,
                       fontFamily: F,
                       fontSize: 14,
                     }}
@@ -702,7 +704,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
             <div
               style={{
                 padding: "12px 16px",
-                borderTop: "1px solid rgba(13,148,136,0.12)",
+                borderTop: theme.cardBorder,
                 display: "flex",
                 gap: 8,
               }}
@@ -722,7 +724,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   flex: 1,
                   padding: "10px 14px",
                   borderRadius: 12,
-                  border: "1px solid rgba(13,148,136,0.25)",
+                  border: theme.inputBorder,
                   fontFamily: F,
                   fontSize: 14,
                   boxSizing: "border-box",
@@ -736,8 +738,8 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   padding: "10px 18px",
                   borderRadius: 12,
                   border: "none",
-                  background: "linear-gradient(135deg, #0d9488, #10b981)",
-                  color: "#fff",
+                  background: theme.btnPrimaryBg,
+                  color: theme.btnPrimaryText,
                   fontFamily: F,
                   fontSize: 14,
                   fontWeight: 600,
@@ -758,7 +760,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
             position: "fixed",
             inset: 0,
             zIndex: 100,
-            background: "rgba(15,23,42,0.5)",
+            background: theme.modalOverlay,
             backdropFilter: "blur(8px)",
             display: "flex",
             alignItems: "center",
@@ -774,9 +776,9 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
-              background: "#fff",
+              background: theme.modalBg,
               borderRadius: 20,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+              boxShadow: theme.cardShadow,
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -789,7 +791,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "12px 16px",
-                borderBottom: "1px solid rgba(13,148,136,0.12)",
+                borderBottom: theme.cardBorder,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -805,7 +807,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   border: "none",
                   background: "none",
                   fontSize: 22,
-                  color: "#94a3b8",
+                  color: theme.textMuted,
                   cursor: "pointer",
                   padding: 4,
                 }}
@@ -830,7 +832,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                 style={{
                   fontFamily: F,
                   fontSize: 14,
-                  color: "rgba(55,48,107,0.8)",
+                  color: theme.textMuted,
                   textAlign: "center",
                   lineHeight: 1.5,
                 }}

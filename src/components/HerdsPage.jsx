@@ -617,11 +617,11 @@ export default function HerdsPage({
                             {topicsAuthors[post.user_id] || "Fan"} · {post.category}
                           </div>
                         </div>
-                        <span style={{ fontFamily: F, fontSize: 11, color: "rgba(148,163,184,0.9)" }}>
+                        <span style={{ fontFamily: F, fontSize: 11, color: theme.textSoft }}>
                           {post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}
                         </span>
                       </div>
-                      {post.caption && <div style={{ fontFamily: F, fontSize: 13, color: "#374151", marginBottom: 8 }}>{post.caption}</div>}
+                      {post.caption && <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted, marginBottom: 8 }}>{post.caption}</div>}
                       {post.image_url && (
                         <img src={post.image_url} alt="" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 10, marginBottom: 10 }} onError={(e) => { e.target.style.display = "none"; }} />
                       )}
@@ -629,7 +629,7 @@ export default function HerdsPage({
                         <button
                           type="button"
                           onClick={() => handleToggleLike(post.id)}
-                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: F, fontSize: 13, color: topicsUserLiked[post.id] ? "#dc2626" : "rgba(55,48,107,0.7)" }}
+                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: F, fontSize: 13, color: topicsUserLiked[post.id] ? "#dc2626" : theme.textMuted }}
                         >
                           ♡ {topicsLikeCount[post.id] || 0}
                         </button>
@@ -664,9 +664,9 @@ export default function HerdsPage({
                         alignItems: "center",
                         gap: 12,
                         padding: "12px 14px",
-                        background: "rgba(255,255,255,0.6)",
+                        background: theme.cardBg,
                         borderRadius: 12,
-                        border: "1px solid rgba(13,148,136,0.1)",
+                        border: theme.cardBorder,
                       }}
                     >
                       <span style={{ fontFamily: F, fontSize: 15, fontWeight: 800, color: theme.textSoft, minWidth: 28 }}>#{row.rank}</span>
@@ -729,7 +729,7 @@ export default function HerdsPage({
                           fontFamily: F,
                           fontSize: 12,
                           fontWeight: 600,
-                          color: "#1e293b",
+                          color: theme.text,
                           marginBottom: 4,
                         }}
                       >
@@ -739,7 +739,7 @@ export default function HerdsPage({
                         style={{
                           fontFamily: F,
                           fontSize: 11,
-                          color: "rgba(55,65,81,0.7)",
+                          color: theme.textMuted,
                         }}
                       >
                         Connect Shopify to show real items here.
@@ -774,8 +774,8 @@ export default function HerdsPage({
                         alignItems: "center",
                         gap: 12,
                         padding: "12px 14px",
-                        background: "rgba(255,255,255,0.6)",
-                        border: "1px solid rgba(13,148,136,0.1)",
+                        background: theme.cardBg,
+                        border: theme.cardBorder,
                         borderRadius: 12,
                         cursor: f.username ? "pointer" : "default",
                         textAlign: "left",
@@ -850,9 +850,10 @@ export default function HerdsPage({
           >
             <div
               style={{
-                background: "#fff",
+                background: theme.modalBg,
                 borderRadius: 16,
-                boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+                boxShadow: theme.cardShadow,
+                border: theme.modalBorder,
                 maxWidth: 480,
                 width: "100%",
                 maxHeight: "calc(100vh - 48px)",
@@ -873,7 +874,8 @@ export default function HerdsPage({
                   height: 32,
                   borderRadius: "50%",
                   border: "none",
-                  background: "rgba(0,0,0,0.08)",
+                  background: theme.cardBg,
+                  color: theme.text,
                   fontFamily: F,
                   fontSize: 18,
                   cursor: "pointer",
@@ -893,11 +895,11 @@ export default function HerdsPage({
                           {topicsAuthors[modalPost.user_id] || "Fan"} · {modalPost.category}
                         </div>
                       </div>
-                      <span style={{ fontFamily: F, fontSize: 12, color: "rgba(148,163,184,0.9)" }}>
+                      <span style={{ fontFamily: F, fontSize: 12, color: theme.textSoft }}>
                         {modalPost.created_at ? new Date(modalPost.created_at).toLocaleDateString() : ""}
                       </span>
                     </div>
-                    {modalPost.caption && <div style={{ fontFamily: F, fontSize: 14, color: "#374151", marginBottom: 12 }}>{modalPost.caption}</div>}
+                    {modalPost.caption && <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, marginBottom: 12 }}>{modalPost.caption}</div>}
                     {modalPost.image_url && (
                       <img src={modalPost.image_url} alt="" style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 12, marginBottom: 16 }} onError={(e) => { e.target.style.display = "none"; }} />
                     )}
@@ -905,19 +907,19 @@ export default function HerdsPage({
                       <button
                         type="button"
                         onClick={() => handleToggleLike(modalPost.id)}
-                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: F, fontSize: 14, color: topicsUserLiked[modalPost.id] ? "#dc2626" : "rgba(55,48,107,0.7)" }}
+                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: F, fontSize: 14, color: topicsUserLiked[modalPost.id] ? "#dc2626" : theme.textMuted }}
                       >
                         ♡ {topicsLikeCount[modalPost.id] || 0}
                       </button>
                       <span style={{ fontFamily: F, fontSize: 14, color: theme.textMuted }}>💬 {topicsCommentCount[modalPost.id] || 0}</span>
                     </div>
-                    <div style={{ borderTop: "1px solid rgba(13,148,136,0.15)", paddingTop: 16 }}>
+                    <div style={{ borderTop: theme.cardBorder, paddingTop: 16 }}>
                       <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 12 }}>Comments</div>
                       <div style={{ maxHeight: 240, overflowY: "auto", marginBottom: 12 }}>
                         {(topicsComments[topicsModalPostId] || []).map((c) => (
                           <div key={c.id} style={{ marginBottom: 10 }}>
                             <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.text }}>{c.author_name}</span>
-                            <span style={{ fontFamily: F, fontSize: 12, color: "#374151", marginLeft: 6 }}>{c.body}</span>
+                            <span style={{ fontFamily: F, fontSize: 12, color: theme.textMuted, marginLeft: 6 }}>{c.body}</span>
                           </div>
                         ))}
                         {(topicsComments[topicsModalPostId] || []).length === 0 && (
@@ -936,7 +938,7 @@ export default function HerdsPage({
                           }}
                           style={{ display: "flex", gap: 8 }}
                         >
-                          <input type="text" placeholder="Add a comment…" style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13 }} />
+                          <input type="text" placeholder="Add a comment…" style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: theme.inputBorder, background: theme.inputBg, color: theme.inputText, fontFamily: F, fontSize: 13 }} />
                           <button type="submit" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: theme.accent, color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post</button>
                         </form>
                       )}
