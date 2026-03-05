@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Card, F, Sec } from "./ui";
+import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
 
 const MAX_MUSIC_ARTISTS = 5;
@@ -22,6 +23,7 @@ const formatDate = (iso) => {
 };
 
 export default function FeedPage({ user, supabase: supabaseClient, userHerds }) {
+  const { theme } = useTheme();
   const [releases, setReleases] = useState([]);
   const [musicLoading, setMusicLoading] = useState(false);
   const [musicUpdateLoading, setMusicUpdateLoading] = useState(false);
@@ -39,6 +41,8 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [feedMode, setFeedMode] = useState("forYou"); // 'forYou' | 'friends'
+  const touchStartXRef = useRef(null);
 
   const followedHerds = Array.isArray(userHerds) ? userHerds.slice(0, 30) : [];
   const artistNamesQuery = useMemo(() => {
@@ -252,8 +256,72 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
     if (url) window.open(url, "_blank", "noopener");
   };
 
+  const handleTouchStart = (e) => {
+    if (!e.touches || e.touches.length === 0) return;
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e) => {
+    if (touchStartXRef.current == null || !e.changedTouches || e.changedTouches.length === 0) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const threshold = 40;
+    if (deltaX <= -threshold) setFeedMode("friends");
+    else if (deltaX >= threshold) setFeedMode("forYou");
+    touchStartXRef.current = null;
+  };
+
   return (
-    <div style={{ paddingBottom: 24 }}>
+    <div style={{ paddingBottom: 24 }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div
+        style={{
+          margin: "4px 20px 10px",
+          display: "flex",
+          justifyContent: "center",
+          gap: 24,
+          borderBottom: `1px solid ${theme.cardBorder}`,
+          paddingBottom: 4,
+        }}
+      >
+        {[
+          { id: "forYou", label: "For You" },
+          { id: "friends", label: "Friends" },
+        ].map(({ id, label }) => {
+          const isActive = feedMode === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFeedMode(id)}
+              style={{
+                border: "none",
+                background: "none",
+                padding: "6px 0",
+                fontFamily: F,
+                fontSize: 13,
+                fontWeight: isActive ? 700 : 500,
+                cursor: "pointer",
+                color: isActive ? theme.text : theme.textSoft,
+                borderBottom: isActive ? `2px solid ${theme.accent}` : "2px solid transparent",
+                transition: "color 0.15s ease-out, border-bottom-color 0.15s ease-out",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {feedMode === "friends" ? (
+        <Card style={{ margin: "20px 16px", padding: "32px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
+          <div style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: theme.text, marginBottom: 8 }}>
+            Friends feed
+          </div>
+          <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted, lineHeight: 1.6 }}>
+            Follow more people to see their recommendations here. Music and concerts from people you follow will show up in this tab.
+          </div>
+        </Card>
+      ) : (
+        <>
       {/* Music recommended for you */}
       <div style={{ padding: "24px 20px 8px" }}>
         <div
@@ -261,7 +329,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
             fontFamily: F,
             fontSize: 22,
             fontWeight: 700,
-            color: "#1e1b4b",
+            color: theme.text,
             marginBottom: 4,
           }}
         >
@@ -283,12 +351,12 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
             style={{
               padding: "4px 10px",
               borderRadius: 999,
-              border: "1px solid rgba(13,148,136,0.5)",
-              background: "rgba(16,185,129,0.12)",
+              border: `1px solid ${theme.accent}`,
+              background: theme.accentLight,
               fontFamily: F,
               fontSize: 12,
               fontWeight: 600,
-              color: "#0f766e",
+              color: theme.accent,
               cursor: musicUpdateLoading || !artistIdsForMusic.length ? "default" : "pointer",
               opacity: (musicUpdateLoading || !artistIdsForMusic.length) ? 0.7 : 1,
             }}
@@ -301,7 +369,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
             style={{
               fontFamily: F,
               fontSize: 12,
-              color: "#b91c1c",
+              color: theme.accent,
               marginBottom: 8,
             }}
           >
@@ -310,21 +378,21 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
         )}
         {musicLoading && (
           <Card style={{ padding: "20px 16px", textAlign: "center" }}>
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.8)" }}>
+            <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
               Loading music…
             </div>
           </Card>
         )}
         {!musicLoading && artistIdsForMusic.length === 0 && (
           <Card style={{ padding: "16px" }}>
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.8)" }}>
+            <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
               Follow artist fan clubs in Herds to see music recommended for you here.
             </div>
           </Card>
         )}
         {!musicLoading && artistIdsForMusic.length > 0 && releases.length === 0 && !musicError && (
           <Card style={{ padding: "16px" }}>
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.8)" }}>
+            <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
               No recent releases found. Try "Update" later.
             </div>
           </Card>
@@ -348,8 +416,8 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                   minWidth: 140,
                   maxWidth: 160,
                   borderRadius: 16,
-                  background: "rgba(248,250,252,0.9)",
-                  border: "1px solid rgba(226,232,240,0.9)",
+                  background: theme.cardBg,
+                  border: theme.cardBorder,
                   overflow: "hidden",
                   flexShrink: 0,
                   textDecoration: "none",
@@ -361,7 +429,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                     height: 110,
                     background: r.imageUrl
                       ? `url(${r.imageUrl}) center/cover`
-                      : "linear-gradient(135deg,#0d9488,#10b981)",
+                      : theme.btnPrimaryBg,
                   }}
                 />
                 <div style={{ padding: "8px 10px 10px" }}>
@@ -370,7 +438,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                       fontFamily: F,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: "#1e293b",
+                      color: theme.text,
                       marginBottom: 4,
                     }}
                   >
@@ -380,7 +448,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                     style={{
                       fontFamily: F,
                       fontSize: 11,
-                      color: "rgba(55,65,81,0.7)",
+                      color: theme.textMuted,
                     }}
                   >
                     {r.artistName || "Artist"}
@@ -410,7 +478,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
           style={{
             fontFamily: F,
             fontSize: 12,
-            color: "rgba(55,48,107,0.7)",
+            color: theme.textMuted,
           }}
         >
           {hasHerds
@@ -425,12 +493,12 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
             style={{
               padding: "4px 10px",
               borderRadius: 999,
-              border: "1px solid rgba(13,148,136,0.5)",
-              background: "rgba(16,185,129,0.12)",
+              border: `1px solid ${theme.accent}`,
+              background: theme.accentLight,
               fontFamily: F,
               fontSize: 12,
               fontWeight: 600,
-              color: "#0f766e",
+              color: theme.accent,
               cursor: concertsUpdateLoading ? "default" : "pointer",
               opacity: concertsUpdateLoading ? 0.7 : 1,
             }}
@@ -443,19 +511,19 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
       <div style={{ padding: "8px 16px 24px" }}>
         {concertsLoading && (
           <Card style={{ padding: "20px 16px", textAlign: "center" }}>
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.8)" }}>
+            <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
               Loading Concerts…
             </div>
           </Card>
         )}
         {!concertsLoading && concertsError && (
-          <Card style={{ padding: "16px", background: "#fef2f2" }}>
-            <div style={{ fontFamily: F, fontSize: 13, color: "#b91c1c" }}>{concertsError}</div>
+          <Card style={{ padding: "16px", background: theme.accentLight }}>
+            <div style={{ fontFamily: F, fontSize: 13, color: theme.accent }}>{concertsError}</div>
           </Card>
         )}
         {!concertsLoading && !concertsError && hasHerds && events.length === 0 && (
           <Card style={{ padding: "20px 16px" }}>
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.8)" }}>
+            <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
               No upcoming Ticketmaster events found for these artists right now.
             </div>
           </Card>
@@ -467,14 +535,14 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
           (venue || startDate || endDate) &&
           filteredEvents.length === 0 && (
             <Card style={{ padding: "20px 16px" }}>
-              <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.8)" }}>
+              <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
                 No concerts match your filters. Try adjusting them.
               </div>
             </Card>
           )}
         {!concertsLoading && !concertsError && !hasHerds && (
           <Card style={{ padding: "20px 16px" }}>
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.8)" }}>
+            <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
               Join a few fan clubs from the Herds tab to see concerts recommended for you here.
             </div>
           </Card>
@@ -511,7 +579,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                     fontFamily: F,
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "#1e1b4b",
+                    color: theme.text,
                     marginBottom: 2,
                   }}
                 >
@@ -521,7 +589,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                   style={{
                     fontFamily: F,
                     fontSize: 12,
-                    color: "rgba(55,48,107,0.75)",
+                    color: theme.textMuted,
                     marginBottom: 2,
                   }}
                 >
@@ -531,7 +599,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                   style={{
                     fontFamily: F,
                     fontSize: 11,
-                    color: "rgba(55,48,107,0.7)",
+                    color: theme.textMuted,
                     marginBottom: 4,
                   }}
                 >
@@ -549,7 +617,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                       padding: "8px 14px",
                       borderRadius: 999,
                       border: "none",
-                      background: "linear-gradient(135deg, #0d9488, #10b981)",
+                      background: theme.btnPrimaryBg,
                       color: "#fff",
                       fontFamily: F,
                       fontSize: 12,
@@ -573,7 +641,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
             position: "fixed",
             inset: 0,
             zIndex: 80,
-            background: "rgba(15,23,42,0.45)",
+            background: theme.modalOverlay,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -589,7 +657,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
               maxWidth: 420,
               borderRadius: 20,
               background: "#fff",
-              boxShadow: "0 20px 60px rgba(15,23,42,0.45)",
+              boxShadow: theme.cardShadow,
               padding: 18,
             }}
           >
@@ -601,7 +669,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                 marginBottom: 12,
               }}
             >
-              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text }}>
                 Filters
               </div>
               <button
@@ -612,7 +680,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                   background: "none",
                   fontSize: 18,
                   cursor: "pointer",
-                  color: "#94a3b8",
+                  color: theme.textMuted,
                 }}
                 aria-label="Close filters"
               >
@@ -625,7 +693,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                   fontFamily: F,
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "#0f766e",
+                  color: theme.accent,
                   display: "block",
                   marginBottom: 4,
                 }}
@@ -641,7 +709,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                   width: "100%",
                   padding: "9px 10px",
                   borderRadius: 12,
-                  border: "1px solid rgba(148,163,184,0.7)",
+                  border: theme.inputBorder,
                   fontFamily: F,
                   fontSize: 13,
                 }}
@@ -653,7 +721,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                   fontFamily: F,
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "#0f766e",
+                  color: theme.accent,
                   display: "block",
                   marginBottom: 4,
                 }}
@@ -669,7 +737,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                   width: "100%",
                   padding: "9px 10px",
                   borderRadius: 12,
-                  border: "1px solid rgba(148,163,184,0.7)",
+                  border: theme.inputBorder,
                   fontFamily: F,
                   fontSize: 13,
                   textTransform: "uppercase",
@@ -683,7 +751,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                     fontFamily: F,
                     fontSize: 12,
                     fontWeight: 600,
-                    color: "#0f766e",
+                    color: theme.accent,
                     display: "block",
                     marginBottom: 4,
                   }}
@@ -698,7 +766,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                     width: "100%",
                     padding: "9px 10px",
                     borderRadius: 12,
-                    border: "1px solid rgba(148,163,184,0.7)",
+                    border: theme.inputBorder,
                     fontFamily: F,
                     fontSize: 13,
                   }}
@@ -710,7 +778,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                     fontFamily: F,
                     fontSize: 12,
                     fontWeight: 600,
-                    color: "#0f766e",
+                    color: theme.accent,
                     display: "block",
                     marginBottom: 4,
                   }}
@@ -725,7 +793,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                     width: "100%",
                     padding: "9px 10px",
                     borderRadius: 12,
-                    border: "1px solid rgba(148,163,184,0.7)",
+                    border: theme.inputBorder,
                     fontFamily: F,
                     fontSize: 13,
                   }}
@@ -740,7 +808,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
                 padding: "10px 0",
                 borderRadius: 999,
                 border: "none",
-                background: "linear-gradient(135deg, #0d9488, #10b981)",
+                background: theme.btnPrimaryBg,
                 color: "#fff",
                 fontFamily: F,
                 fontSize: 14,
@@ -752,6 +820,8 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
             </button>
           </div>
         </div>
+      )}
+    </>
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import { supabase } from './lib/supabase';
-import { GradientBg, Card, F, AvatarSprite } from './components/ui';
+import { GradientBg, Card, F, AvatarSprite, BadgeShape } from './components/ui';
 
 export default function PublicProfile({ username: usernameProp, embedded = false }) {
   const { username: usernameFromRoute } = useParams();
@@ -364,29 +364,18 @@ export default function PublicProfile({ username: usernameProp, embedded = false
           </div>
         )}
         {badgeKeys.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
             {badgeKeys.map((key) => {
               const def = defByKey[key];
               if (!def) return null;
               return (
-                <span
+                <BadgeShape
                   key={key}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '4px 9px',
-                    borderRadius: 999,
-                    background: theme.accentLight,
-                    border: `1px solid ${theme.accent}`,
-                    fontFamily: F,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: theme.text,
-                  }}
-                >
-                  {def.icon || '🏅'} {def.name}
-                </span>
+                  icon={def.icon || '🏅'}
+                  title={def.name}
+                  description={def.description}
+                  size={36}
+                />
               );
             })}
           </div>
@@ -458,25 +447,15 @@ export default function PublicProfile({ username: usernameProp, embedded = false
             <span style={{ fontFamily: F, fontSize: 12, color: theme.accent }}>{downloadFeedback}</span>
           </div>
           {badges.length > 0 && (
-            <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
               {badges.slice(0, 6).map((b) => (
-                <div
+                <BadgeShape
                   key={`${b.badge_key}-${b.earned_at}`}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '4px 9px',
-                    borderRadius: 999,
-                    background: theme.accentLight,
-                    border: `1px solid ${theme.accent}`,
-                  }}
-                >
-                  <span style={{ fontSize: 14 }}>{b.def.icon || '🏅'}</span>
-                  <span style={{ fontFamily: F, fontSize: 11, fontWeight: 600, color: theme.text }}>
-                    {formatBadgeTitle(b)}
-                  </span>
-                </div>
+                  icon={b.def?.icon || '🏅'}
+                  title={formatBadgeTitle(b)}
+                  description={b.def?.description}
+                  size={40}
+                />
               ))}
               {badges.length > 6 && (
                 <span style={{ fontFamily: F, fontSize: 11, color: theme.muted }}>+{badges.length - 6} more</span>

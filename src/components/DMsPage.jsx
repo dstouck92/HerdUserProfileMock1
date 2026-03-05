@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Card, F, AvatarSprite } from "./ui";
+import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
 import { useDebounce } from "../hooks/useDebounce";
 
 export default function DMsPage({ user, supabase: supabaseClient }) {
+  const { theme } = useTheme();
   const sb = supabaseClient || supabase;
   const [searchQ, setSearchQ] = useState("");
   const debouncedQ = useDebounce(searchQ, 300);
@@ -370,7 +372,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <AvatarSprite avatarId={p.avatar_id} size={36} />
                     <div>
-                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b" }}>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: theme.text }}>
                         {displayName(p)}
                       </div>
                       {p.username && (
@@ -402,7 +404,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                       Message
                     </button>
                   ) : fromThem ? (
-                    <span style={{ fontFamily: F, fontSize: 12, color: "#0d9488" }}>Accept in requests below</span>
+                    <span style={{ fontFamily: F, fontSize: 12, color: theme.accent }}>Accept in requests below</span>
                   ) : fromMe ? (
                     <span style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>Request sent</span>
                   ) : (
@@ -414,7 +416,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                         borderRadius: 999,
                         border: "1px solid rgba(13,148,136,0.5)",
                         background: "rgba(16,185,129,0.12)",
-                        color: "#0f766e",
+                        color: theme.accent,
                         fontFamily: F,
                         fontSize: 12,
                         fontWeight: 600,
@@ -433,7 +435,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
 
       {incomingRequests.length > 0 && (
         <div style={{ padding: "0 20px 16px" }}>
-          <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>
+          <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 8 }}>
             Requests
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -445,7 +447,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <AvatarSprite avatarId={p.avatar_id} size={40} />
                     <div>
-                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text }}>
                         {displayName(p)}
                       </div>
                       <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>
@@ -499,7 +501,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
       )}
 
       <div style={{ padding: "0 20px" }}>
-        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>
+        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 8 }}>
           Conversations
         </div>
         {loadingConvs ? (
@@ -529,7 +531,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <AvatarSprite avatarId={p?.avatar_id} size={44} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>
+                        <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text }}>
                           {p ? displayName(p) : "…"}
                         </div>
                         <div
@@ -565,7 +567,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <AvatarSprite avatarId={p.avatar_id} size={44} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>
+                      <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text }}>
                         {displayName(p)}
                       </div>
                       <div
@@ -631,7 +633,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <AvatarSprite avatarId={openOtherUser.avatar_id} size={36} />
-                <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>
+                <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: theme.text }}>
                   {displayName(openOtherUser)}
                 </span>
               </div>
@@ -792,7 +794,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <AvatarSprite avatarId={openPendingOtherUser.avatar_id} size={36} />
-                <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>
+                <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: theme.text }}>
                   {displayName(openPendingOtherUser)}
                 </span>
               </div>

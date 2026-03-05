@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, F, AvatarSprite } from "./ui";
+import { useTheme } from "../context/ThemeContext";
 import { useDebounce } from "../hooks/useDebounce";
 
 const fallbackArtists = [
@@ -26,6 +27,7 @@ export default function SearchPage({
   recommendedArtists,
   recentActivity,
 }) {
+  const { theme } = useTheme();
   const [query, setQuery] = useState("");
   const [spotifyResults, setSpotifyResults] = useState([]);
   const [spotifyLoading, setSpotifyLoading] = useState(false);
@@ -179,7 +181,7 @@ export default function SearchPage({
               fontFamily: F,
               fontSize: 13,
               fontWeight: 600,
-              color: "#1e293b",
+              color: theme.text,
               marginBottom: 2,
             }}
           >
@@ -257,7 +259,7 @@ export default function SearchPage({
               background: "transparent",
               fontFamily: F,
               fontSize: 14,
-              color: "#1e1b4b",
+              color: theme.text,
             }}
           />
         </div>
@@ -602,7 +604,7 @@ export default function SearchPage({
             fontFamily: F,
             fontSize: 14,
             fontWeight: 700,
-            color: "#1e1b4b",
+            color: theme.text,
           }}
         >
           Your Recent Activity
@@ -618,7 +620,7 @@ export default function SearchPage({
               fontFamily: F,
               fontSize: 12,
               fontWeight: 600,
-              color: "#0d9488",
+              color: theme.accent,
               cursor: "pointer",
             }}
           >
@@ -690,7 +692,7 @@ export default function SearchPage({
                   fontFamily: F,
                   fontSize: 15,
                   fontWeight: 700,
-                  color: "#1e1b4b",
+                  color: theme.text,
                 }}
               >
                 All Recent Activity
@@ -753,7 +755,7 @@ function SectionTitle({ children }) {
         fontFamily: F,
         fontSize: 14,
         fontWeight: 700,
-        color: "#1e1b4b",
+        color: theme.text,
       }}
     >
       {children}

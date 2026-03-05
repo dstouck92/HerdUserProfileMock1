@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, F, AvatarSprite } from "./ui";
+import { useTheme } from "../context/ThemeContext";
 
 const HERD_TABS = ["Topics", "Leaderboards", "Connect", "Merch", "About"];
 const TOPIC_CATEGORIES = ["General", "New Music", "Fashion", "Gossip", "Tour", "Random", "Events"];
@@ -16,6 +17,7 @@ export default function HerdsPage({
   user,
   supabase,
 }) {
+  const { theme } = useTheme();
   const [herdTab, setHerdTab] = useState("Topics");
   const [topicsPosts, setTopicsPosts] = useState([]);
   const [topicsAuthors, setTopicsAuthors] = useState({});
@@ -38,6 +40,7 @@ export default function HerdsPage({
   const [spotifyImageByArtistId, setSpotifyImageByArtistId] = useState({});
   const [herdFollowerCount, setHerdFollowerCount] = useState(null);
   const [herdFollowerCounts, setHerdFollowerCounts] = useState({});
+  const [viewAllMode, setViewAllMode] = useState(null); // null | 'followed' | 'discover'
 
   const followingHerdIds = userHerds.map((h) => h.id);
   const isFollowingSelected =
@@ -384,7 +387,7 @@ export default function HerdsPage({
               background: "none",
               border: "none",
               fontSize: 24,
-              color: "#0d9488",
+              color: theme.accent,
               cursor: "pointer",
               padding: 0,
             }}
@@ -397,7 +400,7 @@ export default function HerdsPage({
               fontFamily: F,
               fontSize: 16,
               fontWeight: 700,
-              color: "#1e1b4b",
+              color: theme.text,
             }}
           >
             Fan Club
@@ -408,7 +411,7 @@ export default function HerdsPage({
             style={{
               height: 120,
               background:
-                "linear-gradient(135deg, #0d9488 0%, #10b981 50%, #34d399 100%)",
+                theme.avatarFallbackBg,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -456,11 +459,11 @@ export default function HerdsPage({
                 marginBottom: 8,
               }}
             >
-              <div style={{ fontFamily: F, fontSize: 20, fontWeight: 800, color: "#1e1b4b" }}>
+              <div style={{ fontFamily: F, fontSize: 20, fontWeight: 800, color: theme.text }}>
                 {herdDetails.name}
               </div>
               {herdFollowerCount != null && (
-                <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)", fontWeight: 600 }}>
+                <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted, fontWeight: 600 }}>
                   {herdFollowerCount.toLocaleString()} {herdFollowerCount === 1 ? "follower" : "followers"}
                 </div>
               )}
@@ -478,7 +481,7 @@ export default function HerdsPage({
                   fontWeight: 700,
                   background: isFollowingSelected
                     ? "rgba(34,197,94,0.2)"
-                    : "linear-gradient(135deg, #0d9488, #10b981)",
+                    : theme.btnPrimaryBg,
                   color: isFollowingSelected ? "#16a34a" : "#fff",
                   cursor: "pointer",
                   boxShadow: isFollowingSelected ? "none" : "0 4px 12px rgba(13,148,136,0.35)",
@@ -506,7 +509,7 @@ export default function HerdsPage({
                 padding: "12px 0",
                 background: "none",
                 border: "none",
-                color: herdTab === t ? "#0f766e" : "rgba(55,48,107,0.55)",
+                color: herdTab === t ? theme.accent : theme.textSoft,
                 fontFamily: F,
                 fontSize: 13,
                 fontWeight: herdTab === t ? 700 : 500,
@@ -524,7 +527,7 @@ export default function HerdsPage({
                     right: "20%",
                     height: 3,
                     borderRadius: 2,
-                    background: "linear-gradient(90deg, #0d9488, #10b981)",
+                    background: theme.tabIndicator,
                   }}
                 />
               )}
@@ -545,7 +548,7 @@ export default function HerdsPage({
                         borderRadius: 12,
                         border: "1px solid rgba(13,148,136,0.4)",
                         background: "rgba(13,148,136,0.1)",
-                        color: "#0d9488",
+                        color: theme.accent,
                         fontFamily: F,
                         fontSize: 14,
                         fontWeight: 600,
@@ -556,7 +559,7 @@ export default function HerdsPage({
                     </button>
                   ) : (
                     <Card style={{ padding: 16 }}>
-                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 10 }}>New post</div>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 10 }}>New post</div>
                       <input
                         type="text"
                         value={newPostTitle}
@@ -589,16 +592,16 @@ export default function HerdsPage({
                       />
                       <div style={{ display: "flex", gap: 8 }}>
                         <button type="button" onClick={() => setShowNewPostForm(false)} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.3)", background: "#fff", fontFamily: F, fontSize: 13, cursor: "pointer" }}>Cancel</button>
-                        <button type="button" onClick={handleCreatePost} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post</button>
+                        <button type="button" onClick={handleCreatePost} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: theme.btnPrimaryBg, color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post</button>
                       </div>
                     </Card>
                   )}
                 </div>
               )}
               {topicsLoading ? (
-                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>Loading…</div>
+                <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, textAlign: "center", padding: 24 }}>Loading…</div>
               ) : topicsPosts.length === 0 ? (
-                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>No posts yet. Be the first to post.</div>
+                <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, textAlign: "center", padding: 24 }}>No posts yet. Be the first to post.</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {topicsPosts.map((post) => (
@@ -609,8 +612,8 @@ export default function HerdsPage({
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                         <div>
-                          <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{post.title}</div>
-                          <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>
+                          <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text }}>{post.title}</div>
+                          <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted }}>
                             {topicsAuthors[post.user_id] || "Fan"} · {post.category}
                           </div>
                         </div>
@@ -630,7 +633,7 @@ export default function HerdsPage({
                         >
                           ♡ {topicsLikeCount[post.id] || 0}
                         </button>
-                        <span style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.7)" }}>
+                        <span style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
                           💬 {topicsCommentCount[post.id] || 0}
                         </span>
                       </div>
@@ -642,13 +645,13 @@ export default function HerdsPage({
           )}
           {herdTab === "Leaderboards" && (
             <div>
-              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b", marginBottom: 12 }}>
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text, marginBottom: 12 }}>
                 Top listeners
               </div>
               {leaderboardLoading ? (
-                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>Loading…</div>
+                <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, textAlign: "center", padding: 24 }}>Loading…</div>
               ) : leaderboardRows.length === 0 ? (
-                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>
+                <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, textAlign: "center", padding: 24 }}>
                   No listening data yet. Upload Spotify history to appear here.
                 </div>
               ) : (
@@ -666,11 +669,11 @@ export default function HerdsPage({
                         border: "1px solid rgba(13,148,136,0.1)",
                       }}
                     >
-                      <span style={{ fontFamily: F, fontSize: 15, fontWeight: 800, color: "rgba(55,48,107,0.5)", minWidth: 28 }}>#{row.rank}</span>
+                      <span style={{ fontFamily: F, fontSize: 15, fontWeight: 800, color: theme.textSoft, minWidth: 28 }}>#{row.rank}</span>
                       <AvatarSprite avatarId={row.avatar_id} size={36} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{row.display_name}</div>
-                        <div style={{ fontFamily: F, fontSize: 12, color: "#0d9488", fontWeight: 600 }}>
+                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text }}>{row.display_name}</div>
+                        <div style={{ fontFamily: F, fontSize: 12, color: theme.accent, fontWeight: 600 }}>
                           {row.minutes >= 60 ? `${(row.minutes / 60).toFixed(1)} hrs` : `${row.minutes} min`} listened
                         </div>
                       </div>
@@ -682,10 +685,10 @@ export default function HerdsPage({
           )}
           {herdTab === "Merch" && (
             <div>
-              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text, marginBottom: 8 }}>
                 Featured Merch
               </div>
-              <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 12 }}>
+              <div style={{ fontFamily: F, fontSize: 11, color: theme.textMuted, marginBottom: 12 }}>
                 Connect Shopify to show real items here.
               </div>
               <div
@@ -749,13 +752,13 @@ export default function HerdsPage({
           )}
           {herdTab === "Connect" && (
             <div>
-              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b", marginBottom: 12 }}>
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text, marginBottom: 12 }}>
                 Fans in this herd
               </div>
               {connectLoading ? (
-                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>Loading…</div>
+                <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, textAlign: "center", padding: 24 }}>Loading…</div>
               ) : connectFollowers.length === 0 ? (
-                <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)", textAlign: "center", padding: 24 }}>
+                <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, textAlign: "center", padding: 24 }}>
                   No followers yet. Be the first to follow this herd.
                 </div>
               ) : (
@@ -781,14 +784,14 @@ export default function HerdsPage({
                     >
                       <AvatarSprite avatarId={f.avatar_id} size={40} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>
+                        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text }}>
                         {f.display_name}
                         {user?.id === f.user_id && (
-                          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 500, color: "rgba(55,48,107,0.5)", marginLeft: 6 }}>(You)</span>
+                          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 500, color: theme.textSoft, marginLeft: 6 }}>(You)</span>
                         )}
                       </div>
                       {f.username && (
-                        <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.55)" }}>@{f.username}</div>
+                        <div style={{ fontFamily: F, fontSize: 12, color: theme.textSoft }}>@{f.username}</div>
                       )}
                       {(() => {
                         const parts = [];
@@ -800,7 +803,7 @@ export default function HerdsPage({
                         }
                         if (!parts.length) return null;
                         return (
-                          <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)", marginTop: 2 }}>
+                          <div style={{ fontFamily: F, fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
                             {parts.join(" · ")}
                           </div>
                         );
@@ -817,7 +820,7 @@ export default function HerdsPage({
               style={{
                 fontFamily: F,
                 fontSize: 14,
-                color: "rgba(55,48,107,0.7)",
+                color: theme.textMuted,
                 textAlign: "center",
                 padding: "24px 0",
               }}
@@ -885,8 +888,8 @@ export default function HerdsPage({
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                       <div>
-                        <div style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: "#1e1b4b" }}>{modalPost.title}</div>
-                        <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)" }}>
+                        <div style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: theme.text }}>{modalPost.title}</div>
+                        <div style={{ fontFamily: F, fontSize: 13, color: theme.textMuted }}>
                           {topicsAuthors[modalPost.user_id] || "Fan"} · {modalPost.category}
                         </div>
                       </div>
@@ -906,19 +909,19 @@ export default function HerdsPage({
                       >
                         ♡ {topicsLikeCount[modalPost.id] || 0}
                       </button>
-                      <span style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.7)" }}>💬 {topicsCommentCount[modalPost.id] || 0}</span>
+                      <span style={{ fontFamily: F, fontSize: 14, color: theme.textMuted }}>💬 {topicsCommentCount[modalPost.id] || 0}</span>
                     </div>
                     <div style={{ borderTop: "1px solid rgba(13,148,136,0.15)", paddingTop: 16 }}>
-                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 12 }}>Comments</div>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 12 }}>Comments</div>
                       <div style={{ maxHeight: 240, overflowY: "auto", marginBottom: 12 }}>
                         {(topicsComments[topicsModalPostId] || []).map((c) => (
                           <div key={c.id} style={{ marginBottom: 10 }}>
-                            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#1e1b4b" }}>{c.author_name}</span>
+                            <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.text }}>{c.author_name}</span>
                             <span style={{ fontFamily: F, fontSize: 12, color: "#374151", marginLeft: 6 }}>{c.body}</span>
                           </div>
                         ))}
                         {(topicsComments[topicsModalPostId] || []).length === 0 && (
-                          <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.5)" }}>No comments yet.</div>
+                          <div style={{ fontFamily: F, fontSize: 13, color: theme.textSoft }}>No comments yet.</div>
                         )}
                       </div>
                       {user && (
@@ -934,13 +937,13 @@ export default function HerdsPage({
                           style={{ display: "flex", gap: 8 }}
                         >
                           <input type="text" placeholder="Add a comment…" style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13 }} />
-                          <button type="submit" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#0d9488", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post</button>
+                          <button type="submit" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: theme.accent, color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post</button>
                         </form>
                       )}
                     </div>
                   </>
                 ) : (
-                  <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.6)" }}>Post not found.</div>
+                  <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted }}>Post not found.</div>
                 )}
               </div>
             </div>
@@ -957,6 +960,92 @@ export default function HerdsPage({
     (h) => !userHerds.some((u) => u.id === h.id)
   );
 
+  const MAX_GRID = 6;
+  const followedSlice = userHerds.slice(0, MAX_GRID);
+  const discoverSlice = discoverFiltered.slice(0, MAX_GRID);
+  const hasMoreFollowed = userHerds.length > MAX_GRID;
+  const hasMoreDiscover = discoverFiltered.length > MAX_GRID;
+
+  const renderHerdSquare = (herd, showFollowerCount) => (
+    <button
+      key={herd.id}
+      type="button"
+      onClick={() => {
+        setViewAllMode(null);
+        onSelectHerd?.(herd.id);
+      }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        aspectRatio: "1",
+        padding: 8,
+        border: theme.cardBorder,
+        borderRadius: 18,
+        background: theme.cardBg,
+        boxShadow: theme.cardShadow,
+        cursor: "pointer",
+        textAlign: "center",
+        overflow: "hidden",
+      }}
+    >
+      {(herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]) ? (
+        <img
+          src={herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]}
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            borderRadius: 12,
+            flex: 1,
+            minHeight: 0,
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: "100%",
+            flex: 1,
+            minHeight: 0,
+            borderRadius: 12,
+            background: theme.btnPrimaryBg,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: F,
+            fontSize: "min(12vw, 28px)",
+            fontWeight: 800,
+            color: "#fff",
+          }}
+        >
+          {herd.name?.charAt(0) || "?"}
+        </div>
+      )}
+      <span
+        style={{
+          fontFamily: F,
+          fontSize: 12,
+          fontWeight: 700,
+          color: theme.text,
+          marginTop: 6,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          width: "100%",
+        }}
+      >
+        {herd.name}
+      </span>
+      {showFollowerCount && herdFollowerCounts[herd.id] != null && (
+        <span style={{ fontFamily: F, fontSize: 10, color: theme.textMuted }}>
+          {herdFollowerCounts[herd.id].toLocaleString()} followers
+        </span>
+      )}
+    </button>
+  );
+
   return (
     <div style={{ paddingBottom: 16 }}>
       <div
@@ -965,117 +1054,62 @@ export default function HerdsPage({
           fontFamily: F,
           fontSize: 18,
           fontWeight: 800,
-          color: "#1e1b4b",
+          color: theme.text,
         }}
       >
         Herds
       </div>
-      <div style={{ padding: "8px 20px 12px" }}>
+      <div style={{ padding: "8px 16px 12px" }}>
         <div
           style={{
             fontFamily: F,
             fontSize: 14,
             fontWeight: 700,
-            color: "#1e1b4b",
+            color: theme.text,
             marginBottom: 8,
           }}
         >
           Herds you follow
         </div>
         {userHerds.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {userHerds.map((herd) => (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+              }}
+            >
+              {followedSlice.map((herd) => renderHerdSquare(herd, true))}
+            </div>
+            {hasMoreFollowed && (
               <button
-                key={herd.id}
                 type="button"
-                onClick={() => onSelectHerd?.(herd.id)}
+                onClick={() => setViewAllMode("followed")}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  padding: 12,
-                  border: "none",
-                  borderRadius: 14,
-                  background: "rgba(255,255,255,0.7)",
-                  boxShadow: "0 2px 12px rgba(13,148,136,0.1)",
-                  cursor: "pointer",
-                  textAlign: "left",
+                  marginTop: 12,
                   width: "100%",
+                  padding: "10px",
+                  border: theme.btnSecondaryBorder,
+                  borderRadius: 14,
+                  background: theme.btnSecondaryBg,
+                  color: theme.accent,
+                  fontFamily: F,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    flex: 1,
-                    minWidth: 0,
-                  }}
-                >
-                  {(herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]) ? (
-                    <img
-                      src={herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]}
-                      alt=""
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: "50%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: "50%",
-                        background: "linear-gradient(135deg, #0d9488, #10b981)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: F,
-                        fontSize: 18,
-                        fontWeight: 800,
-                        color: "#fff",
-                      }}
-                    >
-                      {herd.name?.charAt(0) || "?"}
-                    </div>
-                  )}
-                  <span
-                    style={{
-                      fontFamily: F,
-                      fontSize: 15,
-                      fontWeight: 700,
-                      color: "#1e1b4b",
-                    }}
-                  >
-                    {herd.name}
-                  </span>
-                </div>
-                {herdFollowerCounts[herd.id] != null && (
-                  <span
-                    style={{
-                      fontFamily: F,
-                      fontSize: 13,
-                      color: "rgba(55,48,107,0.7)",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {herdFollowerCounts[herd.id].toLocaleString()}{" "}
-                    {herdFollowerCounts[herd.id] === 1 ? "Follower" : "Followers"}
-                  </span>
-                )}
+                View all ({userHerds.length})
               </button>
-            ))}
-          </div>
+            )}
+          </>
         ) : (
           <div
             style={{
               fontFamily: F,
               fontSize: 13,
-              color: "rgba(55,48,107,0.6)",
+              color: theme.textMuted,
               padding: "12px 0",
             }}
           >
@@ -1084,80 +1118,117 @@ export default function HerdsPage({
         )}
       </div>
       {discoverFiltered.length > 0 && (
-        <div style={{ padding: "8px 20px 12px" }}>
+        <div style={{ padding: "8px 16px 12px" }}>
           <div
             style={{
               fontFamily: F,
               fontSize: 14,
               fontWeight: 700,
-              color: "#1e1b4b",
+              color: theme.text,
               marginBottom: 8,
             }}
           >
             Discover
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {discoverFiltered.map((herd) => (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+            }}
+          >
+            {discoverSlice.map((herd) => renderHerdSquare(herd, false))}
+          </div>
+          {hasMoreDiscover && (
+            <button
+              type="button"
+              onClick={() => setViewAllMode("discover")}
+              style={{
+                marginTop: 12,
+                width: "100%",
+                padding: "10px",
+                border: theme.btnSecondaryBorder,
+                borderRadius: 14,
+                background: theme.btnSecondaryBg,
+                color: theme.accent,
+                fontFamily: F,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              View all ({discoverFiltered.length})
+            </button>
+          )}
+        </div>
+      )}
+      {viewAllMode && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: theme.modalOverlay,
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewAllMode(null);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              maxHeight: "85vh",
+              background: theme.modalBg,
+              borderRadius: 22,
+              border: theme.modalBorder,
+              boxShadow: theme.cardShadow,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 16px",
+                borderBottom: theme.cardBorder,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: theme.text }}>
+                {viewAllMode === "followed" ? "Herds you follow" : "Discover"}
+              </span>
               <button
-                key={herd.id}
                 type="button"
-                onClick={() => onSelectHerd?.(herd.id)}
+                onClick={() => setViewAllMode(null)}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: 12,
                   border: "none",
-                  borderRadius: 14,
-                  background: "rgba(255,255,255,0.7)",
-                  boxShadow: "0 2px 12px rgba(13,148,136,0.1)",
+                  background: "none",
+                  fontSize: 22,
+                  color: theme.textMuted,
                   cursor: "pointer",
-                  textAlign: "left",
-                  width: "100%",
+                  padding: 0,
+                  lineHeight: 1,
                 }}
+                aria-label="Close"
               >
-                {(herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]) ? (
-                  <img
-                    src={herd.image_url || spotifyImageByArtistId[herd.spotify_artist_id]}
-                    alt=""
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #0d9488, #10b981)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: F,
-                      fontSize: 18,
-                      fontWeight: 800,
-                      color: "#fff",
-                    }}
-                  >
-                    {herd.name?.charAt(0) || "?"}
-                  </div>
-                )}
-                <span
-                  style={{
-                    fontFamily: F,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: "#1e1b4b",
-                  }}
-                >
-                  {herd.name}
-                </span>
+                ✕
               </button>
-            ))}
+            </div>
+            <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {(viewAllMode === "followed" ? userHerds : discoverFiltered).map((herd) =>
+                  renderHerdSquare(herd, viewAllMode === "followed")
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

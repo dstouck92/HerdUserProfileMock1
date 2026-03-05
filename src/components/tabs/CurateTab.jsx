@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Card, Sec, Btn, Empty, F } from "../ui";
+import { Card, Sec, Btn, Empty, F, BadgeShape } from "../ui";
+import { useTheme } from "../../context/ThemeContext";
 import CurateCardEditor from "../CurateCardEditor";
 import PublicProfile from "../../PublicProfile";
 import { supabase } from "../../lib/supabase";
@@ -39,6 +40,7 @@ export default function CurateTab({
   const [bioMessage, setBioMessage] = useState("");
   const [badgesModalOpen, setBadgesModalOpen] = useState(false);
   const [bioModalOpen, setBioModalOpen] = useState(false);
+  const { theme } = useTheme();
   const [curateMode, setCurateMode] = useState("edit"); // 'edit' | 'view'
   const touchStartXRef = useRef(null);
   const [openCardIndex, setOpenCardIndex] = useState(null);
@@ -302,8 +304,8 @@ export default function CurateTab({
                 fontSize: 13,
                 fontWeight: isActive ? 700 : 500,
                 cursor: "pointer",
-                color: isActive ? "#1e1b4b" : "rgba(55,48,107,0.55)",
-                borderBottom: isActive ? "2px solid #0d9488" : "2px solid transparent",
+                color: isActive ? theme.text : theme.textSoft,
+                borderBottom: isActive ? `2px solid ${theme.accent}` : "2px solid transparent",
                 transition: "color 0.15s ease-out, border-bottom-color 0.15s ease-out",
               }}
             >
@@ -436,36 +438,49 @@ export default function CurateTab({
         </div>
       )}
 
-      <Sec icon="🏅" right="Manage" onRightClick={() => setBadgesModalOpen(true)}>Badges</Sec>
+      <Sec icon="🏅">Badges</Sec>
       <Card>
-        <div style={{ padding: "12px 20px 10px" }}>
-          <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 8 }}>Choose which badges appear on your public profile. You can also attach them to prompt cards below.</div>
-          {earnedBadges.length === 0 ? (
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.55)" }}>No badges yet. Add concerts, merch, connect streaming, and grow followers to unlock badges.</div>
-          ) : publicEarnedBadges.length === 0 ? (
-            <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.55)" }}>You&apos;ve earned {earnedBadges.length} badge{earnedBadges.length > 1 ? "s" : ""}. Tap <span style={{ fontWeight: 600 }}>Manage</span> to pick which to show.</div>
-          ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {publicEarnedBadges.slice(0, 6).map((b) => (
-                <div key={b.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.35)" }}>
-                  <span style={{ fontSize: 14 }}>{b.def.icon || "🏅"}</span>
-                  <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#065f46" }}>{formatBadgeTitle(b)}</span>
-                </div>
-              ))}
-              {publicEarnedBadges.length > 6 && <span style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.7)" }}>+{publicEarnedBadges.length - 6} more</span>}
-            </div>
-          )}
-          {earnedBadges.length > 0 && (
-            <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => setBadgesModalOpen(true)} style={{ padding: "8px 14px", borderRadius: 999, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 3px 10px rgba(13,148,136,0.3)" }}>
-                Manage Badges
-              </button>
-            </div>
-          )}
+        <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          {publicEarnedBadges.slice(0, 12).map((b) => (
+            <BadgeShape
+              key={b.badge_key}
+              icon={b.def?.icon || "🏅"}
+              title={formatBadgeTitle(b)}
+              description={b.def?.description}
+              size={44}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() => setBadgesModalOpen(true)}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              border: `2px dashed ${theme.accent}`,
+              background: "transparent",
+              color: theme.accent,
+              fontSize: 22,
+              fontWeight: 300,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+            aria-label="Manage badges"
+          >
+            +
+          </button>
         </div>
+        {earnedBadges.length === 0 && (
+          <div style={{ padding: "0 18px 14px", fontFamily: F, fontSize: 12, color: theme.textMuted }}>
+            No badges yet. Add concerts, merch, connect streaming, and grow followers to unlock badges. Tap + to manage once you earn some.
+          </div>
+        )}
       </Card>
 
-      <Sec icon="📝">Your 5 profile cards</Sec>
+      <Sec icon="📝">Design Your Profile</Sec>
       {[1, 2, 3, 4, 5].map((cardIndex) => {
         const { promptId, prompt, answer } = getCardState(cardIndex);
         const texts = answer?.texts ?? [];
@@ -479,16 +494,13 @@ export default function CurateTab({
               onClick={() => setOpenCardIndex(cardIndex)}
             >
               <div style={{ padding: "14px 18px" }}>
-                <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: "rgba(13,148,136,0.9)", textTransform: "uppercase", marginBottom: 6 }}>
-                  Card {cardIndex}
-                </div>
-                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 4 }}>
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 4 }}>
                   {prompt ? prompt.prompt_text : "Choose a prompt"}
                 </div>
-                <div style={{ fontFamily: F, fontSize: 14, color: "#1e1b4b", minHeight: 20 }}>
+                <div style={{ fontFamily: F, fontSize: 14, color: theme.text, minHeight: 20 }}>
                   {preview}
                 </div>
-                <div style={{ marginTop: 8, fontFamily: F, fontSize: 12, color: "#0d9488", fontWeight: 600 }}>
+                <div style={{ marginTop: 8, fontFamily: F, fontSize: 12, color: theme.accent, fontWeight: 600 }}>
                   Tap to edit
                 </div>
               </div>

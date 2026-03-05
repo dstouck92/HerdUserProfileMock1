@@ -15,10 +15,12 @@ import CurateTab from "./components/tabs/CurateTab";
 import SearchPage from "./components/SearchPage";
 import HerdsPage from "./components/HerdsPage";
 import PublicProfile from "./PublicProfile";
-import { TabBar, ProfileHeader, BottomNav, F, AvatarSprite } from "./components/ui";
+import { TabBar, ProfileHeader, BottomNav, F, AvatarSprite, ThemeToggle } from "./components/ui";
+import { useTheme } from "./context/ThemeContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function App() {
+  const { theme } = useTheme();
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(!!supabase);
   const [activeTab, setActiveTab] = useState("Curate");
@@ -1459,8 +1461,8 @@ export default function App() {
     const title = titles[activePage] || "Coming soon";
     return (
       <div style={{ padding: "72px 24px 24px", textAlign: "center" }}>
-        <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: "#1e1b4b", marginBottom: 8 }}>{title}</div>
-        <div style={{ fontFamily: F, fontSize: 14, color: "rgba(55,48,107,0.7)", lineHeight: 1.6 }}>
+        <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: theme.text, marginBottom: 8 }}>{title}</div>
+        <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, lineHeight: 1.6 }}>
           Coming soon. This area will become your {title.toLowerCase()} experience.
         </div>
       </div>
@@ -1470,7 +1472,7 @@ export default function App() {
   if (authLoading) {
     return (
       <GradientBg>
-        <div style={{ padding: "80px 24px", textAlign: "center", fontFamily: F, fontSize: 15, color: "#0f766e" }}>Loading…</div>
+        <div style={{ padding: "80px 24px", textAlign: "center", fontFamily: F, fontSize: 15, color: theme.accent }}>Loading…</div>
       </GradientBg>
     );
   }
@@ -1479,22 +1481,24 @@ export default function App() {
   return (
     <GradientBg>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px 0" }}>
-        <span style={{ fontSize: 22, color: "#0d9488", fontWeight: 700 }}>‹</span>
-        <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>{headerTitle}</span>
-        <button onClick={handleLogout} style={{ background: "none", border: "none", fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.4)", cursor: "pointer" }}>Log out</button>
+        <span style={{ fontSize: 22, color: theme.accent, fontWeight: 700 }}>‹</span>
+        <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text }}>{headerTitle}</span>
+        <button onClick={handleLogout} style={{ background: "none", border: "none", fontFamily: F, fontSize: 12, color: theme.textMuted, cursor: "pointer" }}>Log out</button>
       </div>
       {activePage === "Profile" ? (
         <>
-          <ProfileHeader
-            user={user}
-            onViewPublicProfile={handleViewPublicProfile}
-            onAvatarChange={handleAvatarChange}
-            supabase={supabase}
-            showAvatarPicker={showAvatarPicker}
-            onCloseAvatarPicker={() => setShowAvatarPicker(false)}
-            onOpenAvatarPicker={() => setShowAvatarPicker(true)}
-            onProfileImageSelected={handleProfileImageSelected}
-          />
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "24px 20px 12px", gap: 16 }}>
+            <ProfileHeader
+              user={user}
+              onAvatarChange={handleAvatarChange}
+              supabase={supabase}
+              showAvatarPicker={showAvatarPicker}
+              onCloseAvatarPicker={() => setShowAvatarPicker(false)}
+              onOpenAvatarPicker={() => setShowAvatarPicker(true)}
+              onProfileImageSelected={handleProfileImageSelected}
+            />
+            <ThemeToggle />
+          </div>
           {activeTab === "Curate" && (
             <div
               style={{
@@ -1504,7 +1508,7 @@ export default function App() {
                 gap: 12,
                 fontFamily: F,
                 fontSize: 12,
-                color: "rgba(55,48,107,0.8)",
+                color: theme.textMuted,
               }}
             >
               <button
@@ -1517,10 +1521,10 @@ export default function App() {
                   cursor: "pointer",
                   fontFamily: F,
                   fontSize: 12,
-                  color: "rgba(55,48,107,0.8)",
+                  color: theme.textMuted,
                 }}
               >
-                <strong style={{ color: "#0f766e" }}>{followersCount}</strong> Followers
+                <strong style={{ color: theme.accent }}>{followersCount}</strong> Followers
               </button>
               <button
                 type="button"
@@ -1532,10 +1536,10 @@ export default function App() {
                   cursor: "pointer",
                   fontFamily: F,
                   fontSize: 12,
-                  color: "rgba(55,48,107,0.8)",
+                  color: theme.textMuted,
                 }}
               >
-                <strong style={{ color: "#0f766e" }}>{followingCount}</strong> Following
+                <strong style={{ color: theme.accent }}>{followingCount}</strong> Following
               </button>
             </div>
           )}
@@ -1641,7 +1645,7 @@ export default function App() {
             position: "fixed",
             inset: 0,
             zIndex: 105,
-            background: "rgba(15,23,42,0.55)",
+            background: theme.modalOverlay,
             backdropFilter: "blur(8px)",
             display: "flex",
             alignItems: "center",
@@ -1657,9 +1661,10 @@ export default function App() {
               width: "100%",
               maxWidth: 380,
               maxHeight: "80vh",
-              background: "#f9fafb",
-              borderRadius: 18,
-              boxShadow: "0 18px 50px rgba(15,23,42,0.45)",
+              background: theme.modalBg,
+              borderRadius: 20,
+              boxShadow: theme.cardShadow,
+              border: theme.modalBorder,
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
@@ -1668,13 +1673,13 @@ export default function App() {
             <div
               style={{
                 padding: "10px 16px",
-                borderBottom: "1px solid rgba(148,163,184,0.4)",
+                borderBottom: theme.cardBorder,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
               }}
             >
-              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: theme.text }}>
                 {followListType === "followers" ? "Followers" : "Following"}
               </div>
               <button
@@ -1684,7 +1689,7 @@ export default function App() {
                   border: "none",
                   background: "none",
                   fontSize: 20,
-                  color: "#94a3b8",
+                  color: theme.textMuted,
                   cursor: "pointer",
                 }}
                 aria-label="Close followers list"
@@ -1694,25 +1699,11 @@ export default function App() {
             </div>
             <div style={{ flex: 1, overflow: "auto" }}>
               {followListLoading ? (
-                <div
-                  style={{
-                    padding: "16px 18px",
-                    fontFamily: F,
-                    fontSize: 13,
-                    color: "rgba(55,48,107,0.75)",
-                  }}
-                >
+                <div style={{ padding: "16px 18px", fontFamily: F, fontSize: 13, color: theme.textMuted }}>
                   Loading…
                 </div>
               ) : followListUsers.length === 0 ? (
-                <div
-                  style={{
-                    padding: "16px 18px 20px",
-                    fontFamily: F,
-                    fontSize: 13,
-                    color: "rgba(55,48,107,0.7)",
-                  }}
-                >
+                <div style={{ padding: "16px 18px 20px", fontFamily: F, fontSize: 13, color: theme.textMuted }}>
                   {followListType === "followers"
                     ? "No followers yet."
                     : "You're not following anyone yet."}
@@ -1732,8 +1723,8 @@ export default function App() {
                       width: "100%",
                       padding: "10px 16px",
                       border: "none",
-                      borderBottom: "1px solid rgba(226,232,240,0.9)",
-                      background: "#f9fafb",
+                      borderBottom: theme.cardBorder,
+                      background: "transparent",
                       display: "flex",
                       alignItems: "center",
                       gap: 10,
@@ -1742,24 +1733,11 @@ export default function App() {
                   >
                     <AvatarSprite avatarId={u.avatarId} size={36} />
                     <div style={{ flex: 1, textAlign: "left" }}>
-                      <div
-                        style={{
-                          fontFamily: F,
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: "#0f172a",
-                        }}
-                      >
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: theme.text }}>
                         {u.name}
                       </div>
                       {u.username && (
-                        <div
-                          style={{
-                            fontFamily: F,
-                            fontSize: 12,
-                            color: "rgba(100,116,139,0.95)",
-                          }}
-                        >
+                        <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted }}>
                           @{u.username}
                         </div>
                       )}
@@ -1773,12 +1751,12 @@ export default function App() {
       )}
       {showPublicProfilePreview && previewUsername && (
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(30,27,75,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          style={{ position: "fixed", inset: 0, zIndex: 100, background: theme.modalOverlay, backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
           onClick={(e) => e.target === e.currentTarget && setShowPublicProfilePreview(false)}
         >
-          <div style={{ width: "100%", maxWidth: 420, maxHeight: "90vh", background: "#fff", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid rgba(13,148,136,0.12)" }}>
-              <button type="button" onClick={() => setShowPublicProfilePreview(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }} aria-label="Close">✕</button>
+          <div style={{ width: "100%", maxWidth: 420, maxHeight: "90vh", background: theme.modalBg, borderRadius: 22, boxShadow: theme.cardShadow, border: theme.modalBorder, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", padding: "12px 16px", borderBottom: theme.cardBorder }}>
+              <button type="button" onClick={() => setShowPublicProfilePreview(false)} style={{ background: "none", border: "none", fontSize: 22, color: theme.textMuted, cursor: "pointer" }} aria-label="Close">✕</button>
             </div>
             <div style={{ overflow: "auto", flex: 1 }}>
               <PublicProfile username={previewUsername} />
