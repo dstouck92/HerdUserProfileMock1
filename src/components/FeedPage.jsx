@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, F, Sec } from "./ui";
-import { useDebounce } from "../hooks/useDebounce";
 import { supabase } from "../lib/supabase";
 
 const MAX_MUSIC_ARTISTS = 5;
@@ -31,6 +30,8 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
 
   const [events, setEvents] = useState([]);
   const [concertsLoading, setConcertsLoading] = useState(false);
+  const [concertsUpdateLoading, setConcertsUpdateLoading] = useState(false);
+  const [concertsCacheLoaded, setConcertsCacheLoaded] = useState(false);
   const [concertsError, setConcertsError] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
@@ -53,10 +54,6 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
       .filter((id) => typeof id === "string" && id.trim().length > 0)
       .slice(0, MAX_MUSIC_ARTISTS);
   }, [followedHerds]);
-
-  const debouncedArtistQuery = useDebounce(artistNamesQuery, 400);
-  const debouncedCity = useDebounce(city, 400);
-  const debouncedCountry = useDebounce(country, 400);
 
   const sb = supabaseClient || supabase;
 
@@ -142,23 +139,36 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
     }
   };
 
-  // Concerts: same as Market bottom
+  // Load concerts cache on mount (show cached data immediately for smooth load)
   useEffect(() => {
-    if (!debouncedArtistQuery) {
-      setEvents([]);
-      setConcertsError("");
-      setConcertsLoading(false);
-      return;
-    }
+    if (!sb || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await sb
+        .from("feed_concerts_cache")
+        .select("events_json")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!error && data?.events_json) {
+        setEvents(Array.isArray(data.events_json) ? data.events_json : []);
+      }
+      setConcertsCacheLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [sb, user?.id]);
+
+  // First-time concerts fetch: only when cache loaded, events empty, and we have artists
+  useEffect(() => {
+    if (!concertsCacheLoaded || events.length > 0 || !artistNamesQuery.trim()) return;
+    if (!user?.id || !sb) return;
     let cancelled = false;
     setConcertsLoading(true);
     setConcertsError("");
     (async () => {
       try {
         const params = new URLSearchParams();
-        params.set("artists", debouncedArtistQuery);
-        if (debouncedCity.trim()) params.set("city", debouncedCity.trim());
-        if (debouncedCountry.trim()) params.set("country", debouncedCountry.trim());
+        params.set("artists", artistNamesQuery);
         const res = await fetch(`/api/market/concerts?${params.toString()}`);
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -166,7 +176,12 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
         }
         const data = await res.json();
         if (cancelled) return;
-        setEvents(Array.isArray(data.events) ? data.events : []);
+        const list = Array.isArray(data.events) ? data.events : [];
+        setEvents(list);
+        await sb.from("feed_concerts_cache").upsert(
+          { user_id: user.id, events_json: list, updated_at: new Date().toISOString() },
+          { onConflict: "user_id" }
+        );
       } catch (e) {
         if (!cancelled) {
           setConcertsError(e.message || "Could not load concerts.");
@@ -177,7 +192,33 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
       }
     })();
     return () => { cancelled = true; };
-  }, [debouncedArtistQuery, debouncedCity, debouncedCountry]);
+  }, [concertsCacheLoaded, artistNamesQuery, user?.id, sb]);
+
+  const handleConcertsUpdate = async () => {
+    if (!artistNamesQuery.trim() || !user?.id || !sb) return;
+    setConcertsUpdateLoading(true);
+    setConcertsError("");
+    try {
+      const params = new URLSearchParams();
+      params.set("artists", artistNamesQuery);
+      const res = await fetch(`/api/market/concerts?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to load concerts");
+      }
+      const data = await res.json();
+      const list = Array.isArray(data.events) ? data.events : [];
+      setEvents(list);
+      await sb.from("feed_concerts_cache").upsert(
+        { user_id: user.id, events_json: list, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+    } catch (e) {
+      setConcertsError(e.message || "Could not update.");
+    } finally {
+      setConcertsUpdateLoading(false);
+    }
+  };
 
   const hasHerds = followedHerds.length > 0;
   const filteredEvents = useMemo(() => {
@@ -186,6 +227,12 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
       const evVenue = (ev.venue || "").toLowerCase();
       const vFilter = venue.trim().toLowerCase();
       if (vFilter && !evVenue.includes(vFilter)) return false;
+      const evCity = (ev.city || "").toLowerCase();
+      const cityFilter = city.trim().toLowerCase();
+      if (cityFilter && !evCity.includes(cityFilter)) return false;
+      const evCountry = (ev.country || "").toLowerCase();
+      const countryFilter = country.trim().toLowerCase();
+      if (countryFilter && evCountry !== countryFilter) return false;
       const evDate = ev.date ? new Date(ev.date) : null;
       if (startDate) {
         const start = new Date(startDate);
@@ -197,7 +244,7 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
       }
       return true;
     });
-  }, [events, venue, startDate, endDate]);
+  }, [events, venue, city, country, startDate, endDate]);
   const eventsToRender =
     filteredEvents.length > 0 || venue || startDate || endDate ? filteredEvents : events;
 
@@ -352,14 +399,45 @@ export default function FeedPage({ user, supabase: supabaseClient, userHerds }) 
       <div
         style={{
           padding: "0 20px 4px",
-          fontFamily: F,
-          fontSize: 12,
-          color: "rgba(55,48,107,0.7)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 6,
         }}
       >
-        {hasHerds
-          ? "Upcoming concerts by your favorite artists."
-          : "Follow a few fan clubs to start seeing recommended concerts here."}
+        <span
+          style={{
+            fontFamily: F,
+            fontSize: 12,
+            color: "rgba(55,48,107,0.7)",
+          }}
+        >
+          {hasHerds
+            ? "Upcoming concerts by your favorite artists."
+            : "Follow a few fan clubs to start seeing recommended concerts here."}
+        </span>
+        {hasHerds && (
+          <button
+            type="button"
+            onClick={handleConcertsUpdate}
+            disabled={concertsUpdateLoading}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(13,148,136,0.5)",
+              background: "rgba(16,185,129,0.12)",
+              fontFamily: F,
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#0f766e",
+              cursor: concertsUpdateLoading ? "default" : "pointer",
+              opacity: concertsUpdateLoading ? 0.7 : 1,
+            }}
+          >
+            {concertsUpdateLoading ? "Updating…" : "Update"}
+          </button>
+        )}
       </div>
 
       <div style={{ padding: "8px 16px 24px" }}>
