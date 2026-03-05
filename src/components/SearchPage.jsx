@@ -83,6 +83,7 @@ export default function SearchPage({
     : [];
   const localResults = searchResults.filter((e) => e.kind !== "Artist");
   const followedSpotifySet = new Set(followedSpotifyArtistIds || []);
+  const followingIdsSafe = Array.isArray(followingIds) ? followingIds : [];
 
   useEffect(() => {
     // Temporarily disable automatic Spotify artist image lookups to reduce API usage.
@@ -148,10 +149,10 @@ export default function SearchPage({
   };
 
   const ActivityItem = ({ item, isLast }) => {
+    if (!item || typeof item !== "object") return null;
     const isBadge = item.type === "badge_earned";
     return (
       <div
-        key={item.id}
         style={{
           display: "flex",
           alignItems: "flex-start",
@@ -186,8 +187,8 @@ export default function SearchPage({
               marginBottom: 2,
             }}
           >
-            <span style={{ fontWeight: 700 }}>{item.actorName}</span>{" "}
-            <span style={{ fontWeight: 400 }}>{item.description}</span>
+            <span style={{ fontWeight: 700 }}>{item.actorName ?? ""}</span>{" "}
+            <span style={{ fontWeight: 400 }}>{item.description ?? ""}</span>
           </div>
           <div
             style={{
@@ -197,7 +198,7 @@ export default function SearchPage({
               marginBottom: 4,
             }}
           >
-            {item.type}
+            {item.type ?? ""}
           </div>
           <div
             style={{
@@ -224,7 +225,7 @@ export default function SearchPage({
               <span>💬</span>
               <span>↗</span>
             </div>
-            <span>{formatTimeAgo(item.createdAt)}</span>
+            <span>{formatTimeAgo(item.createdAt ?? item.created_at)}</span>
           </div>
         </div>
       </div>
@@ -426,7 +427,7 @@ export default function SearchPage({
                 </div>
                 {localResults.map((item) => {
                   const isUser = item.kind === "User" && item.userId;
-                  const isFollowing = isUser && followingIds.includes(item.userId);
+                  const isFollowing = isUser && followingIdsSafe.includes(item.userId);
                   return (
                     <div
                       key={item.id}
@@ -568,7 +569,7 @@ export default function SearchPage({
                 primaryLabel="Add +"
                 imageUrl={friend.profileImageUrl}
                 avatarId={friend.avatarId}
-                isFollowing={followingIds.includes(friend.id)}
+                isFollowing={followingIdsSafe.includes(friend.id)}
                 onToggleFollow={onToggleFollow}
                 onOpenProfile={onOpenProfile}
                 userId={friend.id}
@@ -750,6 +751,8 @@ export default function SearchPage({
 }
 
 function SectionTitle({ children }) {
+  const { theme: sectionTheme } = useTheme();
+  const t = sectionTheme ?? themes.dark;
   return (
     <div
       style={{
@@ -757,7 +760,7 @@ function SectionTitle({ children }) {
         fontFamily: F,
         fontSize: 14,
         fontWeight: 700,
-        color: theme.text,
+        color: t.text,
       }}
     >
       {children}
