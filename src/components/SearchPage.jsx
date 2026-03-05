@@ -31,6 +31,7 @@ export default function SearchPage({
   const [spotifyLoading, setSpotifyLoading] = useState(false);
   const [spotifyError, setSpotifyError] = useState(null);
   const [artistImages, setArtistImages] = useState({});
+  const [showAllActivityPopup, setShowAllActivityPopup] = useState(false);
   const friendsFromDb = Array.isArray(recommendedFriends)
     ? recommendedFriends.map((f) => ({
         id: f.id,
@@ -141,6 +142,90 @@ export default function SearchPage({
     if (diffHours < 24) return `${diffHours}h ago`;
     const diffDays = Math.round(diffHours / 24);
     return `${diffDays}d ago`;
+  };
+
+  const ActivityItem = ({ item, isLast }) => {
+    const isBadge = item.type === "badge_earned";
+    return (
+      <div
+        key={item.id}
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          paddingBottom: isLast ? 4 : 12,
+          borderBottom: isLast ? "none" : "1px solid rgba(148,163,184,0.3)",
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: isBadge
+              ? "radial-gradient(circle at 30% 0%, #fef9c3, #22c55e)"
+              : "radial-gradient(circle at 30% 0%, #fee2e2, #0ea5e9)",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {isBadge ? <span style={{ fontSize: 18 }}>🏅</span> : null}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontFamily: F,
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#1e293b",
+              marginBottom: 2,
+            }}
+          >
+            <span style={{ fontWeight: 700 }}>{item.actorName}</span>{" "}
+            <span style={{ fontWeight: 400 }}>{item.description}</span>
+          </div>
+          <div
+            style={{
+              fontFamily: F,
+              fontSize: 11,
+              color: "rgba(55,48,107,0.6)",
+              marginBottom: 4,
+            }}
+          >
+            {item.type}
+          </div>
+          <div
+            style={{
+              fontFamily: F,
+              fontSize: 11,
+              color: "rgba(148,163,184,0.9)",
+              marginBottom: 6,
+            }}
+          >
+            {item.actorUsername ? `@${item.actorUsername}` : ""}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontFamily: F,
+              fontSize: 11,
+              color: "rgba(148,163,184,0.9)",
+            }}
+          >
+            <div style={{ display: "flex", gap: 12 }}>
+              <span>♡</span>
+              <span>💬</span>
+              <span>↗</span>
+            </div>
+            <span>{formatTimeAgo(item.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -503,93 +588,50 @@ export default function SearchPage({
       </Card>
 
       {/* Recent Activity */}
-      <SectionTitle>Your Recent Activity</SectionTitle>
-      <Card style={{ padding: "12px 16px 8px", marginBottom: 12 }}>
-        {Array.isArray(recentActivity) && recentActivity.length > 0 ? recentActivity.map((item, idx) => {
-          const isBadge = item.type === "badge_earned";
-          return (
-          <div
-            key={item.id}
+      <div
+        style={{
+          padding: "4px 20px 6px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: F,
+            fontSize: 14,
+            fontWeight: 700,
+            color: "#1e1b4b",
+          }}
+        >
+          Your Recent Activity
+        </span>
+        {Array.isArray(recentActivity) && recentActivity.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAllActivityPopup(true)}
             style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 10,
-              paddingBottom: idx < recentActivity.length - 1 ? 12 : 4,
-              borderBottom:
-                idx < recentActivity.length - 1
-                  ? "1px solid rgba(148,163,184,0.3)"
-                  : "none",
+              border: "none",
+              background: "none",
+              padding: 0,
+              fontFamily: F,
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#0d9488",
+              cursor: "pointer",
             }}
           >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                background: isBadge
-                  ? "radial-gradient(circle at 30% 0%, #fef9c3, #22c55e)"
-                  : "radial-gradient(circle at 30% 0%, #fee2e2, #0ea5e9)",
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {isBadge ? <span style={{ fontSize: 18 }}>🏅</span> : null}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div
-                style={{
-                  fontFamily: F,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#1e293b",
-                  marginBottom: 2,
-                }}
-              >
-                <span style={{ fontWeight: 700 }}>{item.actorName}</span>{" "}
-                <span style={{ fontWeight: 400 }}>{item.description}</span>
-              </div>
-              <div
-                style={{
-                  fontFamily: F,
-                  fontSize: 11,
-                  color: "rgba(55,48,107,0.6)",
-                  marginBottom: 4,
-                }}
-              >
-                {item.type}
-              </div>
-              <div
-                style={{
-                  fontFamily: F,
-                  fontSize: 11,
-                  color: "rgba(148,163,184,0.9)",
-                  marginBottom: 6,
-                }}
-              >
-                {item.actorUsername ? `@${item.actorUsername}` : ""}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  fontFamily: F,
-                  fontSize: 11,
-                  color: "rgba(148,163,184,0.9)",
-                }}
-              >
-                <div style={{ display: "flex", gap: 12 }}>
-                  <span>♡</span>
-                  <span>💬</span>
-                  <span>↗</span>
-                </div>
-                <span>{formatTimeAgo(item.createdAt)}</span>
-              </div>
-            </div>
-          </div>
-        );}) : (
+            View All
+          </button>
+        )}
+      </div>
+      <Card style={{ padding: "12px 16px 8px", marginBottom: 12 }}>
+        {Array.isArray(recentActivity) && recentActivity.length > 0 ? (
+          recentActivity.slice(0, 6).map((item, idx, arr) => (
+            <ActivityItem key={item.id} item={item} isLast={idx === arr.length - 1} />
+          ))
+        ) : (
           <div
             style={{
               padding: "8px 4px 4px",
@@ -602,6 +644,100 @@ export default function SearchPage({
           </div>
         )}
       </Card>
+
+      {showAllActivityPopup && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            background: "rgba(15,23,42,0.5)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAllActivityPopup(false);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              background: "#fff",
+              borderRadius: 20,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                borderBottom: "1px solid rgba(13,148,136,0.12)",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: F,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: "#1e1b4b",
+                }}
+              >
+                All Recent Activity
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAllActivityPopup(false)}
+                style={{
+                  border: "none",
+                  background: "none",
+                  fontSize: 22,
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                  padding: 4,
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                padding: "12px 16px 8px",
+              }}
+            >
+              {Array.isArray(recentActivity) && recentActivity.length > 0 ? (
+                recentActivity.map((item, idx, arr) => (
+                  <ActivityItem key={item.id} item={item} isLast={idx === arr.length - 1} />
+                ))
+              ) : (
+                <div
+                  style={{
+                    padding: "8px 4px 4px",
+                    fontFamily: F,
+                    fontSize: 12,
+                    color: "rgba(55,48,107,0.7)",
+                  }}
+                >
+                  No recent activity yet. As you add concerts, merch, and follow fans, updates will appear here.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Milestone placeholder (hidden for now) */}
       {/* We can show this when we define concrete milestone rules */}
