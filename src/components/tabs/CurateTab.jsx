@@ -41,6 +41,7 @@ export default function CurateTab({
   const [bioModalOpen, setBioModalOpen] = useState(false);
   const [curateMode, setCurateMode] = useState("edit"); // 'edit' | 'view'
   const touchStartXRef = useRef(null);
+  const [openCardIndex, setOpenCardIndex] = useState(null);
 
   const themeOptions = [
     { id: "default", label: "Default", bg: "linear-gradient(135deg, #e0f2fe, #ccfbf1)", border: "rgba(13,148,136,0.4)" },
@@ -105,7 +106,15 @@ export default function CurateTab({
     setUserCards((prev) => {
       const next = { ...prev };
       const existing = next[cardIndex];
-      next[cardIndex] = { ...existing, prompt_id: promptId, answer: existing?.answer ?? {} };
+      const prevPromptId = existing?.prompt_id ?? null;
+      const shouldResetAnswer = prevPromptId && prevPromptId !== promptId;
+      next[cardIndex] = {
+        ...existing,
+        card_index: cardIndex,
+        prompt_id: promptId,
+        // When the user switches to a different prompt, start with a blank answer.
+        answer: shouldResetAnswer ? {} : existing?.answer ?? {},
+      };
       return next;
     });
   }, []);
@@ -451,26 +460,108 @@ export default function CurateTab({
       <Sec icon="📝">Your 5 profile cards</Sec>
       {[1, 2, 3, 4, 5].map((cardIndex) => {
         const { promptId, prompt, answer } = getCardState(cardIndex);
+        const texts = answer?.texts ?? [];
+        const preview =
+          (texts[0] && texts[0].slice(0, 80)) ||
+          (prompt ? "Tap to answer this prompt" : "Tap to pick a prompt");
         return (
           <div key={cardIndex}>
-            <CurateCardEditor
-              cardIndex={cardIndex}
-              categories={categories}
-              prompts={prompts}
-              selectedPrompt={prompt}
-              answer={answer}
-              concerts={concerts}
-              vinyl={vinyl}
-              merch={merch}
-              streamingData={data}
-              youtubeData={youtube}
-              userBadges={userBadges}
-              badgeDefinitions={badgeDefinitions}
-              onSelectPrompt={(promptId) => handleSelectPrompt(cardIndex, promptId)}
-              onChangeAnswer={(update) => handleChangeAnswer(cardIndex, update)}
-              userId={user?.id}
-              supabase={supabase}
-            />
+            <Card
+              style={{ marginBottom: 12, cursor: "pointer" }}
+              onClick={() => setOpenCardIndex(cardIndex)}
+            >
+              <div style={{ padding: "14px 18px" }}>
+                <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: "rgba(13,148,136,0.9)", textTransform: "uppercase", marginBottom: 6 }}>
+                  Card {cardIndex}
+                </div>
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 4 }}>
+                  {prompt ? prompt.prompt_text : "Choose a prompt"}
+                </div>
+                <div style={{ fontFamily: F, fontSize: 14, color: "#1e1b4b", minHeight: 20 }}>
+                  {preview}
+                </div>
+                <div style={{ marginTop: 8, fontFamily: F, fontSize: 12, color: "#0d9488", fontWeight: 600 }}>
+                  Tap to edit
+                </div>
+              </div>
+            </Card>
+
+            {openCardIndex === cardIndex && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 130,
+                  background: "rgba(15,23,42,0.6)",
+                  backdropFilter: "blur(10px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 16,
+                }}
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setOpenCardIndex(null);
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: 420,
+                    maxHeight: "90vh",
+                    background: "#f9fafb",
+                    borderRadius: 18,
+                    boxShadow: "0 20px 60px rgba(15,23,42,0.6)",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div
+                    style={{
+                      padding: "12px 18px",
+                      borderBottom: "1px solid rgba(148,163,184,0.35)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                      Edit card {cardIndex}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenCardIndex(null)}
+                      style={{ border: "none", background: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }}
+                      aria-label="Close"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div style={{ flex: 1, overflow: "auto", padding: "10px 12px 14px" }}>
+                    <CurateCardEditor
+                      cardIndex={cardIndex}
+                      categories={categories}
+                      prompts={prompts}
+                      selectedPrompt={prompt}
+                      answer={answer}
+                      concerts={concerts}
+                      vinyl={vinyl}
+                      merch={merch}
+                      streamingData={data}
+                      youtubeData={youtube}
+                      userBadges={userBadges}
+                      badgeDefinitions={badgeDefinitions}
+                      onSelectPrompt={(promptId) => handleSelectPrompt(cardIndex, promptId)}
+                      onChangeAnswer={(update) => handleChangeAnswer(cardIndex, update)}
+                      userId={user?.id}
+                      supabase={supabase}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       })}

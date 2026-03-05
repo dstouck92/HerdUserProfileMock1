@@ -50,6 +50,11 @@ export default function CurateCardEditor({
   const [dataRefPopupOpen, setDataRefPopupOpen] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const imageInputRef = useRef(null);
+  const [activeCategoryId, setActiveCategoryId] = useState(() => {
+    if (selectedPrompt?.category_id) return selectedPrompt.category_id;
+    if (categories?.length) return categories[0].id;
+    return null;
+  });
 
   const emitAnswer = useCallback(
     (update) => {
@@ -72,6 +77,14 @@ export default function CurateCardEditor({
   const currentTexts = ensureTexts();
 
   const promptsInCategory = (categoryId) => prompts.filter((p) => p.category_id === categoryId);
+
+  useEffect(() => {
+    if (selectedPrompt?.category_id) {
+      setActiveCategoryId(selectedPrompt.category_id);
+    } else if (!activeCategoryId && categories?.length) {
+      setActiveCategoryId(categories[0].id);
+    }
+  }, [selectedPrompt?.category_id, categories, activeCategoryId]);
 
   const handleAddDataRef = (type, id, metadata) => {
     const next = [...dataRefs, { type, id, metadata: metadata ?? null }];
@@ -133,49 +146,81 @@ export default function CurateCardEditor({
           Card {cardIndex}
         </div>
         <div style={{ marginBottom: 12 }}>
-          <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
-            Category
-          </label>
-          <select
-            value={selectedPrompt ? (selectedPrompt.category_id ?? categories.find((c) => promptsInCategory(c.id).some((p) => p.id === selectedPrompt.id))?.id) ?? "" : ""}
-            onChange={(e) => {
-              const catId = e.target.value;
-              if (!catId) {
-                onSelectPrompt(null);
-                return;
-              }
-              const first = promptsInCategory(catId)[0];
-              onSelectPrompt(first?.id ?? null);
-            }}
-            style={{ ...inputStyle, marginBottom: 8 }}
-          >
-            <option value="">Choose category</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          {selectedPrompt && (
-            <>
-              <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>
-                Question
-              </label>
-              <select
-                value={selectedPrompt.id}
-                onChange={(e) => onSelectPrompt(e.target.value)}
-                style={{ ...inputStyle, marginBottom: 12 }}
-              >
-                {promptsInCategory(selectedPrompt.category_id).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.prompt_text.length > 50 ? p.prompt_text.slice(0, 50) + "…" : p.prompt_text}
-                  </option>
-                ))}
-              </select>
-              <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: "#1e1b4b", marginBottom: 12, lineHeight: 1.4 }}>
-                {selectedPrompt.prompt_text}
+          <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 6 }}>
+            Prompt
+          </div>
+          <div style={{ display: "flex", overflowX: "auto", paddingBottom: 6, marginBottom: 8, gap: 8 }}>
+            {categories.map((c) => {
+              const isActive = c.id === activeCategoryId;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveCategoryId(c.id);
+                    const inCat = promptsInCategory(c.id);
+                    if (!selectedPrompt || !inCat.some((p) => p.id === selectedPrompt.id)) {
+                      const first = inCat[0];
+                      if (first) onSelectPrompt(first.id);
+                    }
+                  }}
+                  style={{
+                    flexShrink: 0,
+                    padding: "6px 12px",
+                    borderRadius: 999,
+                    border: isActive ? "1px solid rgba(13,148,136,0.9)" : "1px solid rgba(148,163,184,0.6)",
+                    background: isActive ? "rgba(13,148,136,0.12)" : "rgba(255,255,255,0.9)",
+                    fontFamily: F,
+                    fontSize: 12,
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? "#0f766e" : "rgba(55,48,107,0.8)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ maxHeight: 160, overflow: "auto", borderRadius: 12, border: "1px solid rgba(226,232,240,0.9)", background: "rgba(248,250,252,0.9)" }}>
+            {(activeCategoryId ? promptsInCategory(activeCategoryId) : prompts).map((p) => {
+              const isSelected = selectedPrompt && selectedPrompt.id === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onSelectPrompt(p.id)}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 12px",
+                    border: "none",
+                    borderBottom: "1px solid rgba(226,232,240,0.9)",
+                    background: isSelected ? "rgba(13,148,136,0.08)" : "transparent",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  }}
+                >
+                  <span style={{ fontFamily: F, fontSize: 13, color: "#1e1b4b" }}>
+                    {p.prompt_text}
+                  </span>
+                  {isSelected && <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "#0d9488" }}>✓</span>}
+                </button>
+              );
+            })}
+            {(activeCategoryId ? promptsInCategory(activeCategoryId) : prompts).length === 0 && (
+              <div style={{ padding: "10px 12px", fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)" }}>
+                No prompts in this category yet.
               </div>
-            </>
+            )}
+          </div>
+          {selectedPrompt && (
+            <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b", marginTop: 12, marginBottom: 8, lineHeight: 1.4 }}>
+              {selectedPrompt.prompt_text}
+            </div>
           )}
         </div>
 
