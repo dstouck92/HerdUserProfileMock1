@@ -11,9 +11,13 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
   const [searching, setSearching] = useState(false);
 
   const [incomingRequests, setIncomingRequests] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
+  const [sentRequestProfiles, setSentRequestProfiles] = useState({});
   const [sentRequestToIds, setSentRequestToIds] = useState(new Set());
   const [requestProfiles, setRequestProfiles] = useState({});
   const [conversations, setConversations] = useState([]);
+  const [openPendingRequestId, setOpenPendingRequestId] = useState(null);
+  const [openPendingOtherUser, setOpenPendingOtherUser] = useState(null);
   const [convProfiles, setConvProfiles] = useState({});
   const [lastMessages, setLastMessages] = useState({});
   const [loadingConvs, setLoadingConvs] = useState(true);
@@ -54,30 +58,38 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
     return () => { cancelled = true; };
   }, [sb, me, debouncedQ]);
 
-  // Incoming requests (to_user_id = me, status = pending) and sent requests (from_user_id = me, status = pending)
+  // Incoming requests (to_user_id = me, status = pending) and sent requests (from_user_id = me, status = pending) with full rows and profiles
   useEffect(() => {
     if (!sb || !me) return;
     let cancelled = false;
     (async () => {
       const [incomingRes, sentRes] = await Promise.all([
         sb.from("dm_conversation_requests").select("id, from_user_id, to_user_id, status, created_at").eq("to_user_id", me).eq("status", "pending"),
-        sb.from("dm_conversation_requests").select("to_user_id").eq("from_user_id", me).eq("status", "pending"),
+        sb.from("dm_conversation_requests").select("id, from_user_id, to_user_id, status, created_at").eq("from_user_id", me).eq("status", "pending"),
       ]);
       if (cancelled) return;
       const list = incomingRes.error ? [] : (incomingRes.data || []);
       setIncomingRequests(list);
-      const sentTo = new Set((sentRes.data || []).map((r) => r.to_user_id));
-      if (!cancelled) setSentRequestToIds(sentTo);
+      const sentList = sentRes.error ? [] : (sentRes.data || []);
+      setSentRequests(sentList);
+      setSentRequestToIds(new Set(sentList.map((r) => r.to_user_id)));
       const fromIds = [...new Set(list.map((r) => r.from_user_id))];
+      const sentToIds = [...new Set(sentList.map((r) => r.to_user_id))];
       if (fromIds.length > 0) {
         const { data: profs } = await sb.from("profiles").select("id, display_name, username, avatar_id").in("id", fromIds);
         const map = {};
         (profs || []).forEach((p) => { map[p.id] = p; });
         if (!cancelled) setRequestProfiles(map);
       } else if (!cancelled) setRequestProfiles({});
+      if (sentToIds.length > 0) {
+        const { data: profs } = await sb.from("profiles").select("id, display_name, username, avatar_id").in("id", sentToIds);
+        const map = {};
+        (profs || []).forEach((p) => { map[p.id] = p; });
+        if (!cancelled) setSentRequestProfiles(map);
+      } else if (!cancelled) setSentRequestProfiles({});
     })();
     return () => { cancelled = true; };
-  }, [sb, me]);
+  }, [sb, me, openPendingRequestId]);
 
   // Accepted conversations list
   useEffect(() => {
@@ -123,7 +135,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
       setLoadingConvs(false);
     })();
     return () => { cancelled = true; };
-  }, [sb, me, openConversationId]);
+  }, [sb, me, openConversationId, openPendingRequestId]);
 
   const handleAcceptRequest = async (requestId) => {
     if (!sb || !me) return;
@@ -177,8 +189,26 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
   const handleOpenConversation = (conv, otherUser) => {
     setOpenConversationId(conv.id);
     setOpenOtherUser(otherUser);
+    setOpenPendingRequestId(null);
+    setOpenPendingOtherUser(null);
     setMessages([]);
     setNewBody("");
+  };
+
+  const handleOpenPendingRequest = (request, otherUser) => {
+    setOpenPendingRequestId(request.id);
+    setOpenPendingOtherUser(otherUser);
+    setOpenConversationId(null);
+    setOpenOtherUser(null);
+    setMessages([]);
+    setNewBody("");
+  };
+
+  const closePopup = () => {
+    setOpenConversationId(null);
+    setOpenOtherUser(null);
+    setOpenPendingRequestId(null);
+    setOpenPendingOtherUser(null);
   };
 
   const loadMessages = async (convId) => {
@@ -253,6 +283,41 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
 
   const getOtherUser = (conv) => (conv.user_a_id === me ? conv.user_b_id : conv.user_a_id);
   const displayName = (p) => p?.display_name || p?.username || "User";
+
+  const formatMessageTime = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    const timeStr = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    if (sameDay) return timeStr;
+    if (isYesterday) return `Yesterday ${timeStr}`;
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + timeStr;
+  };
+
+  const unifiedList = React.useMemo(() => {
+    const convItems = (conversations || []).map((conv) => ({
+      type: "conversation",
+      key: conv.id,
+      conv,
+      otherId: getOtherUser(conv),
+      sortAt: conv.updated_at,
+    }));
+    const sentItems = (sentRequests || []).map((r) => ({
+      type: "pending_sent",
+      key: r.id,
+      request: r,
+      otherId: r.to_user_id,
+      sortAt: r.created_at,
+    }));
+    const combined = [...convItems, ...sentItems];
+    combined.sort((a, b) => new Date(b.sortAt || 0) - new Date(a.sortAt || 0));
+    return combined;
+  }, [conversations, sentRequests, me]);
 
   if (!me) {
     return (
@@ -441,31 +506,67 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
           <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", padding: "16px 0" }}>
             Loading…
           </div>
-        ) : conversations.length === 0 ? (
+        ) : unifiedList.length === 0 ? (
           <div style={{ fontFamily: F, fontSize: 13, color: "rgba(55,48,107,0.6)", padding: "16px 0" }}>
             No conversations yet. Search for a user and request a conversation.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {conversations.map((conv) => {
-              const otherId = getOtherUser(conv);
-              const p = convProfiles[otherId];
-              const last = lastMessages[conv.id];
+            {unifiedList.map((item) => {
+              if (item.type === "conversation") {
+                const p = convProfiles[item.otherId];
+                const last = lastMessages[item.conv.id];
+                return (
+                  <Card
+                    key={item.key}
+                    style={{
+                      padding: 12,
+                      cursor: "pointer",
+                      border: "1px solid rgba(13,148,136,0.15)",
+                    }}
+                    onClick={() => p && handleOpenConversation(item.conv, p)}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <AvatarSprite avatarId={p?.avatar_id} size={44} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>
+                          {p ? displayName(p) : "…"}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: F,
+                            fontSize: 12,
+                            color: "rgba(55,48,107,0.65)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {last ? (last.sender_id === me ? `You: ${last.body}` : last.body) : "No messages yet"}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              }
+              const p = sentRequestProfiles[item.otherId];
+              if (!p) return null;
               return (
                 <Card
-                  key={conv.id}
+                  key={item.key}
                   style={{
                     padding: 12,
                     cursor: "pointer",
-                    border: "1px solid rgba(13,148,136,0.15)",
+                    border: "1px solid rgba(13,148,136,0.2)",
+                    background: "rgba(16,185,129,0.06)",
                   }}
-                  onClick={() => p && handleOpenConversation(conv, p)}
+                  onClick={() => handleOpenPendingRequest(item.request, p)}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <AvatarSprite avatarId={p?.avatar_id} size={44} />
+                    <AvatarSprite avatarId={p.avatar_id} size={44} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b" }}>
-                        {p ? displayName(p) : "…"}
+                        {displayName(p)}
                       </div>
                       <div
                         style={{
@@ -477,7 +578,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {last ? (last.sender_id === me ? `You: ${last.body}` : last.body) : "No messages yet"}
+                        Request sent · Waiting for them to accept
                       </div>
                     </div>
                   </div>
@@ -502,7 +603,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
             padding: 16,
           }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setOpenConversationId(null);
+            if (e.target === e.currentTarget) closePopup();
           }}
         >
           <div
@@ -536,7 +637,7 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
               </div>
               <button
                 type="button"
-                onClick={() => setOpenConversationId(null)}
+                onClick={closePopup}
                 style={{
                   border: "none",
                   background: "none",
@@ -581,6 +682,16 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
                     }}
                   >
                     {m.body}
+                    <div
+                      style={{
+                        fontFamily: F,
+                        fontSize: 10,
+                        opacity: m.sender_id === me ? 0.85 : 0.7,
+                        marginTop: 4,
+                      }}
+                    >
+                      {formatMessageTime(m.created_at)}
+                    </div>
                   </div>
                 ))
               )}
@@ -634,6 +745,96 @@ export default function DMsPage({ user, supabase: supabaseClient }) {
               >
                 Send
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {openPendingRequestId && openPendingOtherUser && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            background: "rgba(15,23,42,0.5)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closePopup();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              background: "#fff",
+              borderRadius: 20,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                borderBottom: "1px solid rgba(13,148,136,0.12)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <AvatarSprite avatarId={openPendingOtherUser.avatar_id} size={36} />
+                <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>
+                  {displayName(openPendingOtherUser)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={closePopup}
+                style={{
+                  border: "none",
+                  background: "none",
+                  fontSize: 22,
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                  padding: 4,
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                padding: 16,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 200,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: F,
+                  fontSize: 14,
+                  color: "rgba(55,48,107,0.8)",
+                  textAlign: "center",
+                  lineHeight: 1.5,
+                }}
+              >
+                Request sent. Waiting for {displayName(openPendingOtherUser)} to accept.
+              </div>
             </div>
           </div>
         </div>
