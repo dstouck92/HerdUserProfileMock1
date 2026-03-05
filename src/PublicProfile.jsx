@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import { supabase } from './lib/supabase';
 import { GradientBg, Card, F, AvatarSprite } from './components/ui';
 
-export default function PublicProfile({ username: usernameProp }) {
+export default function PublicProfile({ username: usernameProp, embedded = false }) {
   const { username: usernameFromRoute } = useParams();
   const username = usernameProp ?? usernameFromRoute;
   const profileRef = useRef(null);
@@ -148,6 +148,13 @@ export default function PublicProfile({ username: usernameProp }) {
   }, [username]);
 
   if (!supabase) {
+    if (embedded) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: F, fontSize: 14, color: '#0f766e' }}>
+          Public profiles require Supabase to be configured.
+        </div>
+      );
+    }
     return (
       <GradientBg>
         <div style={{ padding: '80px 24px', textAlign: 'center', fontFamily: F, fontSize: 15, color: '#0f766e' }}>
@@ -158,6 +165,13 @@ export default function PublicProfile({ username: usernameProp }) {
   }
 
   if (loading) {
+    if (embedded) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: F, fontSize: 14, color: '#0f766e' }}>
+          Loading profile…
+        </div>
+      );
+    }
     return (
       <GradientBg>
         <div style={{ padding: '80px 24px', textAlign: 'center', fontFamily: F, fontSize: 15, color: '#0f766e' }}>
@@ -168,6 +182,14 @@ export default function PublicProfile({ username: usernameProp }) {
   }
 
   if (error || !profile) {
+    if (embedded) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <div style={{ fontFamily: F, fontSize: 18, fontWeight: 700, color: '#1e1b4b', marginBottom: 6 }}>Profile not found</div>
+          <div style={{ fontFamily: F, fontSize: 13, color: 'rgba(55,48,107,0.6)' }}>{error || 'This profile does not exist.'}</div>
+        </div>
+      );
+    }
     return (
       <GradientBg>
         <div style={{ padding: '80px 24px', textAlign: 'center' }}>
@@ -258,6 +280,20 @@ export default function PublicProfile({ username: usernameProp }) {
     }
     setTimeout(() => setDownloadFeedback(''), 2000);
   };
+
+  const shellStyle = embedded
+    ? {
+        paddingBottom: 8,
+        background: theme.bg,
+        minHeight: '100%',
+        borderRadius: 18,
+        overflow: 'hidden',
+      }
+    : {
+        paddingBottom: 8,
+        background: theme.bg,
+        minHeight: '100vh',
+      };
 
   const renderCardAnswer = (card) => {
     const answer = card.answer || {};
@@ -376,16 +412,11 @@ export default function PublicProfile({ username: usernameProp }) {
     );
   };
 
-  return (
-    <GradientBg>
-      <div
-        ref={profileRef}
-        style={{
-          paddingBottom: 8,
-          background: theme.bg,
-          minHeight: '100vh',
-        }}
-      >
+  const inner = (
+    <div
+      ref={profileRef}
+      style={shellStyle}
+    >
         <div style={{ padding: '24px 20px 12px', display: 'flex', alignItems: 'center', gap: 16 }}>
           <AvatarSprite avatarId={profile.avatar_id ?? 7} size={72} imageUrl={profile.profile_image_url} />
           <div>
@@ -477,6 +508,19 @@ export default function PublicProfile({ username: usernameProp }) {
           </div>
         ))}
       </div>
+  );
+
+  if (embedded) {
+    return (
+      <div style={{ margin: '8px 16px 16px' }}>
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <GradientBg>
+      {inner}
     </GradientBg>
   );
 }

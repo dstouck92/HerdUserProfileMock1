@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, Sec, Btn, Empty, F } from "../ui";
 import CurateCardEditor from "../CurateCardEditor";
+import PublicProfile from "../../PublicProfile";
 import { supabase } from "../../lib/supabase";
 
 export default function CurateTab({
@@ -38,6 +39,8 @@ export default function CurateTab({
   const [bioMessage, setBioMessage] = useState("");
   const [badgesModalOpen, setBadgesModalOpen] = useState(false);
   const [bioModalOpen, setBioModalOpen] = useState(false);
+  const [curateMode, setCurateMode] = useState("edit"); // 'edit' | 'view'
+  const touchStartXRef = useRef(null);
 
   const themeOptions = [
     { id: "default", label: "Default", bg: "linear-gradient(135deg, #e0f2fe, #ccfbf1)", border: "rgba(13,148,136,0.4)" },
@@ -194,6 +197,23 @@ export default function CurateTab({
     .sort((a, b) => (a.def.sort_order ?? 0) - (b.def.sort_order ?? 0));
   const publicEarnedBadges = earnedBadges.filter((b) => b.is_public);
 
+  const handleTouchStart = (e) => {
+    if (!e.touches || e.touches.length === 0) return;
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartXRef.current == null || !e.changedTouches || e.changedTouches.length === 0) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const threshold = 40;
+    if (deltaX <= -threshold) {
+      setCurateMode("view");
+    } else if (deltaX >= threshold) {
+      setCurateMode("edit");
+    }
+    touchStartXRef.current = null;
+  };
+
   const handleSaveBio = async () => {
     if (!onSaveUserBio) return false;
     setBioError("");
@@ -239,36 +259,52 @@ export default function CurateTab({
   }
 
   return (
-    <div>
-      <div style={{ margin: "0 20px 16px", padding: "14px 16px", background: "linear-gradient(135deg, rgba(13,148,136,0.1), rgba(52,211,153,0.06))", borderRadius: 14, border: "1px solid rgba(13,148,136,0.2)" }}>
-        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: "#0f766e", marginBottom: 4 }}>✨ Curate Your Public Profile</div>
-        <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", lineHeight: 1.5 }}>
-          Pick 5 prompts and answer them with text, photos, your digital/physical/live data, and badges. Tap your avatar above to change profile picture.
-        </div>
-        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={handleSaveAllCurate}
-            disabled={curateSaveStatus === "saving"}
-            style={{
-              padding: "10px 18px",
-              borderRadius: 12,
-              border: "none",
-              background: curateSaveStatus === "saving" ? "rgba(13,148,136,0.5)" : "linear-gradient(135deg, #0d9488, #10b981)",
-              color: "#fff",
-              fontFamily: F,
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: curateSaveStatus === "saving" ? "default" : "pointer",
-              boxShadow: curateSaveStatus === "saving" ? "none" : "0 3px 12px rgba(13,148,136,0.35)",
-            }}
-          >
-            {curateSaveStatus === "saving" ? "Saving…" : "Save Changes"}
-          </button>
-          {curateSaveStatus === "saved" && <span style={{ fontFamily: F, fontSize: 13, color: "#15803d", fontWeight: 600 }}>Saved</span>}
-          {curateSaveStatus === "error" && <span style={{ fontFamily: F, fontSize: 13, color: "#b91c1c", fontWeight: 600 }}>Save failed. Try again.</span>}
-        </div>
+    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div
+        style={{
+          margin: "4px 20px 16px",
+          padding: 4,
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.85)",
+          border: "1px solid rgba(148,163,184,0.4)",
+          display: "flex",
+        }}
+      >
+        {["edit", "view"].map((mode) => {
+          const isActive = curateMode === mode;
+          return (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setCurateMode(mode)}
+              style={{
+                flex: 1,
+                border: "none",
+                borderRadius: 999,
+                padding: "8px 0",
+                fontFamily: F,
+                fontSize: 13,
+                fontWeight: isActive ? 700 : 500,
+                cursor: "pointer",
+                background: isActive ? "linear-gradient(135deg, #0d9488, #10b981)" : "transparent",
+                color: isActive ? "#fff" : "rgba(55,48,107,0.7)",
+                boxShadow: isActive ? "0 2px 8px rgba(13,148,136,0.4)" : "none",
+                transition: "all 0.16s ease-out",
+                textTransform: "capitalize",
+              }}
+            >
+              {mode === "edit" ? "Edit" : "View"}
+            </button>
+          );
+        })}
       </div>
+
+      {curateMode === "view" && user?.username ? (
+        <div style={{ marginTop: 4 }}>
+          <PublicProfile username={user.username} embedded />
+        </div>
+      ) : (
+        <>
 
       <Sec icon="🎨">Profile theme</Sec>
       <Card>
@@ -461,7 +497,6 @@ export default function CurateTab({
         </button>
         {curateSaveStatus === "saved" && <span style={{ fontFamily: F, fontSize: 13, color: "#15803d", fontWeight: 600, textAlign: "center" }}>Your curate section and public profile have been updated.</span>}
         {curateSaveStatus === "error" && <span style={{ fontFamily: F, fontSize: 13, color: "#b91c1c", fontWeight: 600, textAlign: "center" }}>Save failed. Try again.</span>}
-        <Btn style={{ flex: 1 }} onClick={onPreviewProfile}>Preview Profile</Btn>
       </div>
 
       {badgesModalOpen && (
@@ -502,6 +537,8 @@ export default function CurateTab({
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
