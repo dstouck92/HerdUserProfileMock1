@@ -131,11 +131,11 @@ export const TabBar = ({ active, onSelect }) => (
 
 export const BottomNav = ({ active, onSelect }) => {
   const items = [
-    // 1 = Feed (news), 2 = Herds (fan club), 3 = Search (crest +), 4 = Market (bag), 5 = Profile (person)
+    // 1 = Feed, 2 = Herds, 3 = Search, 4 = DMs, 5 = Profile
     { id: "Feed", label: "Feed", iconSrc: "/Nav/Navigation Bar 1JPG.jpg" },
     { id: "Herds", label: "Herds", iconSrc: "/Nav/Navigation Bar 2JPG.jpg" },
     { id: "Search", label: "Search", iconSrc: "/Nav/Navigation Bar 3JPG.jpg" },
-    { id: "Market", label: "Market", iconSrc: "/Nav/Navigation Bar 4JPG.jpg" },
+    { id: "DMs", label: "DMs", iconSrc: "/Nav/DMs-icon.jpg" },
     { id: "Profile", label: "Profile", iconSrc: "/Nav/Navigation Bar 5JPG.jpg" },
   ];
 
@@ -191,8 +191,8 @@ export const BottomNav = ({ active, onSelect }) => {
                   src={item.iconSrc}
                   alt={item.label}
                   style={{
-                    width: item.id === "Search" ? 28 : 22,
-                    height: item.id === "Search" ? 28 : 22,
+                    width: (item.id === "Search" || item.id === "DMs") ? 28 : 22,
+                    height: (item.id === "Search" || item.id === "DMs") ? 28 : 22,
                     objectFit: "contain",
                     display: "block",
                   }}

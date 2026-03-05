@@ -250,6 +250,67 @@ app.get('/api/spotify/search-artists', async (req, res) => {
   }
 })
 
+const MAX_LATEST_RELEASES_ARTISTS = 5
+// API: latest album/single per artist (for Feed "Music recommended for you")
+app.get('/api/spotify/latest-releases', async (req, res) => {
+  const raw = (req.query.artist_ids || req.query.artistIds || '').trim()
+  const artistIds = raw
+    ? raw.split(',').map((id) => id.trim()).filter(Boolean).slice(0, MAX_LATEST_RELEASES_ARTISTS)
+    : []
+  if (artistIds.length === 0) {
+    return res.json({ releases: [] })
+  }
+  if (!spotifyClientId || !spotifyClientSecret) {
+    return res.status(503).json({
+      error: 'Spotify credentials not configured. Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to your .env file.',
+    })
+  }
+  try {
+    const accessToken = await getSpotifyAccessToken()
+    if (!accessToken) {
+      return res.status(502).json({ error: 'Spotify token failed' })
+    }
+    const releases = []
+    for (const artistId of artistIds) {
+      const albumsRes = await fetch(
+        `https://api.spotify.com/v1/artists/${encodeURIComponent(artistId)}/albums?include_groups=album,single&limit=10`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      )
+      if (!albumsRes.ok) {
+        if (albumsRes.status === 429) {
+          const retryAfter = albumsRes.headers.get('retry-after') || '60'
+          return res.status(429).json({ error: `Spotify rate limit. Try again in ${retryAfter} seconds.` })
+        }
+        continue
+      }
+      const albumsData = await albumsRes.json()
+      const items = albumsData.items || []
+      if (items.length === 0) continue
+      const sorted = [...items].sort((a, b) => {
+        const dA = a.release_date || ''
+        const dB = b.release_date || ''
+        return dB.localeCompare(dA)
+      })
+      const latest = sorted[0]
+      const artistName = latest.artists?.[0]?.name || null
+      releases.push({
+        artistId,
+        artistName,
+        albumId: latest.id,
+        name: latest.name || 'Release',
+        type: latest.album_type || 'album',
+        release_date: latest.release_date || null,
+        imageUrl: latest.images?.[0]?.url || null,
+        spotify_url: latest.external_urls?.spotify || null,
+      })
+    }
+    return res.json({ releases })
+  } catch (err) {
+    console.error('Spotify latest-releases error:', err)
+    return res.status(500).json({ error: err.message || 'Server error' })
+  }
+})
+
 // API: search concerts via Setlist.fm (with cache + timeout to avoid rate limits and "failed to fetch")
 app.get('/api/concerts/search', (req, res) => {
   const artist = req.query.artist?.trim()

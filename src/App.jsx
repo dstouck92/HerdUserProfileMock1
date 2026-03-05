@@ -6,7 +6,8 @@ import SpotifyUploadModal from "./components/SpotifyUploadModal";
 import AddConcertModal from "./components/AddConcertModal";
 import EditConcertModal from "./components/EditConcertModal";
 import AddItemModal from "./components/AddItemModal";
-import MarketPage from "./components/MarketPage";
+import FeedPage from "./components/FeedPage";
+import DMsPage from "./components/DMsPage";
 import LiveTab from "./components/tabs/LiveTab";
 import DigitalTab from "./components/tabs/DigitalTab";
 import PhysicalTab from "./components/tabs/PhysicalTab";
@@ -1453,7 +1454,7 @@ export default function App() {
       Feed: "Feed",
       Herds: "Herds",
       Search: "Search",
-      Market: "Market",
+      DMs: "DMs",
     };
     const title = titles[activePage] || "Coming soon";
     return (
@@ -1622,8 +1623,10 @@ export default function App() {
           recommendedArtists={recommendedArtistsForSearch}
           recentActivity={recentActivity}
         />
-      ) : activePage === "Market" ? (
-        <MarketPage userHerds={userHerds} />
+      ) : activePage === "Feed" ? (
+        <FeedPage user={user} supabase={supabase} userHerds={userHerds} />
+      ) : activePage === "DMs" ? (
+        <DMsPage user={user} supabase={supabase} />
       ) : (
         renderNonProfilePage()
       )}

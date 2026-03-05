@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, F, AvatarSprite } from "./ui";
 
-const HERD_TABS = ["Topics", "Leaderboards", "Connect", "About"];
+const HERD_TABS = ["Topics", "Leaderboards", "Connect", "Merch", "About"];
 const TOPIC_CATEGORIES = ["General", "New Music", "Fashion", "Gossip", "Tour", "Random", "Events"];
 
 export default function HerdsPage({
@@ -678,6 +678,73 @@ export default function HerdsPage({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+          {herdTab === "Merch" && (
+            <div>
+              <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#1e1b4b", marginBottom: 8 }}>
+                Featured Merch
+              </div>
+              <div style={{ fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.6)", marginBottom: 12 }}>
+                Connect Shopify to show real items here.
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  overflowX: "auto",
+                  padding: "4px 0",
+                }}
+              >
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      minWidth: 140,
+                      maxWidth: 160,
+                      borderRadius: 16,
+                      background: "rgba(248,250,252,0.9)",
+                      border: "1px solid rgba(226,232,240,0.9)",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: 110,
+                        background:
+                          i === 1
+                            ? "linear-gradient(135deg,#0d9488,#10b981)"
+                            : i === 2
+                            ? "linear-gradient(135deg,#4f46e5,#22d3ee)"
+                            : "linear-gradient(135deg,#f97316,#ec4899)",
+                      }}
+                    />
+                    <div style={{ padding: "8px 10px 10px" }}>
+                      <div
+                        style={{
+                          fontFamily: F,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#1e293b",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Artist merch
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: F,
+                          fontSize: 11,
+                          color: "rgba(55,65,81,0.7)",
+                        }}
+                      >
+                        Connect Shopify to show real items here.
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           {herdTab === "Connect" && (
