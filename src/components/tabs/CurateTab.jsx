@@ -328,68 +328,68 @@ export default function CurateTab({
       >
         <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Bio & theme</div>
-            <div style={{ fontFamily: F, fontSize: 13, color: "#1e1b4b", marginBottom: 2 }}>
+            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 4 }}>Bio & theme</div>
+            <div style={{ fontFamily: F, fontSize: 13, color: theme.text, marginBottom: 2 }}>
               {bioSummary || "Tap to add your bio"}
             </div>
-            <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.65)" }}>
+            <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted }}>
               Theme · {currentTheme.label}
             </div>
           </div>
-          <span style={{ fontFamily: F, fontSize: 12, color: "#0d9488", fontWeight: 600 }}>Edit</span>
+          <span style={{ fontFamily: F, fontSize: 12, color: theme.accent, fontWeight: 600 }}>Edit</span>
         </div>
       </Card>
       {bioModalOpen && (
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          style={{ position: "fixed", inset: 0, zIndex: 110, background: theme.modalOverlay, backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
           onClick={(e) => e.target === e.currentTarget && setBioModalOpen(false)}
         >
           <div
-            style={{ width: "100%", maxWidth: 400, maxHeight: "90vh", background: "#fff", borderRadius: 16, boxShadow: "0 20px 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            style={{ width: "100%", maxWidth: 400, maxHeight: "90vh", background: theme.modalBg, borderRadius: 16, boxShadow: theme.cardShadow, border: theme.modalBorder, display: "flex", flexDirection: "column", overflow: "hidden" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>Bio & Theme</span>
-              <button type="button" onClick={() => setBioModalOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
+            <div style={{ padding: "14px 18px", borderBottom: theme.cardBorder, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: theme.text }}>Bio & Theme</span>
+              <button type="button" onClick={() => setBioModalOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: theme.textMuted, cursor: "pointer" }} aria-label="Close">×</button>
             </div>
             <div style={{ overflow: "auto", padding: "16px 18px" }}>
-              <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.6)", marginBottom: 12 }}>Add basic bio and choose what appears on your public profile.</div>
+              <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted, marginBottom: 12 }}>Add basic bio and choose what appears on your public profile.</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Age</label>
-                    <input type="number" value={bioAge} onChange={(e) => setBioAge(e.target.value)} placeholder="25" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
+                    <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.label, display: "block", marginBottom: 4 }}>Age</label>
+                    <input type="number" value={bioAge} onChange={(e) => setBioAge(e.target.value)} placeholder="25" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: theme.inputBorder, background: theme.inputBg, color: theme.inputText, fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
                   </div>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
-                    <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showAge} onChange={(e) => setShowAge(e.target.checked)} />
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: theme.textMuted }}>
+                    <input type="checkbox" style={{ accentColor: theme.accent }} checked={showAge} onChange={(e) => setShowAge(e.target.checked)} />
                     <span>Show on public profile</span>
                   </label>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Gender</label>
-                    <input type="text" value={bioGender} onChange={(e) => setBioGender(e.target.value)} placeholder="Female, Male, Non-binary, etc." style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
+                    <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.label, display: "block", marginBottom: 4 }}>Gender</label>
+                    <input type="text" value={bioGender} onChange={(e) => setBioGender(e.target.value)} placeholder="Female, Male, Non-binary, etc." style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: theme.inputBorder, background: theme.inputBg, color: theme.inputText, fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
                   </div>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
-                    <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showGender} onChange={(e) => setShowGender(e.target.checked)} />
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: theme.textMuted }}>
+                    <input type="checkbox" style={{ accentColor: theme.accent }} checked={showGender} onChange={(e) => setShowGender(e.target.checked)} />
                     <span>Show on public profile</span>
                   </label>
                 </div>
                 <div>
-                  <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Country</label>
-                  <input type="text" value={bioCountry} onChange={(e) => setBioCountry(e.target.value)} placeholder="United States" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box", marginBottom: 8 }} />
+                  <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.label, display: "block", marginBottom: 4 }}>Country</label>
+                  <input type="text" value={bioCountry} onChange={(e) => setBioCountry(e.target.value)} placeholder="United States" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: theme.inputBorder, background: theme.inputBg, color: theme.inputText, fontFamily: F, fontSize: 13, boxSizing: "border-box", marginBottom: 8 }} />
                 </div>
                 <div>
-                  <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", display: "block", marginBottom: 4 }}>Region / State</label>
-                  <input type="text" value={bioRegion} onChange={(e) => setBioRegion(e.target.value)} placeholder="California" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(13,148,136,0.25)", fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
+                  <label style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.label, display: "block", marginBottom: 4 }}>Region / State</label>
+                  <input type="text" value={bioRegion} onChange={(e) => setBioRegion(e.target.value)} placeholder="California" style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: theme.inputBorder, background: theme.inputBg, color: theme.inputText, fontFamily: F, fontSize: 13, boxSizing: "border-box" }} />
                 </div>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: "rgba(55,48,107,0.7)" }}>
-                  <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showLocation} onChange={(e) => setShowLocation(e.target.checked)} />
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 11, color: theme.textMuted }}>
+                  <input type="checkbox" style={{ accentColor: theme.accent }} checked={showLocation} onChange={(e) => setShowLocation(e.target.checked)} />
                   <span>Show country & region on public profile</span>
                 </label>
               </div>
-              <div style={{ marginTop: 18, paddingTop: 12, borderTop: "1px solid #e5e7eb" }}>
-                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 8 }}>
+              <div style={{ marginTop: 18, paddingTop: 12, borderTop: theme.cardBorder }}>
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: theme.label, marginBottom: 8 }}>
                   Profile theme
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
@@ -403,7 +403,7 @@ export default function CurateTab({
                         style={{
                           padding: "8px 12px",
                           borderRadius: 12,
-                          border: isActive ? `2px solid ${t.border}` : "1px solid rgba(148,163,184,0.6)",
+                          border: isActive ? `2px solid ${t.border}` : `1px solid ${theme.cardBorder}`,
                           background: t.bg,
                           fontFamily: F,
                           fontSize: 12,
@@ -418,10 +418,10 @@ export default function CurateTab({
                   })}
                 </div>
               </div>
-              {(bioError || bioMessage) && <div style={{ fontFamily: F, fontSize: 11, color: bioError ? "#b91c1c" : "#15803d", marginTop: 10 }}>{bioError || bioMessage}</div>}
+              {(bioError || bioMessage) && <div style={{ fontFamily: F, fontSize: 11, color: bioError ? "#f87171" : theme.accent, marginTop: 10 }}>{bioError || bioMessage}</div>}
             </div>
-            <div style={{ padding: "12px 18px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 10 }}>
-              <button type="button" onClick={() => setBioModalOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid rgba(13,148,136,0.3)", background: "#fff", color: "#0d9488", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            <div style={{ padding: "12px 18px", borderTop: theme.cardBorder, display: "flex", gap: 10 }}>
+              <button type="button" onClick={() => setBioModalOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: theme.btnSecondaryBorder, background: theme.btnSecondaryBg, color: theme.accent, fontFamily: F, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
               <button
                 type="button"
                 onClick={async () => {
@@ -429,7 +429,7 @@ export default function CurateTab({
                   if (ok) setBioModalOpen(false);
                 }}
                 disabled={bioSaving}
-                style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #0d9488, #10b981)", color: "#fff", fontFamily: F, fontSize: 14, fontWeight: 600, cursor: bioSaving ? "default" : "pointer", opacity: bioSaving ? 0.75 : 1 }}
+                style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: theme.btnPrimaryBg, color: theme.btnPrimaryText, fontFamily: F, fontSize: 14, fontWeight: 600, cursor: bioSaving ? "default" : "pointer", opacity: bioSaving ? 0.75 : 1, boxShadow: theme.btnPrimaryShadow }}
               >
                 {bioSaving ? "Saving…" : "Save Bio"}
               </button>
