@@ -131,7 +131,14 @@ export default function PublicProfile({ username: usernameProp, embedded = false
               if (sa !== sb) return sa - sb;
               return new Date(a.earned_at).getTime() - new Date(b.earned_at).getTime();
             });
-          setBadges(mapped);
+          const seen = new Set();
+          const unique = [];
+          for (const b of mapped) {
+            if (seen.has(b.badge_key)) continue;
+            seen.add(b.badge_key);
+            unique.push(b);
+          }
+          setBadges(unique);
         } else {
           setBadges([]);
         }

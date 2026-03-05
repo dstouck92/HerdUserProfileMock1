@@ -42,7 +42,6 @@ export default function CurateTab({
   const [curateMode, setCurateMode] = useState("edit"); // 'edit' | 'view'
   const touchStartXRef = useRef(null);
   const [openCardIndex, setOpenCardIndex] = useState(null);
-  const [themeModalOpen, setThemeModalOpen] = useState(false);
 
   const themeOptions = [
     { id: "default", label: "Default", bg: "linear-gradient(135deg, #e0f2fe, #ccfbf1)", border: "rgba(13,148,136,0.4)" },
@@ -268,16 +267,24 @@ export default function CurateTab({
     );
   }
 
+  const bioSummary = [
+    bioAge && `Age ${bioAge}`,
+    bioGender,
+    (bioCountry || bioRegion) && [bioRegion, bioCountry].filter(Boolean).join(", "),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div
         style={{
-          margin: "4px 20px 16px",
-          padding: 4,
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.85)",
-          border: "1px solid rgba(148,163,184,0.4)",
+          margin: "4px 20px 10px",
           display: "flex",
+          justifyContent: "center",
+          gap: 24,
+          borderBottom: "1px solid rgba(148,163,184,0.35)",
+          paddingBottom: 4,
         }}
       >
         {["edit", "view"].map((mode) => {
@@ -288,19 +295,16 @@ export default function CurateTab({
               type="button"
               onClick={() => setCurateMode(mode)}
               style={{
-                flex: 1,
                 border: "none",
-                borderRadius: 999,
-                padding: "8px 0",
+                background: "none",
+                padding: "6px 0",
                 fontFamily: F,
                 fontSize: 13,
                 fontWeight: isActive ? 700 : 500,
                 cursor: "pointer",
-                background: isActive ? "linear-gradient(135deg, #0d9488, #10b981)" : "transparent",
-                color: isActive ? "#fff" : "rgba(55,48,107,0.7)",
-                boxShadow: isActive ? "0 2px 8px rgba(13,148,136,0.4)" : "none",
-                transition: "all 0.16s ease-out",
-                textTransform: "capitalize",
+                color: isActive ? "#1e1b4b" : "rgba(55,48,107,0.55)",
+                borderBottom: isActive ? "2px solid #0d9488" : "2px solid transparent",
+                transition: "color 0.15s ease-out, border-bottom-color 0.15s ease-out",
               }}
             >
               {mode === "edit" ? "Edit" : "View"}
@@ -315,146 +319,19 @@ export default function CurateTab({
         </div>
       ) : (
         <>
-
-      <Sec icon="🎨">Profile theme</Sec>
-      <Card
-        style={{ cursor: "pointer" }}
-        onClick={() => setThemeModalOpen(true)}
-      >
-        <div style={{ padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: currentTheme.bg,
-                border: `1px solid ${currentTheme.border}`,
-              }}
-            />
-            <div>
-              <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 2 }}>
-                Current theme
-              </div>
-              <div style={{ fontFamily: F, fontSize: 13, color: "#1e1b4b", fontWeight: 600 }}>
-                {currentTheme.label}
-              </div>
-            </div>
-          </div>
-          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "#0d9488" }}>Change</span>
-        </div>
-      </Card>
-
-      {themeModalOpen && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 115, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setThemeModalOpen(false);
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              maxHeight: "80vh",
-              background: "#f9fafb",
-              borderRadius: 18,
-              boxShadow: "0 20px 60px rgba(15,23,42,0.5)",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                padding: "12px 18px",
-                borderBottom: "1px solid rgba(148,163,184,0.4)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <span style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Choose profile theme</span>
-              <button
-                type="button"
-                onClick={() => setThemeModalOpen(false)}
-                style={{ border: "none", background: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ padding: "12px 18px 16px", overflow: "auto" }}>
-              <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.7)", marginBottom: 10 }}>
-                Pick a color story for your public profile cards.
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {themeOptions.map((t) => {
-                  const isActive = (publicProfileTheme || "default") === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => onSaveProfileTheme?.(t.id)}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        borderRadius: 14,
-                        padding: "10px 12px",
-                        border: isActive ? `2px solid ${t.border}` : "1px solid rgba(148,163,184,0.6)",
-                        background: t.bg,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 10,
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 999,
-                            border: "1px solid rgba(255,255,255,0.8)",
-                          }}
-                        />
-                        <span
-                          style={{
-                            fontFamily: F,
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: t.id === "black_purple" ? "#e9d5ff" : "#1e1b4b",
-                          }}
-                        >
-                          {t.label}
-                        </span>
-                      </div>
-                      {isActive && (
-                        <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "#0f766e" }}>
-                          Selected
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Sec icon="👤">User Bio</Sec>
+      <Sec icon="👤">Bio & Theme</Sec>
       <Card
         style={{ cursor: "pointer" }}
         onClick={() => setBioModalOpen(true)}
       >
         <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Age, gender, location & visibility</div>
-            <div style={{ fontFamily: F, fontSize: 13, color: "#1e1b4b" }}>
-              {[bioAge && `Age ${bioAge}`, bioGender, (bioCountry || bioRegion) && [bioRegion, bioCountry].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "Tap to add your bio"}
+            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.6)", marginBottom: 4 }}>Bio & theme</div>
+            <div style={{ fontFamily: F, fontSize: 13, color: "#1e1b4b", marginBottom: 2 }}>
+              {bioSummary || "Tap to add your bio"}
+            </div>
+            <div style={{ fontFamily: F, fontSize: 12, color: "rgba(55,48,107,0.65)" }}>
+              Theme · {currentTheme.label}
             </div>
           </div>
           <span style={{ fontFamily: F, fontSize: 12, color: "#0d9488", fontWeight: 600 }}>Edit</span>
@@ -470,7 +347,7 @@ export default function CurateTab({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>User Bio</span>
+              <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: "#1e1b4b" }}>Bio & Theme</span>
               <button type="button" onClick={() => setBioModalOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#64748b", cursor: "pointer" }} aria-label="Close">×</button>
             </div>
             <div style={{ overflow: "auto", padding: "16px 18px" }}>
@@ -508,6 +385,36 @@ export default function CurateTab({
                   <input type="checkbox" style={{ accentColor: "#0d9488" }} checked={showLocation} onChange={(e) => setShowLocation(e.target.checked)} />
                   <span>Show country & region on public profile</span>
                 </label>
+              </div>
+              <div style={{ marginTop: 18, paddingTop: 12, borderTop: "1px solid #e5e7eb" }}>
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: "rgba(55,48,107,0.7)", marginBottom: 8 }}>
+                  Profile theme
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {themeOptions.map((t) => {
+                    const isActive = (publicProfileTheme || "default") === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => onSaveProfileTheme?.(t.id)}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 12,
+                          border: isActive ? `2px solid ${t.border}` : "1px solid rgba(148,163,184,0.6)",
+                          background: t.bg,
+                          fontFamily: F,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          color: t.id === "black_purple" ? "#e9d5ff" : "#1e1b4b",
+                        }}
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               {(bioError || bioMessage) && <div style={{ fontFamily: F, fontSize: 11, color: bioError ? "#b91c1c" : "#15803d", marginTop: 10 }}>{bioError || bioMessage}</div>}
             </div>
