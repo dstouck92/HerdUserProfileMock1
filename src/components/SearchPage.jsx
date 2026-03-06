@@ -40,7 +40,7 @@ export default function SearchPage({
     ? recommendedFriends.map((f) => ({
         id: f.id,
         name: f.displayName || f.username || "Friend",
-        subtitle: f.username ? `@${f.username}` : "Herd user",
+        subtitle: "",
         username: f.username || "",
         avatarId: f.avatarId ?? 7,
         profileImageUrl: f.profileImageUrl || null,
@@ -612,7 +612,7 @@ export default function SearchPage({
 
       {/* Recommended Artists */}
       <SectionTitle>Recommended Artists</SectionTitle>
-      <Card style={{ padding: "12px 0 8px", marginBottom: 10 }}>
+      <div style={{ marginBottom: 10 }}>
         <HorizontalList>
           {visibleArtists.map((artist) => (
             <PersonCard
@@ -621,6 +621,7 @@ export default function SearchPage({
               subtitle={artist.subtitle}
               imageUrl={artistImages[artist.name]}
               primaryLabel="Follow +"
+              variant="floating"
               onPrimaryClick={
                 onFollowRecommendedArtist
                   ? () => {
@@ -637,22 +638,12 @@ export default function SearchPage({
             />
           ))}
         </HorizontalList>
-        <div
-          style={{
-            padding: "0 16px 4px",
-            fontFamily: F,
-            fontSize: 11,
-            color: theme.textMuted,
-          }}
-        >
-          Tap Follow to add artists to track.
-        </div>
-      </Card>
+      </div>
 
       {/* Recommended Friends */}
       <SectionTitle>Recommended Friends</SectionTitle>
-      <Card style={{ padding: "12px 0 8px", marginBottom: 16 }}>
-        {friends.length > 0 ? (
+      {friends.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
           <HorizontalList>
             {friends.map((friend) => (
               <PersonCard
@@ -667,22 +658,24 @@ export default function SearchPage({
                 onOpenProfile={onOpenProfile}
                 userId={friend.id}
                 username={friend.username}
+                variant="floating"
               />
             ))}
           </HorizontalList>
-        ) : (
-          <div
-            style={{
-              padding: "8px 16px 10px",
-              fontFamily: F,
-              fontSize: 12,
-              color: theme.textMuted,
-            }}
-          >
-            No friends to recommend yet. Invite others to join Herd to see them here.
-          </div>
-        )}
-      </Card>
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: "8px 20px 12px",
+            fontFamily: F,
+            fontSize: 12,
+            color: theme.textMuted,
+            marginBottom: 16,
+          }}
+        >
+          No friends to recommend yet. Invite others to join Herd to see them here.
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div
@@ -723,7 +716,7 @@ export default function SearchPage({
           </button>
         )}
       </div>
-      <Card style={{ padding: "12px 16px 8px", marginBottom: 12 }}>
+      <Card style={{ padding: "12px 16px 8px", marginBottom: 10 }}>
         {Array.isArray(recentActivity) && recentActivity.length > 0 ? (
           recentActivity.slice(0, 6).map((item, idx, arr) => (
             <ActivityItem key={item.id} item={item} isLast={idx === arr.length - 1} />
@@ -889,7 +882,10 @@ function PersonCard({
   userId,
   username,
   onPrimaryClick,
+  variant = "card",
 }) {
+  const showSubtitle = typeof subtitle === "string" && subtitle.trim().length > 0;
+
   const cardContent = (
     <>
       <div
@@ -898,9 +894,12 @@ function PersonCard({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: imageUrl
-            ? "transparent"
-            : "radial-gradient(circle at 10% 0%, #f97316, #0ea5e9 60%, #1d4ed8)",
+          background:
+            variant === "floating"
+              ? "transparent"
+              : imageUrl
+                ? "transparent"
+                : "radial-gradient(circle at 10% 0%, #f97316, #0ea5e9 60%, #1d4ed8)",
         }}
       >
         {imageUrl ? (
@@ -949,32 +948,49 @@ function PersonCard({
             </button>
           )}
         </div>
-        <div
-          style={{
-            fontFamily: F,
-            fontSize: 11,
-            color: "rgba(226,232,240,0.85)",
-            marginBottom: 10,
-          }}
-        >
-          {subtitle}
-        </div>
+        {showSubtitle && (
+          <div
+            style={{
+              fontFamily: F,
+              fontSize: 11,
+              color: "rgba(226,232,240,0.85)",
+              marginBottom: 10,
+            }}
+          >
+            {subtitle}
+          </div>
+        )}
       </div>
     </>
   );
 
+  const baseOuterStyle =
+    variant === "floating"
+      ? {
+          minWidth: 130,
+          maxWidth: 160,
+          borderRadius: 16,
+          overflow: "visible",
+          color: "#fff",
+          boxShadow: "none",
+          position: "relative",
+        }
+      : {
+          minWidth: 150,
+          maxWidth: 180,
+          background:
+            "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,64,175,0.8))",
+          borderRadius: 16,
+          overflow: "hidden",
+          color: "#fff",
+          boxShadow: "0 10px 25px rgba(15,23,42,0.5)",
+          position: "relative",
+        };
+
   return (
     <div
       style={{
-        minWidth: 150,
-        maxWidth: 180,
-        background:
-          "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,64,175,0.8))",
-        borderRadius: 16,
-        overflow: "hidden",
-        color: "#fff",
-        boxShadow: "0 10px 25px rgba(15,23,42,0.5)",
-        position: "relative",
+        ...baseOuterStyle,
       }}
     >
       {onCardClick ? (
