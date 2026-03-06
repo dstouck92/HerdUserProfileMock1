@@ -139,11 +139,11 @@ export function TabBar({ active, onSelect }) {
 export function BottomNav({ active, onSelect }) {
   const { theme } = useTheme();
   const items = [
-    { id: "Feed", label: "Feed", iconSrc: "/Nav/Navigation Bar 1JPG.jpg" },
-    { id: "Herds", label: "Herds", iconSrc: "/Nav/Navigation Bar 2JPG.jpg" },
-    { id: "Search", label: "Search", iconSrc: "/Nav/Navigation Bar 3JPG.jpg" },
-    { id: "DMs", label: "DMs", iconSrc: "/Nav/DMs-icon.jpg" },
-    { id: "Profile", label: "Profile", iconSrc: "/Nav/Navigation Bar 5JPG.jpg" },
+    { id: "Feed", label: "Feed", iconSrc: "/Feed_Icon_PNG.png" },
+    { id: "Herds", label: "Herds", iconSrc: "/Herds_Icon_PNG.png" },
+    { id: "Search", label: "Search", iconSrc: "/Search_Icon_PNG.png" },
+    { id: "DMs", label: "DMs", iconSrc: "/DMs_Icon_PNG.png" },
+    { id: "Profile", label: "Profile", iconSrc: "/Profile_Icon_PNG.png" },
   ];
 
   return (
@@ -205,6 +205,7 @@ export function BottomNav({ active, onSelect }) {
                     height: (item.id === "Search" || item.id === "DMs") ? 28 : 22,
                     objectFit: "contain",
                     display: "block",
+                    ...(theme.id === "dark" ? { filter: "invert(1) brightness(1.05)" } : {}),
                   }}
                 />
                 <span style={{ fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
