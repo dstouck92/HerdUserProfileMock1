@@ -162,31 +162,44 @@ export default function App() {
 
   const setUserFromSession = React.useCallback(async (session) => {
     if (!session?.user || !supabase) return;
+    const u = session.user;
+    const meta = u.user_metadata || {};
+    const fallbackDisplayName =
+      meta.display_name ?? meta.full_name ?? meta.name ?? u.email?.split("@", 1)[0] || "User";
+    const fallbackUsername = (u.email?.split("@", 1)[0] || "user").toLowerCase().replace(/[^a-z0-9_]/g, "_") || "user";
+    const fallbackUser = {
+      id: u.id,
+      display_name: fallbackDisplayName,
+      username: fallbackUsername,
+      avatar_id: 7,
+      profile_image_url: meta.avatar_url || undefined,
+    };
     try {
       const { data: profile, error } = await supabase
         .from("profiles")
         .select(
           "id, display_name, username, avatar_id, profile_image_url, age, gender, country, region, show_age_public, show_gender_public, show_location_public, public_profile_theme",
         )
-        .eq("id", session.user.id)
+        .eq("id", u.id)
         .maybeSingle();
       if (!error && profile) {
         setUser({ ...profile, avatar_id: profile.avatar_id ?? 7 });
       } else {
-        setUser({
-          id: session.user.id,
-          display_name: session.user.email?.split("@", 1)[0] || "User",
-          username: session.user.email?.split("@", 1)[0] || "user",
-          avatar_id: 7,
-        });
+        // No profile row yet (e.g. OAuth first sign-in): upsert then set user from metadata
+        await supabase.from("profiles").upsert(
+          {
+            id: u.id,
+            display_name: fallbackDisplayName,
+            username: fallbackUsername,
+            profile_image_url: meta.avatar_url || null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
+        setUser(fallbackUser);
       }
     } catch (_) {
-      setUser({
-        id: session.user.id,
-        display_name: session.user.email?.split("@", 1)[0] || "User",
-        username: session.user.email?.split("@", 1)[0] || "user",
-        avatar_id: 7,
-      });
+      setUser(fallbackUser);
     }
   }, []);
 

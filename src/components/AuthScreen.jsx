@@ -79,7 +79,11 @@ export default function AuthScreen({ onAuth }) {
 
   function fallbackProfile(authUser, username) {
     const uname = (username ?? authUser.user_metadata?.username ?? authUser.email?.split("@")[0] ?? "user").toString().trim() || "user";
-    const name = authUser.user_metadata?.display_name ?? uname;
+    const name =
+      authUser.user_metadata?.display_name ??
+      authUser.user_metadata?.full_name ??
+      authUser.user_metadata?.name ??
+      uname;
     return { id: authUser.id, display_name: name, username: uname, avatar_id: 7 };
   }
 
@@ -104,6 +108,9 @@ export default function AuthScreen({ onAuth }) {
         : {}),
       ...(region != null || authUser.user_metadata?.region != null
         ? { region: region ?? authUser.user_metadata?.region }
+        : {}),
+      ...(authUser.user_metadata?.avatar_url != null
+        ? { profile_image_url: authUser.user_metadata.avatar_url }
         : {}),
       updated_at: new Date().toISOString(),
     };
@@ -212,6 +219,26 @@ export default function AuthScreen({ onAuth }) {
     else onAuth({ id: "mock", email, phone: "", username: email.split("@")[0], display_name: email.split("@")[0], avatar_id: 7 });
   };
 
+  const handleSignInWithGoogle = async () => {
+    if (!supabase) {
+      setError("Google sign-in is unavailable because Supabase is not configured.");
+      return;
+    }
+    setError("");
+    setMessage("");
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/` },
+      });
+      if (oauthError) throw oauthError;
+      // User is redirected to Google; no need to call onAuth here.
+    } catch (err) {
+      if (err && typeof console !== "undefined") console.error("Google sign-in error:", err);
+      setError(err?.message || "Could not start Google sign-in.");
+    }
+  };
+
   const handleResetPassword = async () => {
     if (!email?.trim()) {
       setError("Enter your email above first.");
@@ -281,6 +308,14 @@ export default function AuthScreen({ onAuth }) {
                 {m === "login" ? "Log In" : "Sign Up"}
               </button>
             ))}
+          </div>
+          <Btn2 type="button" onClick={handleSignInWithGoogle} style={{ marginBottom: 16 }}>
+            Continue with Google
+          </Btn2>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <div style={{ flex: 1, height: 1, background: theme.cardBorder }} />
+            <span style={{ fontFamily: F, fontSize: 12, color: theme.textMuted }}>or</span>
+            <div style={{ flex: 1, height: 1, background: theme.cardBorder }} />
           </div>
           <form onSubmit={handleSubmit} noValidate>
             {mode === "signup" && (
