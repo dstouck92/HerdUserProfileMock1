@@ -1179,15 +1179,22 @@ export default function App() {
 
   const headerTitle = activePage === "Profile" ? activeTab : activePage;
 
+  const followedHerdNames = new Set(
+    (userHerds || []).map((h) => (h.name || "").toLowerCase()),
+  );
+
   const recommendedArtistsForSearch =
-    (streamingData?.topArtists ?? []).slice(0, 6).map((a, index) => ({
-      id: index + 1,
-      name: a.name || "Artist",
-      subtitle:
-        a.hours != null
-          ? `${a.hours} hours listened`
-          : "From your streaming history",
-    }));
+    (streamingData?.topArtists ?? [])
+      .filter((a) => !followedHerdNames.has((a?.name || "").toLowerCase()))
+      .slice(0, 6)
+      .map((a, index) => ({
+        id: index + 1,
+        name: a.name || "Artist",
+        subtitle:
+          a.hours != null
+            ? `${a.hours} hours listened`
+            : "From your streaming history",
+      }));
 
   useEffect(() => {
     if (!supabase || !user?.id) return;

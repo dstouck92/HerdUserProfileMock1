@@ -35,6 +35,7 @@ export default function SearchPage({
   const [spotifyError, setSpotifyError] = useState(null);
   const [artistImages, setArtistImages] = useState({});
   const [showAllActivityPopup, setShowAllActivityPopup] = useState(false);
+  const [dismissedArtists, setDismissedArtists] = useState([]);
   const friendsFromDb = Array.isArray(recommendedFriends)
     ? recommendedFriends.map((f) => ({
         id: f.id,
@@ -50,6 +51,14 @@ export default function SearchPage({
   const artists = Array.isArray(recommendedArtists) && recommendedArtists.length > 0
     ? recommendedArtists
     : fallbackArtists;
+
+  const visibleArtists = Array.isArray(artists)
+    ? artists.filter((a) => {
+        const name = a?.name;
+        if (!name) return false;
+        return !dismissedArtists.includes(name.toLowerCase());
+      })
+    : [];
 
   const searchIndex = [
     ...artists.map((a) => ({
@@ -86,9 +95,82 @@ export default function SearchPage({
   const followingIdsSafe = Array.isArray(followingIds) ? followingIds : [];
 
   useEffect(() => {
-    // Temporarily disable automatic Spotify artist image lookups to reduce API usage.
-    // The UI will fall back to default avatars / letters for now.
+    if (!Array.isArray(artists) || artists.length === 0) return;
+    let cancelled = false;
+
+    let cache = {};
+    try {
+      const raw = localStorage.getItem("search_artist_images_v1");
+      if (raw) cache = JSON.parse(raw) || {};
+    } catch {
+      cache = {};
+    }
+
+    const updates = {};
+    const toFetch = [];
+
+    artists.forEach((a) => {
+      const name = a?.name?.trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(cache, key)) {
+        updates[name] = cache[key];
+        return;
+      }
+      toFetch.push({ name, key });
+    });
+
+    if (Object.keys(updates).length > 0) {
+      setArtistImages((prev) => ({ ...prev, ...updates }));
+    }
+
+    if (toFetch.length === 0) return;
+
+    (async () => {
+      const newCache = { ...cache };
+      for (const { name, key } of toFetch) {
+        if (cancelled) break;
+        try {
+          const res = await fetch(`/api/spotify/search-artists?q=${encodeURIComponent(name)}`);
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            newCache[key] = null;
+            continue;
+          }
+          const list = Array.isArray(data?.artists) ? data.artists : [];
+          const match =
+            list.find((art) => (art.name || "").toLowerCase() === key) ||
+            list[0] ||
+            null;
+          const imageUrl = match?.imageUrl || null;
+          newCache[key] = imageUrl;
+          if (!cancelled) {
+            setArtistImages((prev) => ({ ...prev, [name]: imageUrl }));
+          }
+        } catch {
+          newCache[key] = null;
+        }
+      }
+
+      if (!cancelled) {
+        try {
+          localStorage.setItem("search_artist_images_v1", JSON.stringify(newCache));
+        } catch {
+          // Ignore storage errors
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [artists]);
+
+  useEffect(() => {
+    // Reset dismissed artists when recommendations or follows change,
+    // so unfollowed artists can reappear if still in top artists.
+    setDismissedArtists([]);
+  }, [recommendedArtists, followedSpotifyArtistIds]);
 
   useEffect(() => {
     if (!debouncedQuery || debouncedQuery.length < 2) {
@@ -532,14 +614,25 @@ export default function SearchPage({
       <SectionTitle>Recommended Artists</SectionTitle>
       <Card style={{ padding: "12px 0 8px", marginBottom: 10 }}>
         <HorizontalList>
-          {artists.map((artist) => (
+          {visibleArtists.map((artist) => (
             <PersonCard
               key={artist.id}
               title={artist.name}
               subtitle={artist.subtitle}
               imageUrl={artistImages[artist.name]}
               primaryLabel="Follow +"
-              onPrimaryClick={onFollowRecommendedArtist ? () => onFollowRecommendedArtist(artist.name) : undefined}
+              onPrimaryClick={
+                onFollowRecommendedArtist
+                  ? () => {
+                      onFollowRecommendedArtist(artist.name);
+                      const key = (artist.name || "").toLowerCase();
+                      if (!key) return;
+                      setDismissedArtists((prev) =>
+                        prev.includes(key) ? prev : [...prev, key],
+                      );
+                    }
+                  : undefined
+              }
               onCardClick={onOpenHerd ? () => onOpenHerd(artist.name) : undefined}
             />
           ))}
