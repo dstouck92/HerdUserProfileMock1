@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useTheme } from "../context/ThemeContext";
 import { GradientBg, Card, Btn, Btn2, Inp } from "./ui";
+
+const F = "'DM Sans', sans-serif";
 
 function isBackendUnavailableError(msg) {
   if (!msg || typeof msg !== "string") return false;
@@ -18,21 +21,23 @@ function isBackendUnavailableError(msg) {
   );
 }
 
-const BACKEND_RECOVERY = (
-  <div style={{ marginTop: 10, fontSize: 12, color: "#b91c1c", lineHeight: 1.6 }}>
-    <strong>Fix the backend:</strong><br />
-    1. <strong>Supabase</strong> — Open your project at supabase.com. If it says &quot;Paused&quot;, click <strong>Restore project</strong>. If it says <strong>Unhealthy</strong>, go to Project Settings → General and try <strong>Restart database</strong>, then wait a few minutes.<br />
-    2. See <strong>docs/SUPABASE_UNHEALTHY.md</strong> in this repo for full steps.<br />
-    3. Then reload this page and try again.
-  </div>
-);
+function BackendRecovery({ theme }) {
+  return (
+    <div style={{ marginTop: 10, fontSize: 12, color: theme?.textMuted ?? "rgba(241,245,249,0.85)", lineHeight: 1.6 }}>
+      <strong style={{ color: theme?.text }}>Fix the backend:</strong><br />
+      1. <strong>Supabase</strong> — Open your project at supabase.com. If it says &quot;Paused&quot;, click <strong>Restore project</strong>. If it says <strong>Unhealthy</strong>, go to Project Settings → General and try <strong>Restart database</strong>, then wait a few minutes.<br />
+      2. See <strong>docs/SUPABASE_UNHEALTHY.md</strong> in this repo for full steps.<br />
+      3. Then reload this page and try again.
+    </div>
+  );
+}
 
 export default function AuthScreen({ onAuth }) {
+  const { theme } = useTheme();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [country, setCountry] = useState("");
@@ -72,14 +77,14 @@ export default function AuthScreen({ onAuth }) {
     onAuth({ id: "demo", display_name: "Demo", username: "demo", avatar_id: 7 });
   };
 
-  function fallbackProfile(authUser, displayName, username) {
-    const name = displayName ?? authUser.user_metadata?.display_name ?? authUser.email?.split("@")[0] ?? "User";
-    const uname = username ?? authUser.user_metadata?.username ?? authUser.email?.split("@")[0] ?? "user";
+  function fallbackProfile(authUser, username) {
+    const uname = (username ?? authUser.user_metadata?.username ?? authUser.email?.split("@")[0] ?? "user").toString().trim() || "user";
+    const name = authUser.user_metadata?.display_name ?? uname;
     return { id: authUser.id, display_name: name, username: uname, avatar_id: 7 };
   }
 
-  async function getOrCreateProfile(authUser, displayName, username, phone, age, gender, country, region) {
-    const profile = fallbackProfile(authUser, displayName, username);
+  async function getOrCreateProfile(authUser, username, phone, age, gender, country, region) {
+    const profile = fallbackProfile(authUser, username);
     const payload = {
       id: authUser.id,
       display_name: profile.display_name,
@@ -125,7 +130,6 @@ export default function AuthScreen({ onAuth }) {
       if (
         !email?.trim() ||
         !username?.trim() ||
-        !displayName?.trim() ||
         !password ||
         !phone?.trim() ||
         !age?.trim() ||
@@ -155,8 +159,8 @@ export default function AuthScreen({ onAuth }) {
             password,
             options: {
               data: {
-                display_name: displayName,
-                username,
+                display_name: username.trim(),
+                username: username.trim(),
                 phone: phone.trim() || null,
                 age: Number.isFinite(ageNumber) ? ageNumber : null,
                 gender: gender.trim() || null,
@@ -170,8 +174,7 @@ export default function AuthScreen({ onAuth }) {
           if (authUser) {
             const profile = await getOrCreateProfile(
               authUser,
-              displayName,
-              username,
+              username.trim(),
               phone.trim(),
               Number.isFinite(ageNumber) ? ageNumber : null,
               gender.trim() || null,
@@ -205,7 +208,7 @@ export default function AuthScreen({ onAuth }) {
       return;
     }
 
-    if (mode === "signup") onAuth({ id: "mock", email, phone, username, display_name: displayName, avatar_id: 7 });
+    if (mode === "signup") onAuth({ id: "mock", email, phone, username, display_name: username, avatar_id: 7 });
     else onAuth({ id: "mock", email, phone: "", username: email.split("@")[0], display_name: email.split("@")[0], avatar_id: 7 });
   };
 
@@ -241,17 +244,17 @@ export default function AuthScreen({ onAuth }) {
     <GradientBg>
       <div style={{ padding: "60px 24px 40px", textAlign: "center" }}>
         {backendUnavailable && !error && (
-          <div style={{ marginBottom: 20, padding: "12px 16px", background: "rgba(254,243,199,0.95)", border: "1px solid rgba(202,138,4,0.4)", borderRadius: 12, textAlign: "left" }}>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 6 }}>Backend may be unavailable</div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#b45309", lineHeight: 1.5, marginBottom: 10 }}>Supabase could be Paused or Unhealthy. Restore or restart it in the Supabase dashboard, or open the app in demo mode below.</div>
-            <button type="button" onClick={handleOpenDemoMode} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#0f766e", background: "rgba(15,118,110,0.15)", border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>Open in demo mode</button>
+          <div style={{ marginBottom: 20, padding: "12px 16px", background: theme.accentLight, border: `1px solid ${theme.accent}60`, borderRadius: 12, textAlign: "left" }}>
+            <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 6 }}>Backend may be unavailable</div>
+            <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted, lineHeight: 1.5, marginBottom: 10 }}>Supabase could be Paused or Unhealthy. Restore or restart it in the Supabase dashboard, or open the app in demo mode below.</div>
+            <button type="button" onClick={handleOpenDemoMode} style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: theme.accent, background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>Open in demo mode</button>
           </div>
         )}
-        <img src="/goat-headphones.png" alt="Herd" style={{ width: 88, height: 88, objectFit: "contain", marginBottom: 8, mixBlendMode: "multiply" }} />
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 32, fontWeight: 800, color: "#1e1b4b" }}>Herd</div>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "rgba(55,48,107,0.55)", marginTop: 4, marginBottom: 32 }}>Prove you&apos;re the Goat</div>
+        <img src="/goat-headphones.png" alt="Herd" style={{ width: 88, height: 88, objectFit: "contain", marginBottom: 8, filter: "brightness(1.05) contrast(1.05)" }} />
+        <div style={{ fontFamily: F, fontSize: 32, fontWeight: 800, color: theme.text }}>Herd</div>
+        <div style={{ fontFamily: F, fontSize: 14, color: theme.textMuted, marginTop: 4, marginBottom: 32 }}>Prove you&apos;re the Goat</div>
         <Card style={{ margin: "0 0 20px", padding: "24px 20px" }}>
-          <div style={{ display: "flex", marginBottom: 24, background: "rgba(13,148,136,0.08)", borderRadius: 10, padding: 3 }}>
+          <div style={{ display: "flex", marginBottom: 24, background: theme.accentLight, borderRadius: 10, padding: 3 }}>
             {["login", "signup"].map((m) => (
               <button
                 key={m}
@@ -266,12 +269,12 @@ export default function AuthScreen({ onAuth }) {
                   padding: "10px 0",
                   borderRadius: 8,
                   border: "none",
-                  background: mode === m ? "#fff" : "transparent",
-                  boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                  fontFamily: "'DM Sans', sans-serif",
+                  background: mode === m ? theme.cardBg : "transparent",
+                  boxShadow: mode === m ? theme.cardShadow : "none",
+                  fontFamily: F,
                   fontSize: 14,
                   fontWeight: 600,
-                  color: mode === m ? "#0f766e" : "rgba(55,48,107,0.4)",
+                  color: mode === m ? theme.accent : theme.textSoft,
                   cursor: "pointer",
                 }}
               >
@@ -282,7 +285,6 @@ export default function AuthScreen({ onAuth }) {
           <form onSubmit={handleSubmit} noValidate>
             {mode === "signup" && (
               <>
-                <Inp label="Display Name" value={displayName} onChange={setDisplayName} placeholder="Jane Doe" />
                 <Inp label="Username" value={username} onChange={setUsername} placeholder="JaneDoe" />
                 <Inp label="Phone *" type="tel" value={phone} onChange={setPhone} placeholder="(555) 123-4567" required />
                 <Inp label="Age *" type="number" value={age} onChange={setAge} placeholder="25" required />
@@ -293,8 +295,8 @@ export default function AuthScreen({ onAuth }) {
             )}
             <Inp label="Email" type="email" value={email} onChange={setEmail} placeholder="you@email.com" autoComplete="email" />
             {mode === "login" && (
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(55,48,107,0.5)", marginTop: -8, marginBottom: 12 }}>
-                Use the email you signed up with, not your display name.
+              <div style={{ fontFamily: F, fontSize: 11, color: theme.textMuted, marginTop: -8, marginBottom: 12 }}>
+                Use the email you signed up with, not your username.
               </div>
             )}
             <Inp label="Password" type="password" value={password} onChange={setPassword} placeholder="Min 6 characters" autoComplete={mode === "login" ? "current-password" : "new-password"} />
@@ -308,9 +310,9 @@ export default function AuthScreen({ onAuth }) {
                     border: "none",
                     background: "none",
                     padding: 0,
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: F,
                     fontSize: 11,
-                    color: "#0f766e",
+                    color: theme.accent,
                     textDecoration: "underline",
                     cursor: loading ? "default" : "pointer",
                     opacity: loading ? 0.6 : 1,
@@ -322,43 +324,33 @@ export default function AuthScreen({ onAuth }) {
             )}
             <div role="alert" style={{ minHeight: error || message ? "auto" : 0, marginBottom: 12, textAlign: "left" }}>
               {error && (
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#dc2626", padding: "10px 12px", background: "#fef2f2", borderRadius: 8 }}>
+                <div style={{ fontFamily: F, fontSize: 13, color: "#f87171", padding: "10px 12px", background: "rgba(248,113,113,0.15)", borderRadius: 8, border: "1px solid rgba(248,113,113,0.3)" }}>
                   {error}
-                  {isBackendUnavailableError(error) && BACKEND_RECOVERY}
+                  {isBackendUnavailableError(error) && <BackendRecovery theme={theme} />}
                 </div>
               )}
               {message && !error && (
-                <div
-                  style={{
-                    marginTop: 4,
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 13,
-                    color: "#166534",
-                    padding: "8px 10px",
-                    background: "#ecfdf3",
-                    borderRadius: 8,
-                  }}
-                >
+                <div style={{ marginTop: 4, fontFamily: F, fontSize: 13, color: theme.accent, padding: "8px 10px", background: theme.accentLight, borderRadius: 8, border: `1px solid ${theme.accent}40` }}>
                   {message}
                 </div>
               )}
             </div>
             <Btn type="submit" disabled={loading}>{loading ? "…" : mode === "login" ? "Log In" : "Create Account"}</Btn>
             {showBackendHelp && (
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(13,148,136,0.2)", textAlign: "center" }}>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(55,48,107,0.7)", marginBottom: 10 }}>
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: theme.cardBorder, textAlign: "center" }}>
+                <div style={{ fontFamily: F, fontSize: 12, color: theme.textMuted, marginBottom: 10 }}>
                   Backend unavailable? You can open the app in demo mode (no saved data).
                 </div>
                 <button
                   type="button"
                   onClick={handleOpenDemoMode}
                   style={{
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: F,
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#0f766e",
-                    background: "rgba(15,118,110,0.12)",
-                    border: "1px solid rgba(15,118,110,0.4)",
+                    color: theme.accent,
+                    background: theme.accentLight,
+                    border: theme.btnSecondaryBorder,
                     borderRadius: 10,
                     padding: "10px 20px",
                     cursor: "pointer",
