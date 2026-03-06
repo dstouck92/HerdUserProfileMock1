@@ -164,8 +164,8 @@ export default function App() {
     if (!session?.user || !supabase) return;
     const u = session.user;
     const meta = u.user_metadata || {};
-    const fallbackDisplayName =
-      meta.display_name ?? meta.full_name ?? meta.name ?? u.email?.split("@", 1)[0] || "User";
+      const fallbackDisplayName =
+        meta.display_name ?? meta.full_name ?? meta.name ?? (u.email?.split("@", 1)[0] || "User");
     const fallbackUsername = (u.email?.split("@", 1)[0] || "user").toLowerCase().replace(/[^a-z0-9_]/g, "_") || "user";
     const fallbackUser = {
       id: u.id,
