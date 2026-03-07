@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase";
 import { GradientBg } from "./components/ui";
 import AuthScreen from "./components/AuthScreen";
+import OnboardingScreen from "./components/OnboardingScreen";
 import SpotifyUploadModal from "./components/SpotifyUploadModal";
 import AddConcertModal from "./components/AddConcertModal";
 import EditConcertModal from "./components/EditConcertModal";
@@ -178,7 +179,7 @@ export default function App() {
       const { data: profile, error } = await supabase
         .from("profiles")
         .select(
-          "id, display_name, username, avatar_id, profile_image_url, age, gender, country, region, show_age_public, show_gender_public, show_location_public, public_profile_theme",
+          "id, display_name, username, avatar_id, profile_image_url, phone, age, gender, country, region, show_age_public, show_gender_public, show_location_public, public_profile_theme",
         )
         .eq("id", u.id)
         .maybeSingle();
@@ -1489,6 +1490,15 @@ export default function App() {
     );
   };
 
+  const needsOnboarding = (u) => {
+    if (!u?.id) return false;
+    const hasPhone = u.phone != null && String(u.phone).trim() !== "";
+    const hasAge = u.age != null && Number.isFinite(Number(u.age)) && Number(u.age) > 0;
+    const hasGender = u.gender != null && String(u.gender).trim() !== "";
+    const hasCountry = u.country != null && String(u.country).trim() !== "";
+    return !(hasPhone && hasAge && hasGender && hasCountry);
+  };
+
   if (authLoading) {
     return (
       <GradientBg>
@@ -1497,6 +1507,14 @@ export default function App() {
     );
   }
   if (!user) return <AuthScreen onAuth={(u) => setUser(u)} />;
+  if (needsOnboarding(user)) {
+    return (
+      <OnboardingScreen
+        user={user}
+        onComplete={(updates) => setUser((prev) => (prev ? { ...prev, ...updates } : prev))}
+      />
+    );
+  }
 
   return (
     <GradientBg>
